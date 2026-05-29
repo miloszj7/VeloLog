@@ -12,7 +12,7 @@ timeline_budget:
 checkpoint:
   current_phase: 8
   phases_completed: [1, 2, 3, 4, 5, 6, 7]
-  frs_drafted: 14
+  frs_drafted: 15
   quality_check_status: accepted
 ---
 
@@ -52,8 +52,8 @@ checkpoint:
 - FR-003: User can create a trip with a name, date, and description. Priority: must-have
 - FR-004: User can upload a GPX file to a trip. Priority: must-have
   > Socrates: Counter-argument considered: "GPX is one format — locking to it may require migration if FIT/TCX support is added later." Resolution: kept. Naming note captured in NFRs — the product should refer to this as a 'track file'; GPX is the first supported format, not the only conceivable one.
-- FR-005: User can view a trip's route rendered on an interactive OpenStreetMap. Priority: must-have
-  > Socrates: Counter-argument considered: "A static map thumbnail would be simpler." Resolution: rejected — the interactive map is the payoff; a static image would feel hollow.
+- FR-005: User can view a static map image of a trip's route. Priority: must-have
+  > Socrates: Counter-argument considered: "A static map thumbnail would be simpler." Resolution: revised — static map image accepted for v1. Interactive map moved to v2 as the first post-MVP enhancement.
 - FR-006: User can view a list of their own trips. Priority: must-have
   > Socrates: Counter-argument considered: "A bare list with no filter/sort is enough for v1 with 1–2 trips." Resolution: kept as must-have, but scoped down — minimal list only, no filter/sort in MVP (FR-012 stays nice-to-have).
 - FR-007: User can edit a trip's details (name, date, description). Priority: must-have
@@ -68,15 +68,17 @@ checkpoint:
 - FR-012: User can browse and filter their trip list. Priority: nice-to-have
 - FR-013: User can add trip metadata (start location, photos, companions). Priority: nice-to-have
 - FR-014: User can add accommodation waypoints between stages with a description and photo. Priority: nice-to-have
+- FR-015: User can view the trip route on an interactive OpenStreetMap. Priority: nice-to-have
+  > Note: v2 — first feature after the core upload-and-view flow is validated.
 
 ## Business Logic
 
-**Domain rule**: A trip is a user-curated collection of one or more GPX track files (stages). The system treats the trip as the primary entity — stages belong to exactly one trip, and a trip must have at least one uploaded track file to be considered complete. The system does not auto-detect or auto-group stages; grouping is always an explicit user action.
+**Domain rule**: A trip is a user-curated collection of one or more GPX track files (stages). The system treats the trip as the primary entity — stages belong to exactly one trip, and a trip must have exactly one uploaded track file in v1 to be considered complete. The system does not auto-detect or auto-group stages; grouping is always an explicit user action.
 
 Supporting detail:
 - The user defines trip boundaries manually (by creating a trip and uploading files to it). The system does not infer whether two GPX files belong to the same trip.
 - A trip with zero uploaded track files is an empty draft — valid state, but the map and stats views are not available until at least one file is attached.
-- When multiple files are attached (nice-to-have, FR-011), the system merges them into a single rendered route in chronological order by GPS timestamp.
+- Multi-stage grouping (multiple GPX files per trip) is a v2 feature (FR-011). When implemented, the system will merge them into a single rendered route in chronological order by GPS timestamp.
 
 ## Non-Functional Requirements
 

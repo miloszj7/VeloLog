@@ -7,8 +7,8 @@ context_type: greenfield
 product_type: web-app
 target_scale:
   users: small
-  qps: null
-  data_volume: null
+  qps: low
+  data_volume: small
 timeline_budget:
   mvp_weeks: 2
   hard_deadline: "2026-06-30"
@@ -112,5 +112,4 @@ Multi-stage grouping (multiple track files per trip, FR-011) is a v2 feature. Wh
 
 ## Open Questions
 
-1. **target_scale.qps** — Expected request-per-second ballpark not captured in shaping. Consistent with small user scale (likely very low), but not explicitly stated. Owner: user. Required for: capacity planning in tech-stack selection.
-2. **target_scale.data_volume** — Expected data volume ballpark (GPX file storage, trip records) not captured in shaping. Consistent with small user scale, but not explicitly stated. Owner: user. Required for: storage tier selection in tech-stack selection.
+_No open questions._

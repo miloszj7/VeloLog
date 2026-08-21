@@ -111,7 +111,7 @@ Goal: attach persistent storage and configure secrets — matches infra doc's Ge
 3. Add a lightweight health-check path (e.g. Django's built-in admin `/admin/` login page, or a trivial `/healthz` view) and hit it over HTTPS to confirm `ALLOWED_HOSTS`/static files/DB write all work end-to-end — this also satisfies the risk register's "startup health check that performs a real write-and-read against the SQLite file" mitigation.
 4. Record the deployment ID as the first "known-good" entry in a short runbook note (see Phase 7) — there is no atomic rollback command, so this manual record is the actual mitigation.
 
-## Phase 6 — CI/CD: GitHub Actions auto-deploy on merge
+## Phase 6 — CI/CD: GitHub Actions auto-deploy on merge ✅ DONE (2026-08-21) — Railway's native GitHub auto-deploy was disabled in the dashboard so this workflow is the real merge gate
 
 Goal: satisfy `tech-stack.md`'s `ci_provider: github-actions` / `ci_default_flow: auto-deploy-on-merge` hint, using the verified current pattern (no official Action exists).
 

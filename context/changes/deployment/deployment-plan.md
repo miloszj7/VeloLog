@@ -104,7 +104,7 @@ Goal: attach persistent storage and configure secrets — matches infra doc's Ge
 
 **No commit needed** — this is Railway-side config, not repo state, except for documenting the required variable names (fold into Phase 2's `.env.example` if not already covered).
 
-## Phase 5 — First production deploy + smoke test
+## Phase 5 — First production deploy + smoke test ✅ DONE (2026-08-21)
 
 1. `railway up`.
 2. `railway logs` — confirm migration ran and gunicorn is serving.

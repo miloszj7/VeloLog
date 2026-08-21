@@ -18,6 +18,8 @@ jobs:
         run: uv sync --locked
 
       - name: Django check (merge gate)
+        env:
+          SECRET_KEY: ci-check-only-not-a-real-secret
         run: uv run python manage.py check
 
       - name: Install Railway CLI

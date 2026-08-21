@@ -15,7 +15,7 @@
 
 **Local environment audit (checked 2026-08-20):** Node v26.7.0 and npm 11.19.0 are already present (needed to install the Railway CLI). Missing: no `git remote` configured on this repo, Railway CLI, GitHub CLI (`gh`), and Docker are all absent from PATH. Phase 0 below covers all of these gaps.
 
-## Phase 0 — Prerequisites: accounts & local tooling
+## Phase 0 — Prerequisites: accounts & local tooling ✅ DONE (2026-08-21)
 
 Goal: get every account and CLI the rest of the plan depends on in place, once, before any repo changes start. All steps here are one-time setup, mostly manual/human (account creation, OAuth, payment details) — an agent can run the CLI install/verify commands but account signup and card entry must be done by the developer in a browser.
 
@@ -49,7 +49,7 @@ Not installed locally, and not needed unless Phase 1's build spike shows Railpac
 
 **No commit from this phase** — it's accounts + local CLI state, not repo content, except the `git push -u origin main` in 0.1 which puts the existing stub on GitHub for the first time.
 
-## Phase 1 — De-risk the build before touching app code
+## Phase 1 — De-risk the build before touching app code ✅ DONE (2026-08-21) — Railpack build succeeded, no Dockerfile fallback needed
 
 Goal: confirm Railway can actually build this exact stack before investing in settings/CI work. Cheapest possible spike.
 

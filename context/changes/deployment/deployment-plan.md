@@ -94,7 +94,7 @@ Goal: give Railway a deterministic, explicit start command and production WSGI s
 
 **Commit:** "Add gunicorn + railway.json deploy config".
 
-## Phase 4 — Railway project provisioning
+## Phase 4 — Railway project provisioning ✅ DONE (2026-08-21)
 
 Goal: attach persistent storage and configure secrets — matches infra doc's Getting Started steps 4 & 6, corrected for current CLI/env-var names.
 
@@ -142,3 +142,7 @@ Matches the infra doc's Risk Register mitigations that are process, not code:
 - Phase 2–3: `uv run python manage.py check --deploy` locally passes (or lists only expected warnings) with `DEBUG=False` and a real `SECRET_KEY` set via `.env`.
 - Phase 5: hitting the deployed URL's health-check path over HTTPS returns 200 and a fresh migration/DB write round-trips on the mounted Volume.
 - Phase 6: a test merge to `main` triggers the workflow in the GitHub Actions tab and results in a new Railway deployment visible via `railway logs`.
+
+## Note — `railway.json` deprecation (found during Phase 4, 2026-08-21)
+
+The Railway CLI now warns that Config as Code (`railway.json` / `railway.toml`, used by this plan's Phase 3) is deprecated in favor of Infrastructure as Code (`.railway/railway.ts`). Existing `railway.json`/`railway.toml` files keep working **until 2026-12-01** — no action required before then, but migrate via `railway config migrate` (or see https://docs.railway.com/infrastructure-as-code#migrating-from-config-as-code) ahead of that date.

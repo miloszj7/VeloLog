@@ -25,7 +25,7 @@ The repo has no `git remote` yet; Phase 6 (CI/CD) and Railway's own GitHub-based
 
 1. Create an empty repository on GitHub (github.com → New repository — do **not** initialize with a README/`.gitignore`, this repo already has its own).
 2. Locally: `git remote add origin https://github.com/<user>/<repo>.git`
-3. `git push -u origin main`
+3. `git push -u origin master`
 4. Optional but convenient: install **GitHub CLI** (`gh`) so repo/secret management can be scripted instead of using the web UI — on Windows: `winget install --id GitHub.cli` (or `scoop install gh`), then `gh auth login`. Not strictly required — every `gh` step below has a web-UI equivalent — but saves round-trips once Phase 6 needs to set the `RAILWAY_TOKEN` repo secret.
 
 ### 0.2 Railway — account signup
@@ -47,7 +47,7 @@ Node/npm are already installed, so the simplest path applies directly:
 
 Not installed locally, and not needed unless Phase 1's build spike shows Railpack can't handle Python 3.14 or the `uv` toolchain and a custom Dockerfile fallback is required. If that happens: install Docker Desktop (docker.com) to build/test the Dockerfile locally before pushing it to Railway. Skip this step entirely if Phase 1 succeeds without it — don't install speculatively.
 
-**No commit from this phase** — it's accounts + local CLI state, not repo content, except the `git push -u origin main` in 0.1 which puts the existing stub on GitHub for the first time.
+**No commit from this phase** — it's accounts + local CLI state, not repo content, except the `git push -u origin master` in 0.1 which puts the existing stub on GitHub for the first time.
 
 ## Phase 1 — De-risk the build before touching app code ✅ DONE (2026-08-21) — Railpack build succeeded, no Dockerfile fallback needed
 
@@ -119,12 +119,12 @@ File: `.github/workflows/deploy.yml`
 
 1. Generate a Railway **project token** (Railway dashboard → project → Settings → Tokens) — human-only step, not agent-automatable.
 2. In the GitHub repo (created in Phase 0.1) → Settings → Secrets and variables → Actions, add that token as `RAILWAY_TOKEN` (via `gh secret set RAILWAY_TOKEN` if `gh` was installed in 0.1, or the web UI otherwise).
-3. Workflow trigger: `push` to `main`.
+3. Workflow trigger: `push` to `master`.
 4. Job runs in `ghcr.io/railwayapp/cli:latest` container (or installs the CLI in a standard runner), authenticates via the `RAILWAY_TOKEN` secret, and runs `railway up --service=<service-id>`.
 5. Add a preceding `uv run python manage.py check` (or, once tests exist, `uv run pytest`) step as a merge gate before the deploy step — don't deploy on a broken build.
 6. Per the infra doc's Approval note: this workflow deploys automatically on merge, which the developer already treats as pre-reviewed (PR review gates the merge, not the deploy) — no additional human-approval step inside the workflow itself.
 
-**Commit:** "Add GitHub Actions workflow for auto-deploy to Railway on merge to main".
+**Commit:** "Add GitHub Actions workflow for auto-deploy to Railway on merge to master".
 
 ## Phase 7 — Operational hardening (runbook, not code) ✅ DONE (2026-08-21) — spend-alert re-check left as an open item in DEPLOY.md
 
@@ -141,8 +141,10 @@ Matches the infra doc's Risk Register mitigations that are process, not code:
 - Phase 1: `railway logs --build` shows a successful Railpack build (or Dockerfile build) with Python 3.14 + uv deps installed.
 - Phase 2–3: `uv run python manage.py check --deploy` locally passes (or lists only expected warnings) with `DEBUG=False` and a real `SECRET_KEY` set via `.env`.
 - Phase 5: hitting the deployed URL's health-check path over HTTPS returns 200 and a fresh migration/DB write round-trips on the mounted Volume.
-- Phase 6: a test merge to `main` triggers the workflow in the GitHub Actions tab and results in a new Railway deployment visible via `railway logs`.
+- Phase 6: a test merge to `master` triggers the workflow in the GitHub Actions tab and results in a new Railway deployment visible via `railway logs`.
 
-## Note — `railway.json` deprecation (found during Phase 4, 2026-08-21)
+## Follow-ups (open items, none blocking the MVP)
 
-The Railway CLI now warns that Config as Code (`railway.json` / `railway.toml`, used by this plan's Phase 3) is deprecated in favor of Infrastructure as Code (`.railway/railway.ts`). Existing `railway.json`/`railway.toml` files keep working **until 2026-12-01** — no action required before then, but migrate via `railway config migrate` (or see https://docs.railway.com/infrastructure-as-code#migrating-from-config-as-code) ahead of that date.
+- **Migrate `railway.json` → `.railway/railway.ts` before 2026-12-01.** Found during Phase 4 (2026-08-21): the Railway CLI now warns that Config as Code (`railway.json` / `railway.toml`, used by this plan's Phase 3) is deprecated in favor of Infrastructure as Code (`.railway/railway.ts`). Existing `railway.json`/`railway.toml` files keep working until that date; migrate via `railway config migrate` (see <https://docs.railway.com/infrastructure-as-code#migrating-from-config-as-code>).
+- **Re-verify the $5 Hobby-plan spend alert is still active.** Set during Phase 0.2, not re-checked since — confirm in Railway dashboard → account → billing. Tracked in `DEPLOY.md`.
+- **Restore procedure (Phase 7) documented but never exercised.** The backup command (`railway service files download`) was tested live; the restore/upload command was intentionally not run against production to avoid clobbering the live DB. Worth a real test against a disposable environment if one ever exists.

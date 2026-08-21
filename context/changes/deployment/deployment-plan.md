@@ -60,7 +60,7 @@ Goal: confirm Railway can actually build this exact stack before investing in se
 
 **Stop condition / commit:** nothing app-facing changes yet — this phase only proves the build path. Record the outcome (Railpack worked / Dockerfile fallback needed) before continuing.
 
-## Phase 2 — Production-ready Django settings (env-driven config)
+## Phase 2 — Production-ready Django settings (env-driven config) ✅ DONE (2026-08-21)
 
 Goal: make `velo_log/settings.py` deployable anywhere via environment variables, per the Python security baseline (no hardcoded secrets) and `~/.claude/rules/python.md`'s config-split convention.
 

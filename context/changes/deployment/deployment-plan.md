@@ -126,7 +126,7 @@ File: `.github/workflows/deploy.yml`
 
 **Commit:** "Add GitHub Actions workflow for auto-deploy to Railway on merge to main".
 
-## Phase 7 — Operational hardening (runbook, not code)
+## Phase 7 — Operational hardening (runbook, not code) ✅ DONE (2026-08-21) — spend-alert re-check left as an open item in DEPLOY.md
 
 Matches the infra doc's Risk Register mitigations that are process, not code:
 

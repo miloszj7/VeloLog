@@ -15,7 +15,7 @@
 
 **Local environment audit (checked 2026-08-20):** Node v26.7.0 and npm 11.19.0 are already present (needed to install the Railway CLI). Missing: no `git remote` configured on this repo, Railway CLI, GitHub CLI (`gh`), and Docker are all absent from PATH. Phase 0 below covers all of these gaps.
 
-## Phase 0 — Prerequisites: accounts & local tooling
+## Phase 0 — Prerequisites: accounts & local tooling ✅ DONE (2026-08-21)
 
 Goal: get every account and CLI the rest of the plan depends on in place, once, before any repo changes start. All steps here are one-time setup, mostly manual/human (account creation, OAuth, payment details) — an agent can run the CLI install/verify commands but account signup and card entry must be done by the developer in a browser.
 
@@ -49,7 +49,7 @@ Not installed locally, and not needed unless Phase 1's build spike shows Railpac
 
 **No commit from this phase** — it's accounts + local CLI state, not repo content, except the `git push -u origin main` in 0.1 which puts the existing stub on GitHub for the first time.
 
-## Phase 1 — De-risk the build before touching app code
+## Phase 1 — De-risk the build before touching app code ✅ DONE (2026-08-21) — Railpack build succeeded, no Dockerfile fallback needed
 
 Goal: confirm Railway can actually build this exact stack before investing in settings/CI work. Cheapest possible spike.
 
@@ -60,7 +60,7 @@ Goal: confirm Railway can actually build this exact stack before investing in se
 
 **Stop condition / commit:** nothing app-facing changes yet — this phase only proves the build path. Record the outcome (Railpack worked / Dockerfile fallback needed) before continuing.
 
-## Phase 2 — Production-ready Django settings (env-driven config)
+## Phase 2 — Production-ready Django settings (env-driven config) ✅ DONE (2026-08-21)
 
 Goal: make `velo_log/settings.py` deployable anywhere via environment variables, per the Python security baseline (no hardcoded secrets) and `~/.claude/rules/python.md`'s config-split convention.
 
@@ -75,7 +75,7 @@ Files: `velo_log/settings.py`, `pyproject.toml` (add `django-environ` or use std
 
 **Commit:** "Add env-driven production settings (SECRET_KEY, DEBUG, ALLOWED_HOSTS, DB path, static files)".
 
-## Phase 3 — Deploy artifacts
+## Phase 3 — Deploy artifacts ✅ DONE (2026-08-21)
 
 Goal: give Railway a deterministic, explicit start command and production WSGI server.
 
@@ -94,7 +94,7 @@ Goal: give Railway a deterministic, explicit start command and production WSGI s
 
 **Commit:** "Add gunicorn + railway.json deploy config".
 
-## Phase 4 — Railway project provisioning
+## Phase 4 — Railway project provisioning ✅ DONE (2026-08-21)
 
 Goal: attach persistent storage and configure secrets — matches infra doc's Getting Started steps 4 & 6, corrected for current CLI/env-var names.
 
@@ -104,14 +104,14 @@ Goal: attach persistent storage and configure secrets — matches infra doc's Ge
 
 **No commit needed** — this is Railway-side config, not repo state, except for documenting the required variable names (fold into Phase 2's `.env.example` if not already covered).
 
-## Phase 5 — First production deploy + smoke test
+## Phase 5 — First production deploy + smoke test ✅ DONE (2026-08-21)
 
 1. `railway up`.
 2. `railway logs` — confirm migration ran and gunicorn is serving.
 3. Add a lightweight health-check path (e.g. Django's built-in admin `/admin/` login page, or a trivial `/healthz` view) and hit it over HTTPS to confirm `ALLOWED_HOSTS`/static files/DB write all work end-to-end — this also satisfies the risk register's "startup health check that performs a real write-and-read against the SQLite file" mitigation.
 4. Record the deployment ID as the first "known-good" entry in a short runbook note (see Phase 7) — there is no atomic rollback command, so this manual record is the actual mitigation.
 
-## Phase 6 — CI/CD: GitHub Actions auto-deploy on merge
+## Phase 6 — CI/CD: GitHub Actions auto-deploy on merge ✅ DONE (2026-08-21) — Railway's native GitHub auto-deploy was disabled in the dashboard so this workflow is the real merge gate
 
 Goal: satisfy `tech-stack.md`'s `ci_provider: github-actions` / `ci_default_flow: auto-deploy-on-merge` hint, using the verified current pattern (no official Action exists).
 
@@ -126,7 +126,7 @@ File: `.github/workflows/deploy.yml`
 
 **Commit:** "Add GitHub Actions workflow for auto-deploy to Railway on merge to main".
 
-## Phase 7 — Operational hardening (runbook, not code)
+## Phase 7 — Operational hardening (runbook, not code) ✅ DONE (2026-08-21) — spend-alert re-check left as an open item in DEPLOY.md
 
 Matches the infra doc's Risk Register mitigations that are process, not code:
 
@@ -142,3 +142,7 @@ Matches the infra doc's Risk Register mitigations that are process, not code:
 - Phase 2–3: `uv run python manage.py check --deploy` locally passes (or lists only expected warnings) with `DEBUG=False` and a real `SECRET_KEY` set via `.env`.
 - Phase 5: hitting the deployed URL's health-check path over HTTPS returns 200 and a fresh migration/DB write round-trips on the mounted Volume.
 - Phase 6: a test merge to `main` triggers the workflow in the GitHub Actions tab and results in a new Railway deployment visible via `railway logs`.
+
+## Note — `railway.json` deprecation (found during Phase 4, 2026-08-21)
+
+The Railway CLI now warns that Config as Code (`railway.json` / `railway.toml`, used by this plan's Phase 3) is deprecated in favor of Infrastructure as Code (`.railway/railway.ts`). Existing `railway.json`/`railway.toml` files keep working **until 2026-12-01** — no action required before then, but migrate via `railway config migrate` (or see https://docs.railway.com/infrastructure-as-code#migrating-from-config-as-code) ahead of that date.

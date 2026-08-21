@@ -16,8 +16,23 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.contrib.sessions.backends.db import SessionStore
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.urls import path
+
+
+def healthz(request: HttpRequest) -> HttpResponse:
+    """Round-trip a write and read against the database to confirm it's reachable."""
+    store = SessionStore()
+    store["healthz"] = "ok"
+    store.save()
+    readback = SessionStore(session_key=store.session_key)
+    ok = readback.get("healthz") == "ok"
+    readback.delete()
+    return JsonResponse({"status": "ok" if ok else "error"}, status=200 if ok else 500)
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("healthz/", healthz, name="healthz"),
 ]

@@ -75,7 +75,7 @@ Files: `velo_log/settings.py`, `pyproject.toml` (add `django-environ` or use std
 
 **Commit:** "Add env-driven production settings (SECRET_KEY, DEBUG, ALLOWED_HOSTS, DB path, static files)".
 
-## Phase 3 — Deploy artifacts
+## Phase 3 — Deploy artifacts ✅ DONE (2026-08-21)
 
 Goal: give Railway a deterministic, explicit start command and production WSGI server.
 

@@ -143,3 +143,7 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    # Start low and raise once verified in production — a wrong HSTS value is
+    # sticky in browsers for its full duration.
+    SECURE_HSTS_SECONDS = 3600

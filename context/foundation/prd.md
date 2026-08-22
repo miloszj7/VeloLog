@@ -1,8 +1,9 @@
 ---
 project: VeloLog
-version: 1
+version: 2
 status: draft
 created: 2026-05-29
+updated: 2026-08-22
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -11,7 +12,7 @@ target_scale:
   data_volume: small
 timeline_budget:
   mvp_weeks: 2
-  hard_deadline: "2026-06-30"
+  hard_deadline: "2026-09-10"
   after_hours_only: true
 ---
 
@@ -109,6 +110,11 @@ Multi-stage grouping (multiple track files per trip, FR-011) is a v2 feature. Wh
 - **No route planning or track editing**: VeloLog is a log and viewer, not a planner or editor. Users upload finished tracks; no in-app route building or track modification.
 - **No native mobile app**: A responsive web app accessible from mobile browsers is sufficient. No app store distribution in v1.
 - **No AI or geographic enrichment features**: Automatic geographic enrichment (landmarks, regions, administrative areas) and weather retrieval are deferred to v2+.
+
+## Changelog
+
+- **v1 (2026-05-29)** — Initial PRD: hard deadline `2026-06-30`.
+- **v2 (2026-08-22)** — `hard_deadline` changed `2026-06-30` → `2026-09-10`.
 
 ## Open Questions
 

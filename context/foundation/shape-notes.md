@@ -1,14 +1,16 @@
 ---
 project: VeloLog
+version: 2
 context_type: greenfield
-updated: 2026-05-29
+created: 2026-05-29
+updated: 2026-08-22
 product_type: web-app
 target_scale:
   users: small
 timeline_budget:
   mvp_weeks: 2
   after_hours_only: true
-  hard_deadline: "2026-06-30"
+  hard_deadline: "2026-09-10"
 checkpoint:
   current_phase: 8
   phases_completed: [1, 2, 3, 4, 5, 6, 7]
@@ -121,5 +123,10 @@ Completed on 2026-05-29. All elements present.
 | Project artifacts | present |
 | Timeline-cost acknowledged | present (2-week estimate ≤ 3-week threshold) |
 | Non-Goals | present (4 entries) |
+
+## Changelog
+
+- **v1 (2026-05-29)** — Initial shape notes: hard deadline `2026-06-30`.
+- **v2 (2026-08-22)** — `hard_deadline` changed `2026-06-30` → `2026-09-10`.
 
 `quality_check_status: accepted`

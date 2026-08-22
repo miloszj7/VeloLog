@@ -54,3 +54,14 @@ def test_unauthenticated_landing_redirects_to_login_with_next(client: Client) ->
 
     assert response.status_code == 302
     assert response.headers["Location"] == f"{reverse('login')}?next={reverse('accounts:landing')}"
+
+
+@pytest.mark.django_db
+def test_authenticated_landing_shows_username(client: Client) -> None:
+    User.objects.create_user(username="rider", password="correct-horse-battery-staple")
+    client.login(username="rider", password="correct-horse-battery-staple")
+
+    response = client.get(reverse("accounts:landing"))
+
+    assert response.status_code == 200
+    assert "rider" in response.content.decode()

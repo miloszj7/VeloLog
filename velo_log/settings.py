@@ -10,9 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-import environ
-
 from pathlib import Path
+
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -127,3 +128,18 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+
+# Authentication
+# https://docs.djangoproject.com/en/6.0/topics/auth/default/
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "accounts:landing"
+LOGOUT_REDIRECT_URL = "login"
+
+if not DEBUG:
+    # Railway terminates TLS at a proxy in front of the app, so Django must be
+    # told to trust that header — otherwise every request looks like plain HTTP.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

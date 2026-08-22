@@ -1,7 +1,7 @@
 ---
 change_id: user-registration-login
 title: User can register, log in, and log out
-status: implemented
+status: impl_reviewed
 created: 2026-08-22
 updated: 2026-08-22
 archived_at: null

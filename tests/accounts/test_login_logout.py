@@ -29,6 +29,8 @@ def test_login_with_invalid_credentials_shows_error(client: Client) -> None:
 
     assert response.status_code == 200
     assert "_auth_user_id" not in client.session
+    assert response.context["form"].non_field_errors()
+    assert "Please enter a correct username and password" in response.content.decode()
 
 
 @pytest.mark.django_db

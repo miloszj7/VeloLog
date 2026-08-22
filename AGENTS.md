@@ -37,6 +37,8 @@ No linting tools are configured yet. Before writing business logic, wire `ruff`,
 
 No test infrastructure exists yet. When adding tests: use `pytest` + `pytest-django`, place tests in `tests/` at the repo root, and configure via `[tool.pytest.ini_options]` in `pyproject.toml`. See `@~/.claude/CLAUDE.md` for fixture patterns, coverage thresholds (`fail_under = 80`), and integration-test skip conventions.
 
-## Commits
+## Commits & Git Workflow
 
-Descriptive imperative sentences; no strict prefix convention observed in history (e.g. `django startproject`, `setup uv with django`). One logical change per commit.
+Follow `@~/.claude/rules/git-workflow.md`: Conventional Commits format, feature branches
+only (never commit straight to `master`), merge with `--no-ff`, never squash. Use the
+`create-pr` skill to open a GitHub/GitLab PR or MR, or complete a local no-remote merge.

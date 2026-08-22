@@ -143,7 +143,7 @@ _None — the PRD has 0 Open Questions, and no cross-cutting sequencing question
 
 ## Done
 
-_Empty — no changes archived yet._
+- **S-01: User can register with an email and password, then log in and log out.** — Archived 2026-08-22 → `context/archive/2026-08-22-user-registration-login/`. Lesson: —.
 
 ## Changelog
 

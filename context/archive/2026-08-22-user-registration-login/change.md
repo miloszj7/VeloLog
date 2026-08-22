@@ -1,10 +1,10 @@
 ---
 change_id: user-registration-login
 title: User can register, log in, and log out
-status: impl_reviewed
+status: archived
 created: 2026-08-22
 updated: 2026-08-22
-archived_at: null
+archived_at: 2026-08-22T21:06:29Z
 ---
 
 ## Notes

@@ -294,31 +294,31 @@ The default `User` model already exists via Django's built-in `auth` migrations 
 
 #### Automated
 
-- [x] 1.1 `uv run python manage.py check` exits 0
-- [x] 1.2 `uv run pytest` exits 0
-- [x] 1.3 `uv run black --check .` exits 0
-- [x] 1.4 `uv run isort --check-only .` exits 0
-- [x] 1.5 `uv run ruff check .` exits 0
-- [x] 1.6 `uv run mypy .` exits 0
+- [x] 1.1 `uv run python manage.py check` exits 0 — c797e2e
+- [x] 1.2 `uv run pytest` exits 0 — c797e2e
+- [x] 1.3 `uv run black --check .` exits 0 — c797e2e
+- [x] 1.4 `uv run isort --check-only .` exits 0 — c797e2e
+- [x] 1.5 `uv run ruff check .` exits 0 — c797e2e
+- [x] 1.6 `uv run mypy .` exits 0 — c797e2e
 
 #### Manual
 
-- [x] 1.7 Local `.env` has `DEBUG=True` for manual verification
-- [x] 1.8 `uv run python manage.py runserver` starts without error
-- [x] 1.9 Visiting `/accounts/` returns a 404, confirming `include()` resolved correctly
+- [x] 1.7 Local `.env` has `DEBUG=True` for manual verification — c797e2e
+- [x] 1.8 `uv run python manage.py runserver` starts without error — c797e2e
+- [x] 1.9 Visiting `/accounts/` returns a 404, confirming `include()` resolved correctly — c797e2e
 
 ### Phase 2: Registration
 
 #### Automated
 
-- [ ] 2.1 `uv run pytest tests/accounts/test_registration.py` exits 0
-- [ ] 2.2 `uv run mypy .` exits 0
-- [ ] 2.3 `uv run ruff check .` exits 0
+- [x] 2.1 `uv run pytest tests/accounts/test_registration.py` exits 0
+- [x] 2.2 `uv run mypy .` exits 0
+- [x] 2.3 `uv run ruff check .` exits 0
 
 #### Manual
 
-- [ ] 2.4 Valid signup creates a `User` and lands on the post-login page
-- [ ] 2.5 Duplicate username/email shows an inline error and creates no new row
+- [x] 2.4 Valid signup creates a `User` and lands on the post-login page
+- [x] 2.5 Duplicate username/email shows an inline error and creates no new row
 
 ### Phase 3: Login & Logout
 

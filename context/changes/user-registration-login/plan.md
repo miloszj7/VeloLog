@@ -324,11 +324,11 @@ The default `User` model already exists via Django's built-in `auth` migrations 
 
 #### Automated
 
-- [x] 3.1 `uv run pytest` (full suite) exits 0
-- [x] 3.2 `uv run pytest --cov` reports accounts app coverage ≥ 80%
-- [x] 3.3 `uv run black --check .`, `uv run isort --check-only .`, `uv run ruff check .`, `uv run mypy .` all exit 0
+- [x] 3.1 `uv run pytest` (full suite) exits 0 — 7b284c4
+- [x] 3.2 `uv run pytest --cov` reports accounts app coverage ≥ 80% — 7b284c4
+- [x] 3.3 `uv run black --check .`, `uv run isort --check-only .`, `uv run ruff check .`, `uv run mypy .` all exit 0 — 7b284c4
 
 #### Manual
 
-- [x] 3.4 Full flow: signup → landing page → logout → redirected → log back in → landing page again
-- [x] 3.5 Visiting `/accounts/landing/` while logged out redirects to `/accounts/login/`
+- [x] 3.4 Full flow: signup → landing page → logout → redirected → log back in → landing page again — 7b284c4
+- [x] 3.5 Visiting `/accounts/landing/` while logged out redirects to `/accounts/login/` — 7b284c4

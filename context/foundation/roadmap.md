@@ -27,7 +27,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 
 | ID   | Change ID                    | Outcome (user can …)                                                        | Prerequisites | PRD refs             | Status   |
 | ---- | ----------------------------- | ----------------------------------------------------------------------------- | -------------- | --------------------- | -------- |
-| S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | ready    |
+| S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | planning |
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | proposed |
 | S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route as a static map (or empty state)| S-02           | FR-004, FR-005, US-01 | proposed |
 | S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
@@ -61,7 +61,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Every other slice requires an authenticated user; sequencing this first avoids rework on slices built against an unauthenticated stub.
-- **Status:** ready
+- **Status:** planning
 
 ### S-02: User can create a trip and see it in their trip list
 

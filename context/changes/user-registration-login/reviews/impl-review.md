@@ -72,7 +72,7 @@ the diff — no violations.
   - Tradeoff: None meaningful.
   - Confidence: HIGH — reproduced directly against the running app.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED — added `{{ form.non_field_errors }}` to login.html and signup.html.
 
 ### F2 — `test_login_with_invalid_credentials_shows_error` asserts nothing about the error
 
@@ -97,7 +97,7 @@ the diff — no violations.
   - Tradeoff: Will fail until F1 is fixed — which is the point.
   - Confidence: HIGH.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED — asserts `form.non_field_errors()` and the rendered error text; verified passing after F1's fix.
 
 ### F3 — Duplicate-email check is case-sensitive and bypassable
 
@@ -131,7 +131,7 @@ the diff — no violations.
   - Tradeoff: Larger change; blocks a cheap fix behind an architectural decision.
   - Confidence: MEDIUM — depends on the F5 outcome.
   - Blind spot: Delays closing an active bypass.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — `clean_email` now normalizes with `.strip().lower()` and checks with `filter(email__iexact=...)`; added a case-varied duplicate test (`DUP@Example.com` vs. `dup@example.com`). Chosen over Fix B (custom `AUTH_USER_MODEL`) because the app targets a small, near-private user base with low QPS — see F5's decision for the full reasoning shared by both findings.
 
 ### F4 — No test ever loads the landing page while authenticated
 
@@ -155,7 +155,7 @@ the diff — no violations.
   - Tradeoff: None — ~6 lines.
   - Confidence: HIGH.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED — added `test_authenticated_landing_shows_username`; verified passing.
 
 ### F5 — Email uniqueness has no DB backstop; concurrent signups both commit
 
@@ -193,7 +193,18 @@ the diff — no violations.
     future model's FK target.
   - Confidence: MEDIUM — correct long-term, but out of this slice's agreed scope.
   - Blind spot: Whether S-02+ actually need per-user profile fields is still unknown.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED AS RISK via Fix A. VeloLog is a near-private app for a very
+  small number of known users at low QPS (PRD `target_scale`). Closing F3
+  (case-insensitive check) removes the realistic, sequential duplicate-signup path;
+  what's left here is a true concurrent-write race — two signups for the exact same
+  email landing in the same few-millisecond window — which is vanishingly unlikely at
+  this scale and has no attacker incentive (a duplicate account on your own mailbox
+  gains nothing). Fix B (custom `AUTH_USER_MODEL` with a DB-level unique constraint)
+  would close the race permanently, but reverses the plan's explicit
+  no-custom-user-model guardrail and touches the identity foundation every future
+  model's FK will point at — not justified by a risk this small. Revisit if/when email
+  starts driving password reset or any recovery flow, where a duplicate becomes a
+  security-relevant ambiguity rather than a data-hygiene one.
 
 ### F6 — Production hardening stops short of redirect and HSTS
 
@@ -223,7 +234,7 @@ the diff — no violations.
   - Confidence: HIGH — standard Django-behind-a-proxy configuration.
   - Blind spot: Railway's own edge may already redirect HTTP→HTTPS; unverified against
     the live deployment.
-- **Decision**: PENDING
+- **Decision**: FIXED — added `SECURE_SSL_REDIRECT` and `SECURE_HSTS_SECONDS = 3600` to the `if not DEBUG` block; `check --deploy` confirms W008/W004 cleared.
 
 ### F7 — AGENTS.md now tells future agents two things that are false
 
@@ -251,7 +262,7 @@ the diff — no violations.
   - Tradeoff: None.
   - Confidence: HIGH.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED — rewrote `AGENTS.md:34`/`:38` to describe the configured tooling; flipped both `roadmap.md` S-01 statuses to `done`.
 
 ### F8 — No docstrings on any new public callable, unlike the repo's own view
 
@@ -272,7 +283,7 @@ the diff — no violations.
   slice and is undocumented.
 - **Fix**: Add one-line Google-style docstrings to the five callables; make
   `form_valid`'s state that it logs the new user in.
-- **Decision**: PENDING
+- **Decision**: FIXED — added docstrings to `landing`, `SignUpView`, `form_valid`, `SignUpForm`, and `clean_email`.
 
 ### F9 — Rejection tests assert absence, never the reason
 
@@ -292,7 +303,7 @@ the diff — no violations.
   the outcome being asserted (no row created) is at least the one that matters.
 - **Fix**: Assert the specific error, e.g.
   `assert "already exists" in response.context["form"].errors["email"][0]`.
-- **Decision**: PENDING
+- **Decision**: FIXED — all three rejection tests now assert the specific validation error message.
 
 ### F10 — Coverage measures `accounts` only, so the login/logout wiring is unmeasured
 
@@ -307,7 +318,7 @@ the diff — no violations.
   package, and Phase 3's own deliverable sits outside the measured set.
 - **Fix**: `source = ["accounts", "velo_log"]`, with `omit` for `wsgi.py`, `asgi.py`,
   and `settings.py`.
-- **Decision**: PENDING
+- **Decision**: FIXED — coverage source widened to include `velo_log`; gate still passes at 87.93%.
 
 ## Minor notes — not tracked as findings
 

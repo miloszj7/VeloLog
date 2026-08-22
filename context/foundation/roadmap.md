@@ -1,0 +1,147 @@
+---
+project: VeloLog
+version: 1
+status: draft
+created: 2026-08-22
+updated: 2026-08-22
+prd_version: 2
+main_goal: speed
+top_blocker: time
+---
+
+# Roadmap: VeloLog
+
+> Derived from `context/foundation/prd.md` (v2) + auto-researched codebase baseline.
+> Edit-in-place; archive when superseded.
+> Slices below are listed in dependency order. The "At a glance" table is the index.
+
+## Vision recap
+
+GPX tracks from multi-day cycling tours are scattered across devices and third-party apps, and no existing platform (Strava, Komoot, Wikiloc) treats a "trip" as a first-class entity spanning multiple stages. VeloLog is a personal, trip-centric diary: a solo touring cyclist creates a trip, uploads track files, and gets a single view of the journey with a rendered map and basic stats.
+
+## North star
+
+**S-03: User can upload a GPX track file and see the route rendered as a static map** — this is the smallest end-to-end slice that proves the core product hypothesis (the "north star": the minimal capability whose successful delivery validates that the trip-centric idea works in practice, placed as early as its prerequisites allow because everything else only matters once this works). It maps directly to the PRD's Primary Success Criterion: *"register → log in → create a trip → upload one GPX file → see the route rendered as a static map image."*
+
+## At a glance
+
+| ID   | Change ID                    | Outcome (user can …)                                                        | Prerequisites | PRD refs             | Status   |
+| ---- | ----------------------------- | ----------------------------------------------------------------------------- | -------------- | --------------------- | -------- |
+| S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | ready    |
+| S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | proposed |
+| S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route as a static map (or empty state)| S-02           | FR-004, FR-005, US-01 | proposed |
+| S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
+| S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
+
+## Baseline
+
+What's already in place in the codebase as of `2026-08-22` (auto-researched + user-confirmed).
+Slices below assume these are present and build directly on top of them.
+
+- **Frontend:** absent — no templates directory, no static UI beyond Django defaults; no map or trip UI exists yet.
+- **Backend / API:** partial — Django project scaffold exists (`velo_log/settings.py`, `velo_log/urls.py`) with only `admin/` and a `/healthz/` endpoint wired; no app package or trip/auth views exist yet.
+- **Data:** partial — SQLite is configured and reachable on a persistent Railway Volume (`DEPLOY.md`, `/data/db.sqlite3`), exercised by `/healthz/`; no domain models (User-facing Trip/track-file models) exist yet.
+- **Auth:** partial — `django.contrib.auth` is installed (framework capability present), but no registration/login views, URLs, or templates are wired.
+- **Deploy / infra:** present — Railway deploy fully wired: `.github/workflows/deploy.yml` auto-deploys `master` via the Railway CLI, `railway.json` runs `collectstatic` + `migrate` + `gunicorn`, `whitenoise` serves static files, and the SQLite file lives on a mounted persistent Volume with a documented backup/restore runbook (`DEPLOY.md`).
+- **Observability:** partial — a `/healthz/` endpoint round-trips a real DB write/read, but there is no structured logging configuration or error tracking.
+
+## Foundations
+
+No foundations are needed. The codebase baseline is a clean Django scaffold with deploy/persistence already solved (see `## Baseline`); every remaining gap (auth views, trip data model, upload/map rendering) is user-visible work that belongs inside the vertical slice that needs it, not a cross-cutting enabler ahead of it.
+
+## Slices
+
+### S-01: User can register, log in, and log out
+
+- **Outcome:** User can register with an email and password, then log in and log out.
+- **Change ID:** `user-registration-login`
+- **PRD refs:** FR-001, FR-002, US-01 (the authentication portion of the primary flow)
+- **Prerequisites:** —
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Every other slice requires an authenticated user; sequencing this first avoids rework on slices built against an unauthenticated stub.
+- **Status:** ready
+
+### S-02: User can create a trip and see it in their trip list
+
+- **Outcome:** User can create a trip with a name, date, and description, and see it appear in a list of their own trips.
+- **Change ID:** `create-and-list-trips`
+- **PRD refs:** FR-003, FR-006, US-01
+- **Prerequisites:** S-01
+- **Parallel with:** —
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** A trip with no uploaded file must be a valid empty draft (per PRD Business Logic) — the list and creation flow need to tolerate that state cleanly before S-03 builds the upload/map path on top of it.
+- **Status:** proposed
+
+### S-03: User can upload a GPX file and see the route as a static map
+
+- **Outcome:** User can upload a GPX file to a trip and open the trip detail view to see the route rendered as a static map image, with a clear empty state if no file is uploaded yet.
+- **Change ID:** `upload-gpx-and-view-map`
+- **PRD refs:** FR-004, FR-005, US-01 (this is the north star — see `## North star`)
+- **Prerequisites:** S-02
+- **Parallel with:** S-04
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** The "data never lost" guardrail means uploaded files must land on the already-provisioned persistent Railway Volume (see `## Baseline` → Deploy/infra), not ephemeral local disk — a `/10x-plan`-level implementation detail, not a roadmap-level blocker, since the Volume already exists and is documented in `DEPLOY.md`. Silent map-render failures are explicitly disallowed by the PRD's NFR; the empty/error state must be deliberate, not a byproduct.
+- **Status:** proposed
+
+### S-04: User can edit and delete a trip
+
+- **Outcome:** User can edit a trip's name, date, and description, or delete the trip entirely.
+- **Change ID:** `edit-and-delete-trip`
+- **PRD refs:** FR-007, FR-008
+- **Prerequisites:** S-02
+- **Parallel with:** S-03
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Low — edit/delete on an already-modeled Trip is table-stakes CRUD with no new domain concepts; safe to build alongside S-03 since neither depends on the other.
+- **Status:** proposed
+
+### S-05: User can view basic trip stats
+
+- **Outcome:** User can see basic trip stats (distance and duration), calculated from the uploaded GPX file, on the trip detail view.
+- **Change ID:** `trip-distance-duration-stats`
+- **PRD refs:** FR-010 (the PRD's Secondary Success Criterion)
+- **Prerequisites:** S-03
+- **Parallel with:** S-04
+- **Blockers:** —
+- **Unknowns:** —
+- **Risk:** Not required for the primary proof — if the 2026-09-10 deadline gets tight, this is the first must-have-adjacent slice to reconsider deferring, since the PRD itself frames it as value-add rather than blocking.
+- **Status:** proposed
+
+## Backlog Handoff
+
+| Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | Notes |
+| ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ----- |
+| S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | Run `/10x-plan user-registration-login` |
+| S-02       | `create-and-list-trips`          | Create and list trips                                       | no                      | Waiting on S-01 |
+| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | no                      | Waiting on S-02 |
+| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | no                      | Waiting on S-02 |
+| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | Waiting on S-03 |
+
+## Open Roadmap Questions
+
+_None — the PRD has 0 Open Questions, and no cross-cutting sequencing question emerged during roadmap framing._
+
+## Parked
+
+- **FR-009 (trip visibility toggle, public/private)** — Why parked: PRD marks nice-to-have and explicitly scopes v1 to "all trips are private"; toggle is a stated v2 feature.
+- **FR-011 (multi-stage grouping — multiple GPX files per trip)** — Why parked: PRD Business Logic states this is a v2 feature requiring chronological merge logic not needed for the v1 single-file trip.
+- **FR-012 (browse/filter trip list)** — Why parked: PRD explicitly scopes v1 to a minimal, unfiltered list given the small expected trip count.
+- **FR-013 (trip metadata — start location, photos, companions)** — Why parked: nice-to-have, not required by the primary or secondary Success Criteria.
+- **FR-014 (accommodation waypoints between stages)** — Why parked: nice-to-have, depends on multi-stage grouping (FR-011) which is itself parked.
+- **FR-015 (interactive map)** — Why parked: PRD explicitly notes this is "the first feature after the core upload-and-view flow is validated" — a stated v2 priority, not v1.
+- **No external platform integration** — Why parked: PRD Non-Goals — avoids third-party API/OAuth complexity in v1.
+- **No route planning or track editing** — Why parked: PRD Non-Goals — VeloLog is a log/viewer, not a planner or editor.
+- **No native mobile app** — Why parked: PRD Non-Goals — a responsive web app is sufficient for v1.
+- **No AI or geographic enrichment features** — Why parked: PRD Non-Goals — deferred to v2+.
+
+## Done
+
+_Empty — no changes archived yet._
+
+## Changelog
+
+- **v1 (2026-08-22)** — Initial roadmap generated from `prd.md` v2. 5 slices (`S-01`…`S-05`), 0 foundations, `main_goal: speed`, `top_blocker: time`.

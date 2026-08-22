@@ -60,7 +60,8 @@ DJANGO_SETTINGS_MODULE = "velo_log.settings"
 python_files = ["tests.py", "test_*.py"]
 
 [tool.coverage.run]
-source = ["accounts"]
+source = ["accounts", "velo_log"]
+omit = ["velo_log/wsgi.py", "velo_log/asgi.py", "velo_log/settings.py"]
 
 [tool.coverage.report]
 fail_under = 80

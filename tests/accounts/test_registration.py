@@ -37,6 +37,7 @@ def test_signup_rejects_duplicate_username(client: Client) -> None:
 
     assert response.status_code == 200
     assert User.objects.filter(username="existing").count() == 1
+    assert "already exists" in response.context["form"].errors["username"][0]
 
 
 @pytest.mark.django_db
@@ -55,6 +56,27 @@ def test_signup_rejects_duplicate_email(client: Client) -> None:
 
     assert response.status_code == 200
     assert not User.objects.filter(username="other").exists()
+    assert "already exists" in response.context["form"].errors["email"][0]
+
+
+@pytest.mark.django_db
+def test_signup_rejects_duplicate_email_case_insensitively(client: Client) -> None:
+    User.objects.create_user(username="existing", email="dup@example.com", password="x")
+
+    response = client.post(
+        reverse("accounts:signup"),
+        {
+            "username": "other",
+            "email": "DUP@Example.com",
+            "password1": "correct-horse-battery-staple",
+            "password2": "correct-horse-battery-staple",
+        },
+    )
+
+    assert response.status_code == 200
+    assert not User.objects.filter(username="other").exists()
+    assert User.objects.filter(email="dup@example.com").count() == 1
+    assert "already exists" in response.context["form"].errors["email"][0]
 
 
 @pytest.mark.django_db
@@ -71,3 +93,4 @@ def test_signup_rejects_password_mismatch(client: Client) -> None:
 
     assert response.status_code == 200
     assert not User.objects.filter(username="newrider").exists()
+    assert "password fields" in response.context["form"].errors["password2"][0]

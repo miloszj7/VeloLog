@@ -31,11 +31,11 @@ New Django apps belong at the **repo root** alongside `velo_log/` (e.g. `trips/`
 
 Python 3.14 — modern type syntax (`X | Y`, `list[str]`, `dict[str, Any]`) is native; `from __future__ import annotations` is not required. Follow `@~/.claude/CLAUDE.md` for all other Python standards: naming, type hints, logging, error handling, Pydantic vs dataclass choice, and project layout within each app.
 
-No linting tools are configured yet. Before writing business logic, wire `ruff`, `black`, and `mypy` into `pyproject.toml` per the global standard.
+Linting is configured in `pyproject.toml`: `ruff`, `black`, `isort`, and `mypy --strict` (with `django-stubs`). Run via `/python-quality-gates` before reporting a task done.
 
 ## Testing
 
-No test infrastructure exists yet. When adding tests: use `pytest` + `pytest-django`, place tests in `tests/` at the repo root, and configure via `[tool.pytest.ini_options]` in `pyproject.toml`. See `@~/.claude/CLAUDE.md` for fixture patterns, coverage thresholds (`fail_under = 80`), and integration-test skip conventions.
+`pytest` + `pytest-django` are configured; tests live in `tests/` at the repo root. Coverage runs against `accounts` with `fail_under = 80` (`[tool.coverage.run]` / `[tool.coverage.report]` in `pyproject.toml`). See `@~/.claude/CLAUDE.md` for fixture patterns and integration-test skip conventions.
 
 ## Commits & Git Workflow
 

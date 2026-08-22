@@ -113,15 +113,16 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | GitHub Issue | Notes |
-| ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ------------ | ----- |
-| S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | [#1](https://github.com/miloszj7/VeloLog/issues/1) | Run `/10x-plan user-registration-login` |
-| S-02       | `create-and-list-trips`          | Create and list trips                                       | no                      | [#2](https://github.com/miloszj7/VeloLog/issues/2) | Waiting on S-01 |
-| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | no                      | [#3](https://github.com/miloszj7/VeloLog/issues/3) | Waiting on S-02 |
-| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | no                      | [#4](https://github.com/miloszj7/VeloLog/issues/4) | Waiting on S-02 |
-| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | [#5](https://github.com/miloszj7/VeloLog/issues/5) | Waiting on S-03 |
+| Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | GitHub Issue | Linear Issue | Notes |
+| ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ------------ | ------------ | ----- |
+| S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | [#1](https://github.com/miloszj7/VeloLog/issues/1) | [10X-1](https://linear.app/miloszj/issue/10X-1/s-01-user-can-register-log-in-and-log-out) | Run `/10x-plan user-registration-login` |
+| S-02       | `create-and-list-trips`          | Create and list trips                                       | no                      | [#2](https://github.com/miloszj7/VeloLog/issues/2) | [10X-2](https://linear.app/miloszj/issue/10X-2/s-02-user-can-create-a-trip-and-see-it-in-their-trip-list) | Waiting on S-01 |
+| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | no                      | [#3](https://github.com/miloszj7/VeloLog/issues/3) | [10X-3](https://linear.app/miloszj/issue/10X-3/s-03-user-can-upload-a-gpx-file-and-see-the-route-as-a-static-map) | Waiting on S-02 |
+| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | no                      | [#4](https://github.com/miloszj7/VeloLog/issues/4) | [10X-4](https://linear.app/miloszj/issue/10X-4/s-04-user-can-edit-and-delete-a-trip) | Waiting on S-02 |
+| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | [#5](https://github.com/miloszj7/VeloLog/issues/5) | [10X-5](https://linear.app/miloszj/issue/10X-5/s-05-user-can-view-basic-trip-stats) | Waiting on S-03 |
 
 Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions.
+Mirrored to Linear on 2026-08-22 — see `context/foundation/linear-issues-migration.md` for the format, labels, and mirroring decisions.
 
 ## Open Roadmap Questions
 

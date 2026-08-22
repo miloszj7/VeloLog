@@ -294,18 +294,18 @@ The default `User` model already exists via Django's built-in `auth` migrations 
 
 #### Automated
 
-- [ ] 1.1 `uv run python manage.py check` exits 0
-- [ ] 1.2 `uv run pytest` exits 0
-- [ ] 1.3 `uv run black --check .` exits 0
-- [ ] 1.4 `uv run isort --check-only .` exits 0
-- [ ] 1.5 `uv run ruff check .` exits 0
-- [ ] 1.6 `uv run mypy .` exits 0
+- [x] 1.1 `uv run python manage.py check` exits 0
+- [x] 1.2 `uv run pytest` exits 0
+- [x] 1.3 `uv run black --check .` exits 0
+- [x] 1.4 `uv run isort --check-only .` exits 0
+- [x] 1.5 `uv run ruff check .` exits 0
+- [x] 1.6 `uv run mypy .` exits 0
 
 #### Manual
 
-- [ ] 1.7 Local `.env` has `DEBUG=True` for manual verification
-- [ ] 1.8 `uv run python manage.py runserver` starts without error
-- [ ] 1.9 Visiting `/accounts/` returns a 404, confirming `include()` resolved correctly
+- [x] 1.7 Local `.env` has `DEBUG=True` for manual verification
+- [x] 1.8 `uv run python manage.py runserver` starts without error
+- [x] 1.9 Visiting `/accounts/` returns a 404, confirming `include()` resolved correctly
 
 ### Phase 2: Registration
 

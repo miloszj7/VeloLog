@@ -113,13 +113,15 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | Notes |
-| ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ----- |
-| S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | Run `/10x-plan user-registration-login` |
-| S-02       | `create-and-list-trips`          | Create and list trips                                       | no                      | Waiting on S-01 |
-| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | no                      | Waiting on S-02 |
-| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | no                      | Waiting on S-02 |
-| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | Waiting on S-03 |
+| Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | GitHub Issue | Notes |
+| ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ------------ | ----- |
+| S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | [#1](https://github.com/miloszj7/VeloLog/issues/1) | Run `/10x-plan user-registration-login` |
+| S-02       | `create-and-list-trips`          | Create and list trips                                       | no                      | [#2](https://github.com/miloszj7/VeloLog/issues/2) | Waiting on S-01 |
+| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | no                      | [#3](https://github.com/miloszj7/VeloLog/issues/3) | Waiting on S-02 |
+| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | no                      | [#4](https://github.com/miloszj7/VeloLog/issues/4) | Waiting on S-02 |
+| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | [#5](https://github.com/miloszj7/VeloLog/issues/5) | Waiting on S-03 |
+
+Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions.
 
 ## Open Roadmap Questions
 

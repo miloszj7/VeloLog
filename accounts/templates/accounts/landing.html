@@ -6,5 +6,9 @@
 </head>
 <body>
     <p>You are logged in as {{ user.username }}.</p>
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Log out</button>
+    </form>
 </body>
 </html>

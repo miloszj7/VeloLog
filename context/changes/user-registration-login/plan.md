@@ -311,24 +311,24 @@ The default `User` model already exists via Django's built-in `auth` migrations 
 
 #### Automated
 
-- [x] 2.1 `uv run pytest tests/accounts/test_registration.py` exits 0
-- [x] 2.2 `uv run mypy .` exits 0
-- [x] 2.3 `uv run ruff check .` exits 0
+- [x] 2.1 `uv run pytest tests/accounts/test_registration.py` exits 0 — 1ea8d32
+- [x] 2.2 `uv run mypy .` exits 0 — 1ea8d32
+- [x] 2.3 `uv run ruff check .` exits 0 — 1ea8d32
 
 #### Manual
 
-- [x] 2.4 Valid signup creates a `User` and lands on the post-login page
-- [x] 2.5 Duplicate username/email shows an inline error and creates no new row
+- [x] 2.4 Valid signup creates a `User` and lands on the post-login page — 1ea8d32
+- [x] 2.5 Duplicate username/email shows an inline error and creates no new row — 1ea8d32
 
 ### Phase 3: Login & Logout
 
 #### Automated
 
-- [ ] 3.1 `uv run pytest` (full suite) exits 0
-- [ ] 3.2 `uv run pytest --cov` reports accounts app coverage ≥ 80%
-- [ ] 3.3 `uv run black --check .`, `uv run isort --check-only .`, `uv run ruff check .`, `uv run mypy .` all exit 0
+- [x] 3.1 `uv run pytest` (full suite) exits 0
+- [x] 3.2 `uv run pytest --cov` reports accounts app coverage ≥ 80%
+- [x] 3.3 `uv run black --check .`, `uv run isort --check-only .`, `uv run ruff check .`, `uv run mypy .` all exit 0
 
 #### Manual
 
-- [ ] 3.4 Full flow: signup → landing page → logout → redirected → log back in → landing page again
-- [ ] 3.5 Visiting `/accounts/landing/` while logged out redirects to `/accounts/login/`
+- [x] 3.4 Full flow: signup → landing page → logout → redirected → log back in → landing page again
+- [x] 3.5 Visiting `/accounts/landing/` while logged out redirects to `/accounts/login/`

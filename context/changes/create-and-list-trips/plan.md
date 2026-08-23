@@ -1,0 +1,622 @@
+# Create and List Trips (S-02) Implementation Plan
+
+## Overview
+
+Deliver roadmap slice S-02: a user can create a trip with a name, date, and description, and see it in a list of their own trips. Along the way this slice establishes the repo's first model, first migration, first authorization surface, and first shared template — and retires the throwaway `accounts.landing` page that S-01 built as a placeholder and explicitly designated S-02 to delete.
+
+## Current State Analysis
+
+- **No models, no migrations anywhere.** `accounts/` has no `models.py` and no `migrations/` directory; the S-01 review confirms this is correct for that slice, not an oversight (`context/archive/2026-08-22-user-registration-login/reviews/impl-review.md:361-363`). The only migrations that have run against production are Django's contrib ones.
+- **No authorization beyond "is logged in".** No queryset in the repo is scoped to a user — no `filter(owner=...)`, no `get_queryset()` override, no object-level check. No test creates a second user (`tests/accounts/`, 11 tests, all single-user).
+- **`accounts/` is the only house-style reference.** Files are `apps.py`, `forms.py`, `urls.py`, `views.py`, and three templates. No `services.py`, no service layer anywhere; validation lives in forms, orchestration in views.
+- **The mypy-strict CBV shim is mandatory** (`accounts/views.py:21-24`). Django's generic CBVs have no `__class_getitem__`, so subscripting them raises at import time while django-stubs requires the subscript. The repo has zero `# type: ignore` and zero `# noqa`.
+- **Templates are three standalone HTML5 documents** under `accounts/templates/accounts/`. No `base.html`, no `{% extends %}`, no `{% block %}`, no CSS, not a single `class=` attribute. `TEMPLATES["DIRS"]` is `[]` with `"APP_DIRS": True` (`velo_log/settings.py:64-65`).
+- **`accounts/landing.html:9-12` holds the app's only logout control** — a POST form, as Django ≥4.1 requires.
+- **All redirect targets are settings-sourced URL names** (`velo_log/settings.py:136-138`), and `SignUpView.success_url` reads `settings.LOGIN_REDIRECT_URL` (`accounts/views.py:32`). Repointing the post-login destination is therefore a one-line change that propagates.
+- **The messages framework is fully wired with zero consumers** (`settings.py:43`, `:55`, `:70`) — no render markup exists anywhere.
+- **The site root `/` is unrouted and 404s** (`velo_log/urls.py:36-46`).
+- **`trips` is invisible to the coverage gate.** `pyproject.toml:63` reads `source = ["accounts", "velo_log"]` with `fail_under = 80` at `:67` — a new app's code would be unmeasured and the gate would pass regardless.
+- **CI is weaker than it looks.** `.github/workflows/deploy.yml` triggers on push to `master` only and gates on bare `manage.py check`. Tests, ruff, black, isort, and mypy do not run in CI at all. `manage.py check` does **not** detect a model/schema mismatch.
+- **Migrations run unattended in production.** `railway.json` chains `collectstatic --noinput && migrate && gunicorn velo_log.wsgi`, so a failing migration aborts before gunicorn starts — a hard outage, not a degraded deploy. There is no atomic rollback; recovery is redeploy-by-ID from `DEPLOY.md:5-10`.
+
+## Desired End State
+
+An authenticated user lands on their trip list after logging in. The list shows only their own trips, newest tour date first, and shows a clear empty state when they have none. A "New trip" action opens a form for name, date, and description; submitting it saves the trip owned by that user, redirects back to the list with a flash confirmation, and the new trip is visible. A second user's trips are never visible, and a trip with no attached file is a perfectly valid row — the state S-03 will build its upload and map path on top of.
+
+Verify via:
+
+```bash
+uv run python manage.py makemigrations --check --dry-run   # exits 0 — no pending model changes
+uv run pytest --cov                                        # all tests pass, fail_under=80 met with trips in scope
+uv run python manage.py check --deploy                     # with DEBUG=False and a real SECRET_KEY
+```
+
+### Key Discoveries
+
+- The `AUTH_USER_MODEL` decision becomes permanent with this migration. S-01 accepted stock `django.contrib.auth.models.User` as residual risk (`impl-review.md:196-207`), and the review flagged that swapping after the first migration is "significantly more difficult" (`impl-review.md:178-180`). `Trip.owner` uses the portable `settings.AUTH_USER_MODEL` form against stock `auth.User`.
+- `ListView[Trip]` takes **one** type parameter; `CreateView[Trip, TripForm]` takes **two** (`accounts/views.py:21-24` shows the two-arg case).
+- `{{ form.non_field_errors }}` is load-bearing — omitting it was critical review finding F1, which shipped to `master` with all gates green and rendered a blank form on invalid login (`impl-review.md:44-75`).
+- `accounts/apps.py:1-6` sets `default_auto_field` per AppConfig; there is no project-level `DEFAULT_AUTO_FIELD`, so `trips/apps.py` must set it or the model silently gets an `AutoField` PK and raises `models.W042` — a warning that would not fail the CI gate either.
+- `pyproject.toml:60` sets `python_files = ["tests.py", "test_*.py"]`, so a `startapp`-generated `trips/tests.py` **would be collected**; and since the `S101` assert exemption is keyed to `"tests/**"` (`pyproject.toml:44`), an app-local `tests.py` would fail ruff. Delete it.
+- `include("accounts.urls")` at `velo_log/urls.py:39` precedes the concrete `accounts/login/` route, so route ordering at project level is already delicate.
+
+## What We're NOT Doing
+
+- **No edit or delete** — that is S-04 (`roadmap.md:33`).
+- **No GPX upload, file storage, map rendering, or `MEDIA_ROOT` configuration** — that is S-03 (`roadmap.md:32`). No media config exists at all today and this slice does not add any.
+- **No trip detail view.** S-02's outcome is create + list; detail is where S-03 hangs the map.
+- **No filtering, sorting controls, search, or pagination** — FR-012 is explicitly parked (`roadmap.md:135`), and the PRD scopes v1 to a minimal list.
+- **No visibility toggle** — FR-009 is parked; all trips are private in v1 (`prd.md:104`).
+- **No CSS, no stylesheet, no static asset.** Continuing the S-01 decision (`plan.md:41`); `base.html` leaves one obvious insertion point for later.
+- **No custom `AUTH_USER_MODEL`, no user profile model.** The stock-`User` decision stands.
+- **No `services.py` or repository layer** for a single-model CRUD slice — the repo has no service layer and this is not the slice to introduce one.
+- **No logging configuration.** The project has none and `roadmap.md:46` acknowledges the gap; introducing it here is unrelated scope.
+- **No CI workflow changes.** Adding a test/lint/type job to CI is real and needed, but landing it on the same deploy as the first production migration stacks two risky firsts. It goes to the Engineering Backlog (Phase 5) instead.
+- **No new dependencies.** Everything this slice needs is already installed (`pyproject.toml:7-12`).
+
+## Implementation Approach
+
+Five phases, ordered so the irreversible and highest-risk decisions land first and the configuration-only switchovers land last — following S-01's stated ordering rationale (`plan.md:53`).
+
+Phase 1 carries the schema, the `AUTH_USER_MODEL` lock-in, and the first production migration. Phase 2 pulls the shared template forward because both remaining UI phases depend on it, and because it is what lets the logout control survive the landing page's deletion. Phase 3 builds the actual slice outcome. Phase 4 is a clean switchover that flips the post-login destination and deletes the placeholder. Phase 5 records what this slice learned and what it deliberately left undone, then walks the deploy ritual.
+
+Each phase leaves the repo working, tested, and committable. One commit per phase, matching S-01's practice.
+
+## Critical Implementation Details
+
+**Ordering requirement — the migration must be generated and committed by hand.** CI cannot catch its absence: `manage.py check` passes with a model/schema mismatch, and `railway.json` then runs `migrate` before gunicorn. A forgotten migration file ships green and surfaces as production 500s with `no such column`. `makemigrations --check --dry-run` is the local gate, and its meaning inverts from S-01's usage — S-01 expected no changes because there were no models; S-02 expects a *committed* migration that leaves nothing pending.
+
+**Owner assignment must never be client-supplied.** `owner` is excluded from `TripForm.Meta.fields` entirely and set in `form_valid` from `self.request.user`. A form field that merely defaults to the current user is bypassable by POSTing another user's ID, which would breach the PRD guardrail at `prd.md:43`. This pattern propagates to S-03 and S-04, so getting it right here matters beyond this slice.
+
+**Local manual verification needs `DEBUG=True` in `.env`.** `SECURE_SSL_REDIRECT` and Secure-flagged cookies activate whenever `DEBUG` is falsy (`settings.py:140-149`), and browsers silently drop Secure cookies over the plain-HTTP dev server, making login appear broken. Django's test `Client` is unaffected.
+
+## Phase 1: Trip model, app scaffold, and the first migration
+
+### Overview
+
+Create the `trips` app, define the `Trip` model with its owner relationship and default ordering, generate and commit the repo's first migration, and bring the app into coverage scope so its later code is actually measured.
+
+### Changes Required
+
+#### 1. App scaffold
+
+**File**: `trips/apps.py`, `trips/__init__.py`
+
+**Intent**: Create the `trips` app at the repo root per `AGENTS.md`, mirroring `accounts/`'s structure. Delete every file `startapp` generates that `accounts/` does not have — specifically `tests.py` (which pytest would collect and ruff would then fail on), plus `admin.py`, `views.py` placeholder content, and the empty `migrations/` scaffolding is kept.
+
+**Contract**: `TripsConfig` sets `default_auto_field = "django.db.models.BigAutoField"` and `name = "trips"`. `__init__.py` is empty, with no `__all__`, matching `accounts/__init__.py`.
+
+#### 2. App registration
+
+**File**: `velo_log/settings.py`
+
+**Intent**: Register the new app so its models and templates are discovered.
+
+**Contract**: Append the bare label `"trips"` after `"accounts"` at `:45`, relying on app-config auto-discovery exactly as `accounts` does.
+
+#### 3. The Trip model
+
+**File**: `trips/models.py`
+
+**Intent**: Define the single domain entity for this slice — a trip a user owns, with the three fields FR-003 names. Description is optional so that a minimal trip is quick to create; name and date are required.
+
+**Contract**: `Trip` with `name` (`CharField`), `date` (`DateField` — a user-entered calendar date, deliberately not `DateTimeField`, since `USE_TZ = True` at `settings.py:118` would make a datetime ambiguous), `description` (`TextField`, blank-permitted), and `owner` (`ForeignKey` to `settings.AUTH_USER_MODEL` with `on_delete=models.CASCADE` and a `related_name` for reverse access from a user). `Meta.ordering = ["-date", "-id"]` — newest tour date first, with the id tiebreak making the order deterministic when two trips share a date, which matters for test stability. A one-line Google-style docstring on the class, and `__str__` returning the trip name.
+
+**Caution**: `owner` must be non-nullable. Because there are no existing rows and no existing migrations, this is free now — adding a non-null FK later would require a data migration.
+
+#### 4. The first migration
+
+**File**: `trips/migrations/0001_initial.py`
+
+**Intent**: Generate and commit the migration. This is the artifact CI cannot verify and production runs unattended.
+
+**Contract**: Produced by `uv run python manage.py makemigrations trips`. Committed verbatim — never hand-edited. `makemigrations --check --dry-run` must exit 0 afterwards.
+
+#### 5. Coverage scope
+
+**File**: `pyproject.toml`
+
+**Intent**: Bring `trips` under the coverage gate. Without this, `fail_under = 80` passes no matter how untested the new app is — review finding F10 established widening `source` as the standing obligation whenever a new package ships (`impl-review.md:308-321`).
+
+**Contract**: `[tool.coverage.run] source` at `:63` becomes `["accounts", "trips", "velo_log"]`.
+
+#### 6. Model tests
+
+**File**: `tests/trips/__init__.py`, `tests/trips/test_trip_model.py`
+
+**Intent**: Prove the model's contract — that a trip persists with its owner, that description is genuinely optional, and that the default ordering is what the list view will rely on.
+
+**Contract**: A real package with an empty `__init__.py`, matching `tests/accounts/`. Plain module-level functions, `@pytest.mark.django_db` per test, full `-> None` annotations, `User.objects.create_user(...)` for setup with `"correct-horse-battery-staple"` as the password. Tests: a trip saves with an owner and is reachable via the reverse accessor; a trip saves with an empty description; two trips with different dates come back newest-first; two trips sharing a date come back in a deterministic order. These are the repo's first tests that do not go through `client`.
+
+### Success Criteria
+
+#### Automated Verification
+
+- Migration is generated and committed: `git status` shows `trips/migrations/0001_initial.py` tracked
+- No pending model changes: `uv run python manage.py makemigrations --check --dry-run`
+- Migration applies cleanly to a fresh database: `uv run python manage.py migrate`
+- Model tests pass: `uv run pytest tests/trips/`
+- Full suite still passes: `uv run pytest`
+- `trips` appears in the coverage report: `uv run pytest --cov`
+- No `models.W042` or other system-check warnings: `uv run python manage.py check`
+- Quality gates pass: `/python-quality-gates`
+- No `trips/tests.py` exists: the file `startapp` generates is deleted
+
+#### Manual Verification
+
+- `uv run python manage.py shell` — a `Trip` can be created against a real user and read back with the expected ordering
+- Django admin is untouched and still loads (no `admin.py` registered, matching `accounts/`)
+
+**Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
+
+---
+
+## Phase 2: Base template and shared chrome
+
+### Overview
+
+Introduce the repo's first shared template so that the logout control survives the landing page's deletion, the messages framework gets a single render site, and S-03/S-04 inherit page chrome instead of re-copying it. Retrofit the two surviving auth templates onto it.
+
+### Changes Required
+
+#### 1. Template directory configuration
+
+**File**: `velo_log/settings.py`
+
+**Intent**: Give the project a place for cross-cutting templates that does not live inside a feature app.
+
+**Contract**: `TEMPLATES[0]["DIRS"]` at `:64` becomes `[BASE_DIR / "templates"]`, keeping `"APP_DIRS": True` so app-namespaced templates continue to resolve.
+
+#### 2. The base template
+
+**File**: `templates/base.html`
+
+**Intent**: Own the document shell, the site-wide header including the logout affordance, and the flash-message render block — the three things that currently either do not exist or are trapped inside `landing.html`.
+
+**Contract**: A complete HTML5 document with `<meta charset="utf-8">` and a `{% block title %}` defaulting to `VeloLog`, following the existing `"<Page> — VeloLog"` em-dash convention. A `<header>` rendering the POST logout form (lifted from `accounts/landing.html:9-12`, `{% csrf_token %}` included) wrapped in `{% if user.is_authenticated %}` so anonymous pages do not show it. A messages block iterating `{% if messages %}{% for message in messages %}`. A `{% block content %}` for page bodies. No CSS, no `class=` attributes — consistent with the standing decision.
+
+**Caution**: The logout form's `action` is `{% url 'logout' %}` — the project-level unnamespaced name, not an `accounts:` one.
+
+#### 3. Retrofit the auth templates
+
+**File**: `accounts/templates/accounts/login.html`, `accounts/templates/accounts/signup.html`
+
+**Intent**: Converge the surviving auth pages onto the base so the repo ends this slice with one template idiom rather than two.
+
+**Contract**: Each becomes `{% extends "base.html" %}` with a `{% block title %}` and a `{% block content %}` holding its existing body. The form-rendering block is preserved **exactly**, including `{{ form.non_field_errors }}` — its omission was critical finding F1 and its presence must not regress. `landing.html` is deliberately **not** retrofitted; Phase 4 deletes it.
+
+#### 4. Template render coverage
+
+**File**: `tests/accounts/test_login_logout.py`, `tests/accounts/test_registration.py`
+
+**Intent**: The existing suite must keep passing unchanged — that is the retrofit's proof. Review finding F4 warned that a high coverage headline can hide the one uncovered line that matters, and every template the suite never renders is unproven.
+
+**Contract**: No test changes expected in this phase. If the existing `non_field_errors` assertion at `test_login_logout.py:32-33` still passes, the retrofit preserved the load-bearing behavior.
+
+### Success Criteria
+
+#### Automated Verification
+
+- Full suite passes with no test modifications: `uv run pytest`
+- The invalid-login error assertion still passes: `uv run pytest tests/accounts/test_login_logout.py::test_login_with_invalid_credentials_shows_error`
+- Templates resolve: `uv run python manage.py check`
+- Quality gates pass: `/python-quality-gates`
+
+#### Manual Verification
+
+- With `DEBUG=True` in `.env`, the login and signup pages render correctly with their titles intact
+- The logout button appears in the header on an authenticated page and is absent on the login page
+- Submitting invalid login credentials still displays the "Please enter a correct username and password" error
+
+**Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
+
+---
+
+## Phase 3: Create and list views
+
+### Overview
+
+The slice's actual outcome: a form, two views, two templates, and the repo's first authorization surface — plus the first cross-user negative test proving the PRD's data-isolation guardrail holds.
+
+### Changes Required
+
+#### 1. The trip form
+
+**File**: `trips/forms.py`
+
+**Intent**: Collect name, date, and description. Deliberately exclude `owner` so it can never be supplied by the client.
+
+**Contract**: `TripForm(forms.ModelForm[Trip])` — `ModelForm` subscripts directly, unlike the generic views (`accounts/forms.py:7` shows the pattern). `Meta.model = Trip`, `Meta.fields = ("name", "date", "description")` as a tuple. A `widgets` entry giving `date` a `forms.DateInput(attrs={"type": "date"})` so browsers show a native date picker — this is the repo's first widget override and is justified because a bare text input for a date is a usability failure, not a styling preference. A `clean_name()` that strips whitespace and rejects a name that is empty after stripping, following the normalize-then-check-then-return idiom at `accounts/forms.py:16-21`, with a plain-English capitalized message ending in a period.
+
+#### 2. The views
+
+**File**: `trips/views.py`
+
+**Intent**: A list scoped to the requesting user, and a create view that assigns ownership server-side and confirms the save.
+
+**Contract**: The `TYPE_CHECKING` shim from `accounts/views.py:21-24`, copied with the correct arities — `_TripListViewBase = ListView[Trip]` (one parameter) and `_TripCreateViewBase = CreateView[Trip, TripForm]` (two parameters).
+
+`TripListView(LoginRequiredMixin, _TripListViewBase)` overrides `get_queryset()` to return `Trip.objects.filter(owner=self.request.user)`. `template_name` may be left to the `trips/trip_list.html` default, which matches the app-namespaced template layout for free.
+
+`TripCreateView(LoginRequiredMixin, SuccessMessageMixin, _TripCreateViewBase)` sets `form_class = TripForm`, `success_url = reverse_lazy("trips:list")`, and a `success_message` confirming the trip was saved (satisfying the US-01 acceptance line at `prd.md:51`). `form_valid()` sets `form.instance.owner = self.request.user` before delegating to `super()`.
+
+**Caution**: `LoginRequiredMixin` must precede the shim base in the MRO. This is the repo's first mixin-based protection; S-03 and S-04 will copy whatever lands here, so it is worth being deliberate.
+
+#### 3. URLs
+
+**File**: `trips/urls.py`, `velo_log/urls.py`
+
+**Intent**: Route the two views under a namespace, and include them from the project URLconf.
+
+**Contract**: `app_name = "trips"`, absolute import (`from trips import views`), trailing slashes on every pattern. Names are `list` (at the app's empty path, i.e. `/trips/`) and `create` (at `new/`). Project wiring adds `path("trips/", include("trips.urls"))` to `velo_log/urls.py`, placed so it does not disturb the existing `accounts/`-prefixed ordering hazard at `:39-45`.
+
+#### 4. The list template
+
+**File**: `trips/templates/trips/trip_list.html`
+
+**Intent**: Render the user's trips, and — equally importantly — render a deliberate empty state. `roadmap.md:75` names the empty-draft state as the specific thing S-03 depends on being handled cleanly.
+
+**Contract**: `{% extends "base.html" %}`. A `{% for trip in object_list %}` over a `<ul>` showing each trip's name, date, and description, with an `{% empty %}` clause carrying a plain-English message inviting the user to create their first trip. A link to `{% url 'trips:create' %}`. This is the repo's first `{% for %}` over data and its first `{% empty %}`.
+
+#### 5. The form template
+
+**File**: `trips/templates/trips/trip_form.html`
+
+**Intent**: Render the create form using the established block.
+
+**Contract**: `{% extends "base.html" %}`, mirroring the form-rendering block from `accounts/signup.html:9-20` verbatim — `{% csrf_token %}`, then **`{{ form.non_field_errors }}`**, then the `{% for field in form %}` loop with `label_tag` / field / `errors`. The `non_field_errors` line is non-negotiable per finding F1.
+
+#### 6. Tests
+
+**File**: `tests/conftest.py`, `tests/trips/test_trip_creation.py`, `tests/trips/test_trip_list.py`
+
+**Intent**: Prove the slice works and, critically, prove the isolation guardrail. This is the first cross-user negative test in the repo.
+
+**Contract**: `conftest.py` gains its first real fixtures — an authenticated client and a second user — an addition the S-01 plan explicitly anticipated (`plan.md:83`). Fixtures follow the existing auth idiom: `User.objects.create_user(...)` then `client.login(...)`, never `force_login`.
+
+Creation tests: a valid POST creates a trip owned by the requesting user and redirects to the list; a trip created with an empty description succeeds (the valid-empty-draft case); an invalid POST (blank name) re-renders with a field error and creates nothing; the owner cannot be overridden by POSTing an `owner` field; an unauthenticated POST redirects to login and creates nothing.
+
+List tests: the list shows the user's own trips; **the list does not show another user's trips** (assert against `response.context["object_list"]` as well as the decoded body, so a template-only pass cannot fake it); a user with no trips sees the empty-state text; an unauthenticated GET redirects to login with `?next=`; the success message renders on the list page after a create.
+
+Naming follows `test_<subject>_<expected-outcome>` with verbs from `creates` / `rejects` / `redirects_to` / `shows`. Happy path first, then error and edge cases.
+
+**Caution**: Per finding F2, a test whose name claims an assertion must actually make it — the isolation test must assert the *absence of the other user's trip*, not merely a 200 response.
+
+### Success Criteria
+
+#### Automated Verification
+
+- All new tests pass: `uv run pytest tests/trips/`
+- Full suite passes: `uv run pytest`
+- Coverage gate met with `trips` in scope: `uv run pytest --cov`
+- Type checking passes, including both shim arities: `uv run mypy .`
+- No pending model changes: `uv run python manage.py makemigrations --check --dry-run`
+- Quality gates pass: `/python-quality-gates`
+
+#### Manual Verification
+
+- With `DEBUG=True`, logging in and visiting `/trips/` shows the empty state
+- Creating a trip redirects to the list, shows the flash confirmation, and the trip is visible
+- The date field renders a native browser date picker
+- Submitting the form with a blank name shows an inline error and does not create a trip
+- Logging in as a second user shows that user's own empty list, not the first user's trips
+- Visiting `/trips/` while logged out redirects to login, and logging in returns to `/trips/`
+
+**Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
+
+---
+
+## Phase 4: Retire the landing page and claim the site root
+
+### Overview
+
+Flip the post-login destination to the real trip list, delete the placeholder S-01 built for exactly this moment, and stop the bare domain from returning a 404.
+
+### Changes Required
+
+#### 1. Repoint the post-login destination
+
+**File**: `velo_log/settings.py`
+
+**Intent**: Send users to their trip list after login and after signup.
+
+**Contract**: `LOGIN_REDIRECT_URL` at `:137` becomes `"trips:list"`. `SignUpView.success_url` needs no change — it reads the setting at `accounts/views.py:32` and follows automatically.
+
+#### 2. Delete the landing page
+
+**File**: `accounts/views.py`, `accounts/urls.py`, `accounts/templates/accounts/landing.html`
+
+**Intent**: Remove the throwaway. S-01's plan named S-02 as its executioner (`plan.md:57`, `plan-brief.md:63`).
+
+**Contract**: Remove the `landing` view (`accounts/views.py:15-18`) and its now-unused `login_required`, `render`, and `HttpRequest` imports; remove the `landing/` pattern (`accounts/urls.py:8`); delete the template. The logout form it carried already lives in `templates/base.html` from Phase 2 — verify this before deleting, not after.
+
+#### 3. Route the site root
+
+**File**: `velo_log/urls.py`
+
+**Intent**: Turn the bare domain from a 404 into the app's front door without breaking the app-namespace convention every other route follows.
+
+**Contract**: A `RedirectView` at `path("")` targeting the `trips:list` URL name, non-permanent so the destination can change without poisoning browser caches. The canonical list stays at `/trips/`. An unauthenticated visitor to `/` therefore chains: redirect to `/trips/`, then `LoginRequiredMixin` bounces to login with `?next=/trips/`.
+
+#### 4. Re-point the landing tests
+
+**File**: `tests/accounts/test_login_logout.py`
+
+**Intent**: Four tests reference `accounts:landing` and must move to trips targets rather than being dropped — the `?next=` test in particular is the only assertion of that shape in the suite.
+
+**Contract**:
+- `test_login_with_valid_credentials_redirects_to_landing` (`:8`) — rename to reflect the trip list and assert the redirect target is `reverse("trips:list")`.
+- `test_logout_clears_session_and_landing_requires_login_again` (`:37`) — re-point the post-logout protected-page GET at `trips:list`.
+- `test_unauthenticated_landing_redirects_to_login_with_next` (`:52`) — re-point at `trips:list`, preserving the exact `?next=` string assertion.
+- `test_authenticated_landing_shows_username` (`:60`) — this asserted the landing page showed the username. Since the base template's header is now the thing that renders authenticated chrome, re-point it at `trips:list` and assert the logout control is present, keeping the test's real intent (authenticated chrome renders) rather than deleting it.
+
+Add a test that `/` redirects to the trip list.
+
+### Success Criteria
+
+#### Automated Verification
+
+- Full suite passes: `uv run pytest`
+- No dangling references remain: a repo-wide search for `accounts:landing` and `landing.html` returns nothing
+- No unused imports left in `accounts/views.py`: `uv run ruff check .`
+- URL configuration resolves: `uv run python manage.py check`
+- Coverage gate still met: `uv run pytest --cov`
+- Quality gates pass: `/python-quality-gates`
+
+#### Manual Verification
+
+- Logging in lands on the trip list, not the old landing page
+- Signing up as a brand-new user lands on the trip list with an empty state
+- Visiting `/` while logged in redirects to the trip list
+- Visiting `/` while logged out ends at the login page, and logging in from there returns to the trip list
+- Logging out from the trip list works and the session is cleared
+
+**Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
+
+---
+
+## Phase 5: Documentation, deferred-work register, and deploy readiness
+
+### Overview
+
+Correct the docs this slice invalidates, create the foundation file that has been advertised but missing since the project started, record the engineering debt so it stops being rediscovered by research, and walk the mandatory pre-migration deploy ritual.
+
+Review finding F7 established that stale agent-facing docs are a defect class, not a nicety: `AGENTS.md` is loaded every session, so a wrong claim actively misdirects the next agent (`impl-review.md:253-254`).
+
+### Changes Required
+
+#### 1. Correct the stale coverage claim
+
+**File**: `AGENTS.md`
+
+**Intent**: The Testing section says coverage runs against `accounts`. That was already wrong before this slice (it covers `accounts` + `velo_log`) and Phase 1 changed it again.
+
+**Contract**: The coverage sentence names all three packages in `[tool.coverage.run] source`. Also add `trips/` to the project-structure notes as the second feature app, and note the new project-level `templates/` directory introduced in Phase 2.
+
+#### 2. Create the missing lessons file
+
+**File**: `context/foundation/lessons.md`
+
+**Intent**: `CLAUDE.md:48` advertises this file and `roadmap.md:146` has a "Lesson: —" placeholder for it, but it has never existed. The eight rules the S-01 review encoded currently live only inline in an archived review that nothing routinely reads.
+
+**Contract**: The eight accumulated rules, each with its source citation and a one-line "why": a test whose name claims an assertion must make it; render `{{ form.non_field_errors }}` in every form template; a high coverage percentage can conceal the one uncovered line that matters; widen `[tool.coverage.run] source` whenever a new package ships; update `AGENTS.md` and roadmap status in the same slice that invalidates them; normalize on write and compare case-insensitively for user-supplied identifiers; never write to `context/archive/`; fix commits precede the commit recording the decisions describing them. Add one lesson this slice earns: **a migration's absence cannot be caught by CI — generate and commit it by hand, and verify with `makemigrations --check --dry-run`.**
+
+#### 3. Engineering Backlog
+
+**File**: `context/foundation/roadmap.md`
+
+**Intent**: Give the queued non-feature work a durable home that is actually read. The roadmap's existing `## Parked` section is for PRD features; engineering debt needs its own table so it is not confused with deliberately deferred product scope.
+
+**Contract**: A new `## Engineering Backlog` section with a table of `Item | Why it matters | Proposed fix | Trigger`, holding:
+
+| Item | Proposed fix | Trigger |
+|---|---|---|
+| CI runs no tests, ruff, black, isort, or mypy — only `manage.py check`, and only on push to `master` | Add a `pull_request` trigger and a job running `uv run pytest --cov` plus the lint/type gates, before the `railway up` step | Before S-03 — the north star slice adds file upload and map rendering, where a silent regression is most costly |
+| Dead `main.py` placeholder at the repo root | Delete it | Any slice touching repo-root files |
+| No `testpaths` in `[tool.pytest.ini_options]` | Set `testpaths = ["tests"]` so app-local `tests.py` files can never be collected | Alongside the CI job, since that is when collection scope starts mattering |
+| `S608` ruff ignore is inapplicable — the project has no raw SQL | Remove the ignore from `pyproject.toml:40` | Any slice touching lint config |
+| Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration |
+| `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline |
+| The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists |
+| No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs` | When the first production incident is diagnosed by guesswork |
+| The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open |
+
+#### 4. Roadmap slice status
+
+**File**: `context/foundation/roadmap.md`
+
+**Intent**: S-02 still reads `proposed` in three places, and the `Ready for /10x-plan: no` / "Waiting on S-01" note is stale since S-01 is `done`. Status drift is the F7 defect class.
+
+**Contract**: Update the `At a glance` row (`:31`), the slice body `- **Status:**` (`:76`), and the Backlog Handoff row (`:119`) to reflect reality. Bump the frontmatter `updated:` date.
+
+#### 5. Change status
+
+**File**: `context/changes/create-and-list-trips/change.md`
+
+**Intent**: Reflect completion.
+
+**Contract**: `status` advances and `updated` is stamped to the completion date.
+
+#### 6. Deploy ritual
+
+**File**: `DEPLOY.md`
+
+**Intent**: This is the first slice to ship a schema migration to production, so the backup ritual is live for the first time. `infrastructure.md:93` states the rule: never treat "rollback the code" as equivalent to "undo the migration."
+
+**Contract**: **Before** merging to `master`, run `railway service files download /data/db.sqlite3 ./backup-$(date +%Y%m%d-%H%M%S).sqlite3` (`DEPLOY.md:20-28`), keeping the file until `/healthz/` confirms health. Requires an SSH key registered via `railway ssh keys add`. **After** the deploy, append a row to the known-good deployment table (`DEPLOY.md:5-10`) with the deployment ID and commit sha, as S-01 did.
+
+### Success Criteria
+
+#### Automated Verification
+
+- Full suite passes: `uv run pytest`
+- Coverage gate met: `uv run pytest --cov`
+- Deploy-mode checks pass locally with `DEBUG=False` and a real `SECRET_KEY`: `uv run python manage.py check --deploy`
+- No pending model changes: `uv run python manage.py makemigrations --check --dry-run`
+- Quality gates pass: `/python-quality-gates`
+- `context/foundation/lessons.md` exists and is non-empty
+
+#### Manual Verification
+
+- Pre-deploy SQLite backup downloaded and retained
+- `railway logs` shows the migration ran and gunicorn is serving
+- `/healthz/` over HTTPS returns `{"status": "ok"}`
+- The full primary flow works in production: register → log in → create a trip → see it in the list
+- A second production account sees only its own trips
+- `DEPLOY.md`'s known-good table has a new row for this deploy
+
+**Implementation Note**: This is the final phase. Confirm production verification succeeded before archiving the change.
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+- **Model** (`tests/trips/test_trip_model.py`): persistence with an owner, optional description, `-date` ordering, deterministic same-date tiebreak. The repo's first tests that bypass `client`.
+- **Form** validation is exercised through the view tests rather than in isolation, matching the existing convention where every `accounts` test goes through `client`.
+
+### Integration Tests
+
+- **Creation** (`tests/trips/test_trip_creation.py`): valid create → redirect + persisted with correct owner; empty description accepted; blank name rejected with a field error and nothing created; a POSTed `owner` field cannot override server-side assignment; unauthenticated POST redirects and creates nothing.
+- **List** (`tests/trips/test_trip_list.py`): own trips shown; **another user's trips absent from both `object_list` and the rendered body**; empty state text for a user with no trips; unauthenticated GET redirects to login with `?next=`; success message renders after create.
+- **Regression** (`tests/accounts/`): the existing 11 tests must pass unchanged through Phase 2's retrofit, then have their four landing references re-pointed in Phase 4.
+
+The cross-user isolation test is the single most important test in this slice — it is the only PRD *guardrail* S-02 touches (`prd.md:43`), it has no precedent to copy, and S-03 and S-04 both build directly on the pattern it establishes.
+
+### Manual Testing Steps
+
+Set `DEBUG=True` in the local `.env` first — Secure-flagged cookies are dropped over plain HTTP and make login look broken (`settings.py:140-149`).
+
+1. Register a new user; confirm the redirect lands on an empty trip list with its empty-state message.
+2. Create a trip with all three fields; confirm the flash confirmation, the redirect to the list, and the trip's presence.
+3. Create a trip with the description left blank; confirm it saves and displays.
+4. Submit the form with a blank name; confirm the inline error and that nothing was created.
+5. Create a second trip with an earlier date; confirm it sorts below the newer one.
+6. Log out, register a second user, and confirm their list is empty — the first user's trips must not appear.
+7. Log out and visit `/trips/` directly; confirm the login redirect and that logging in returns you there.
+8. Visit `/` logged in and logged out; confirm both resolve sensibly.
+
+## Performance Considerations
+
+Negligible at this scale — the PRD describes a near-private app with a handful of trips per user, and its only NFR concerns the S-03 map view not failing silently. Two points worth noting anyway: the list view's `filter(owner=...)` hits an FK column that Django indexes automatically, so no explicit index is needed; and no pagination is added, consistent with FR-012 being parked. Should trip counts ever grow, pagination is the first thing to add, and `Meta.ordering`'s id tiebreak already makes it safe.
+
+## Migration Notes
+
+This is the repo's first schema migration against production, and the deploy path is unforgiving:
+
+- `railway.json` chains `collectstatic --noinput && migrate && gunicorn`, so a failing migration aborts before gunicorn starts. A bad migration is a **hard outage**, not a degraded deploy.
+- There is no atomic rollback. Recovery is redeploy-by-ID from `DEPLOY.md:5-10`, and `deployment-plan.md:112` calls that manual record "the actual mitigation."
+- The pre-migration backup at `DEPLOY.md:20-28` is mandatory and human-triggered — it is the only real safety net.
+- The restore path has never been exercised against production (`deployment-plan.md:150`). This deploy is the first that might need it, which is why exercising it is on the Engineering Backlog.
+- `RAILWAY_RUN_UID=0` is required for the app to write the root-owned Volume mount, and misconfiguration **fails silently** (`infrastructure.md:59`).
+- The migration is purely additive — one new table, no changes to existing tables — so there is no data backfill and no destructive step.
+
+## References
+
+- Internal research: `context/changes/create-and-list-trips/research.md`
+- Roadmap slice S-02: `context/foundation/roadmap.md:66-76`
+- PRD requirements: `context/foundation/prd.md:66` (FR-003), `:71` (FR-006), `:43` (isolation guardrail), `:96` (empty draft)
+- Structural template for this plan: `context/archive/2026-08-22-user-registration-login/plan.md`
+- Findings this slice must not repeat: `context/archive/2026-08-22-user-registration-login/reviews/impl-review.md`
+- The CBV generic shim to copy: `accounts/views.py:21-24`
+- The form-rendering block to mirror: `accounts/signup.html:9-20`
+- The logout form to carry forward: `accounts/landing.html:9-12`
+- Deploy ritual: `DEPLOY.md:20-28`, `DEPLOY.md:5-10`
+
+## Progress
+
+> Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles. See `references/progress-format.md`.
+
+### Phase 1: Trip model, app scaffold, and the first migration
+
+#### Automated
+
+- [ ] 1.1 Migration is generated and committed
+- [ ] 1.2 No pending model changes (`makemigrations --check --dry-run`)
+- [ ] 1.3 Migration applies cleanly to a fresh database
+- [ ] 1.4 Model tests pass
+- [ ] 1.5 Full suite still passes
+- [ ] 1.6 `trips` appears in the coverage report
+- [ ] 1.7 No `models.W042` or other system-check warnings
+- [ ] 1.8 Quality gates pass
+- [ ] 1.9 No `trips/tests.py` exists
+
+#### Manual
+
+- [ ] 1.10 Trip creates and reads back with expected ordering in the shell
+- [ ] 1.11 Django admin still loads
+
+### Phase 2: Base template and shared chrome
+
+#### Automated
+
+- [ ] 2.1 Full suite passes with no test modifications
+- [ ] 2.2 The invalid-login error assertion still passes
+- [ ] 2.3 Templates resolve (`manage.py check`)
+- [ ] 2.4 Quality gates pass
+
+#### Manual
+
+- [ ] 2.5 Login and signup pages render correctly with titles intact
+- [ ] 2.6 Logout button present on authenticated pages, absent on login
+- [ ] 2.7 Invalid login still displays the non-field error
+
+### Phase 3: Create and list views
+
+#### Automated
+
+- [ ] 3.1 All new trips tests pass
+- [ ] 3.2 Full suite passes
+- [ ] 3.3 Coverage gate met with `trips` in scope
+- [ ] 3.4 Type checking passes, including both shim arities
+- [ ] 3.5 No pending model changes
+- [ ] 3.6 Quality gates pass
+
+#### Manual
+
+- [ ] 3.7 Empty state shows on a fresh account
+- [ ] 3.8 Creating a trip redirects, confirms, and displays
+- [ ] 3.9 Date field renders a native picker
+- [ ] 3.10 Blank name shows an inline error and creates nothing
+- [ ] 3.11 A second user sees only their own list
+- [ ] 3.12 Logged-out access redirects to login and returns after auth
+
+### Phase 4: Retire the landing page and claim the site root
+
+#### Automated
+
+- [ ] 4.1 Full suite passes
+- [ ] 4.2 No dangling `accounts:landing` or `landing.html` references
+- [ ] 4.3 No unused imports in `accounts/views.py`
+- [ ] 4.4 URL configuration resolves
+- [ ] 4.5 Coverage gate still met
+- [ ] 4.6 Quality gates pass
+
+#### Manual
+
+- [ ] 4.7 Login lands on the trip list
+- [ ] 4.8 Signup lands on the trip list with an empty state
+- [ ] 4.9 `/` while logged in redirects to the trip list
+- [ ] 4.10 `/` while logged out ends at login and returns after auth
+- [ ] 4.11 Logout from the trip list clears the session
+
+### Phase 5: Documentation, deferred-work register, and deploy readiness
+
+#### Automated
+
+- [ ] 5.1 Full suite passes
+- [ ] 5.2 Coverage gate met
+- [ ] 5.3 `manage.py check --deploy` passes with `DEBUG=False`
+- [ ] 5.4 No pending model changes
+- [ ] 5.5 Quality gates pass
+- [ ] 5.6 `context/foundation/lessons.md` exists and is non-empty
+
+#### Manual
+
+- [ ] 5.7 Pre-deploy SQLite backup downloaded and retained
+- [ ] 5.8 `railway logs` shows migration ran and gunicorn serving
+- [ ] 5.9 `/healthz/` returns `{"status": "ok"}` over HTTPS
+- [ ] 5.10 Full primary flow works in production
+- [ ] 5.11 A second production account sees only its own trips
+- [ ] 5.12 `DEPLOY.md` known-good table has a new row

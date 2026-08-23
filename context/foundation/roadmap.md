@@ -3,7 +3,7 @@ project: VeloLog
 version: 1
 status: draft
 created: 2026-08-22
-updated: 2026-08-22
+updated: 2026-08-23
 prd_version: 2
 main_goal: speed
 top_blocker: time
@@ -28,7 +28,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ID   | Change ID                    | Outcome (user can …)                                                        | Prerequisites | PRD refs             | Status   |
 | ---- | ----------------------------- | ----------------------------------------------------------------------------- | -------------- | --------------------- | -------- |
 | S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | done |
-| S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | proposed |
+| S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | planning |
 | S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route as a static map (or empty state)| S-02           | FR-004, FR-005, US-01 | proposed |
 | S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
 | S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
@@ -73,7 +73,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** A trip with no uploaded file must be a valid empty draft (per PRD Business Logic) — the list and creation flow need to tolerate that state cleanly before S-03 builds the upload/map path on top of it.
-- **Status:** proposed
+- **Status:** planning
 
 ### S-03: User can upload a GPX file and see the route as a static map
 

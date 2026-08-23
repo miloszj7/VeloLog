@@ -650,12 +650,12 @@ This is the repo's first schema migration against production, and the deploy pat
 
 #### Automated
 
-- [x] 5.1 Full suite passes
-- [x] 5.2 Coverage gate met
-- [x] 5.3 `manage.py check --deploy` passes with `DEBUG=False`
-- [x] 5.4 No pending model changes
-- [x] 5.5 Quality gates pass
-- [x] 5.6 `context/foundation/lessons.md` exists and is non-empty
+- [x] 5.1 Full suite passes — 9a5070b
+- [x] 5.2 Coverage gate met — 9a5070b
+- [x] 5.3 `manage.py check --deploy` passes with `DEBUG=False` — 9a5070b
+- [x] 5.4 No pending model changes — 9a5070b
+- [x] 5.5 Quality gates pass — 9a5070b
+- [x] 5.6 `context/foundation/lessons.md` exists and is non-empty — 9a5070b
 
 #### Manual
 

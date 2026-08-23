@@ -51,7 +51,7 @@ uv run python manage.py check --deploy                     # with DEBUG=False an
 - **No custom `AUTH_USER_MODEL`, no user profile model.** The stock-`User` decision stands.
 - **No `services.py` or repository layer** for a single-model CRUD slice — the repo has no service layer and this is not the slice to introduce one.
 - **No logging configuration.** The project has none and `roadmap.md:46` acknowledges the gap; introducing it here is unrelated scope.
-- **No CI workflow changes.** Adding a test/lint/type job to CI is real and needed, but landing it on the same deploy as the first production migration stacks two risky firsts. It goes to the Engineering Backlog (Phase 5) instead.
+- **No new CI jobs.** Adding a test/lint/type job to CI is real and needed, but landing it on the same deploy as the first production migration stacks two risky firsts. It goes to the Engineering Backlog (Phase 5) instead. The single exception is one flag-only command appended to the `manage.py check` step that already exists (Phase 1 #7) — it adds no job, no secret, and no database, and it guards the exact failure this slice names as a hard outage.
 - **No new dependencies.** Everything this slice needs is already installed (`pyproject.toml:7-12`).
 
 ## Implementation Approach
@@ -64,7 +64,7 @@ Each phase leaves the repo working, tested, and committable. One commit per phas
 
 ## Critical Implementation Details
 
-**Ordering requirement — the migration must be generated and committed by hand.** CI cannot catch its absence: `manage.py check` passes with a model/schema mismatch, and `railway.json` then runs `migrate` before gunicorn. A forgotten migration file ships green and surfaces as production 500s with `no such column`. `makemigrations --check --dry-run` is the local gate, and its meaning inverts from S-01's usage — S-01 expected no changes because there were no models; S-02 expects a *committed* migration that leaves nothing pending.
+**Ordering requirement — the migration must be generated and committed by hand.** CI cannot catch its absence: `manage.py check` passes with a model/schema mismatch, and `railway.json` then runs `migrate` before gunicorn. A forgotten migration file ships green and surfaces as production 500s with `no such column`. `makemigrations --check --dry-run` is the gate — run locally, and appended to the existing CI merge-gate step in Phase 1 #7 so the deploy cannot proceed without it. Its meaning inverts from S-01's usage — S-01 expected no changes because there were no models; S-02 expects a *committed* migration that leaves nothing pending.
 
 **Owner assignment must never be client-supplied.** `owner` is excluded from `TripForm.Meta.fields` entirely and set in `form_valid` from `self.request.user`. A form field that merely defaults to the current user is bypassable by POSTing another user's ID, which would breach the PRD guardrail at `prd.md:43`. This pattern propagates to S-03 and S-04, so getting it right here matters beyond this slice.
 
@@ -82,7 +82,7 @@ Create the `trips` app, define the `Trip` model with its owner relationship and 
 
 **File**: `trips/apps.py`, `trips/__init__.py`
 
-**Intent**: Create the `trips` app at the repo root per `AGENTS.md`, mirroring `accounts/`'s structure. Delete every file `startapp` generates that `accounts/` does not have — specifically `tests.py` (which pytest would collect and ruff would then fail on), plus `admin.py`, `views.py` placeholder content, and the empty `migrations/` scaffolding is kept.
+**Intent**: Create the `trips` app at the repo root per `AGENTS.md`, mirroring `accounts/`'s structure. Delete the `startapp` output `accounts/` has no use for — `tests.py` (which pytest would collect and ruff would then fail on) and the placeholder `views.py` body; the empty `migrations/` scaffolding is kept. `admin.py` is the one deliberate departure from `accounts/`'s shape and is kept — see #8.
 
 **Contract**: `TripsConfig` sets `default_auto_field = "django.db.models.BigAutoField"` and `name = "trips"`. `__init__.py` is empty, with no `__all__`, matching `accounts/__init__.py`.
 
@@ -112,13 +112,15 @@ Create the `trips` app, define the `Trip` model with its owner relationship and 
 
 **Contract**: Produced by `uv run python manage.py makemigrations trips`. Committed verbatim — never hand-edited. `makemigrations --check --dry-run` must exit 0 afterwards.
 
-#### 5. Coverage scope
+#### 5. Coverage scope and test collection scope
 
 **File**: `pyproject.toml`
 
-**Intent**: Bring `trips` under the coverage gate. Without this, `fail_under = 80` passes no matter how untested the new app is — review finding F10 established widening `source` as the standing obligation whenever a new package ships (`impl-review.md:308-321`).
+**Intent**: Bring `trips` under the coverage gate. Without this, `fail_under = 80` passes no matter how untested the new app is — review finding F10 established widening `source` as the standing obligation whenever a new package ships (`impl-review.md:308-321`). And fix the collection hazard structurally rather than by hand, since `startapp` will generate a `tests.py` again for S-03's `gpx/` app.
 
-**Contract**: `[tool.coverage.run] source` at `:63` becomes `["accounts", "trips", "velo_log"]`.
+**Contract**: `[tool.coverage.run] source` at `:63` becomes `["accounts", "trips", "velo_log"]`. `[tool.pytest.ini_options]` gains `testpaths = ["tests"]`, so an app-local `tests.py` can never be collected regardless of `python_files`.
+
+This is complementary to, not a replacement for, deleting `trips/tests.py` in #1 — the delete keeps the app directory matching `accounts/`, and `testpaths` makes the collection outcome independent of anyone remembering to delete it.
 
 #### 6. Model tests
 
@@ -127,6 +129,34 @@ Create the `trips` app, define the `Trip` model with its owner relationship and 
 **Intent**: Prove the model's contract — that a trip persists with its owner, that description is genuinely optional, and that the default ordering is what the list view will rely on.
 
 **Contract**: A real package with an empty `__init__.py`, matching `tests/accounts/`. Plain module-level functions, `@pytest.mark.django_db` per test, full `-> None` annotations, `User.objects.create_user(...)` for setup with `"correct-horse-battery-staple"` as the password. Tests: a trip saves with an owner and is reachable via the reverse accessor; a trip saves with an empty description; two trips with different dates come back newest-first; two trips sharing a date come back in a deterministic order. These are the repo's first tests that do not go through `client`.
+
+#### 7. CI migration guard
+
+**File**: `.github/workflows/deploy.yml`
+
+**Intent**: Make the slice's worst failure mode — a forgotten migration file shipping green — impossible to deploy, instead of relying on someone remembering a local command. This is the one CI edit this slice takes; see the reworded scope line above.
+
+**Contract**: Append `uv run python manage.py makemigrations --check --dry-run` to the **existing** "Django check (merge gate)" step, which already injects `SECRET_KEY` and already runs before the "Deploy to Railway" step. No new job, no new secret, no database — `--check --dry-run` compares migration files to models and touches no DB. A non-zero exit fails the workflow, so `railway up` never executes.
+
+**Caution**: This workflow triggers on push to `master` only, so the guard catches the mistake post-merge and pre-deploy, not pre-merge. That gap is what the queued CI job in the Phase 5 backlog closes; this is the cheap half that protects *this* deploy.
+
+#### 8. Admin registration for Trip
+
+**File**: `trips/admin.py`
+
+**Intent**: Keep one read/repair path into the repo's first persisted domain data. `accounts/` skipped `admin.py` for free — it has no models. `Trip` ships onto a SQLite volume with no atomic rollback and a restore path never exercised against production (see Migration Notes), so the cost of *not* having an escape hatch is a `railway ssh` shell session against production data. `django.contrib.admin` is already in `INSTALLED_APPS` (`settings.py:39`) and already routed (`velo_log/urls.py:37`), so this is a ~4-line file.
+
+**Contract**: Register `Trip` with `@admin.register(Trip)` and a `TripAdmin(admin.ModelAdmin[Trip])` — `ModelAdmin` subscripts directly under django-stubs, like `ModelForm` — carrying `list_display = ("name", "date", "owner")`. No other customization.
+
+**Caution**: The admin is only reachable in production if a superuser exists there, and **none does** — no `createsuperuser` step appears in `railway.json`, `DEPLOY.md`, or `deployment-plan.md`. Phase 5's deploy ritual therefore adds creating one as an explicit step; until that runs, this registration buys local and staging value only.
+
+#### 9. Repo-root and lint-config cleanups
+
+**File**: `main.py`, `pyproject.toml`
+
+**Intent**: Two one-line items whose "next slice that touches these files" trigger this slice meets — Phase 1 already edits `pyproject.toml` (including the lint config's own file) and Phase 5 edits repo-root docs. Deferring them to a backlog whose triggers already fired teaches the next reader to ignore the triggers.
+
+**Contract**: Delete the dead `main.py` placeholder at the repo root — it is not referenced by `manage.py`, the WSGI entry point, or `railway.json`. Remove `[tool.ruff.lint] ignore` (`pyproject.toml:39-41`) entirely: its only entry, `S608`, exempts raw-SQL f-strings the project does not have, and an inapplicable blanket exemption is a live hazard the day someone does write raw SQL. `ruff check .` must still pass with the key gone.
 
 ### Success Criteria
 
@@ -141,11 +171,13 @@ Create the `trips` app, define the `Trip` model with its owner relationship and 
 - No `models.W042` or other system-check warnings: `uv run python manage.py check`
 - Quality gates pass: `/python-quality-gates`
 - No `trips/tests.py` exists: the file `startapp` generates is deleted
+- CI gate carries the migration check: `.github/workflows/deploy.yml`'s merge-gate step runs `makemigrations --check --dry-run` before the deploy step
+- Lint passes with the `S608` ignore removed and `main.py` gone: `uv run ruff check .`
 
 #### Manual Verification
 
 - `uv run python manage.py shell` — a `Trip` can be created against a real user and read back with the expected ordering
-- Django admin is untouched and still loads (no `admin.py` registered, matching `accounts/`)
+- The Django admin loads and lists `Trip` with name, date, and owner (against a local superuser)
 
 **Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
 
@@ -226,7 +258,9 @@ The slice's actual outcome: a form, two views, two templates, and the repo's fir
 
 **Intent**: Collect name, date, and description. Deliberately exclude `owner` so it can never be supplied by the client.
 
-**Contract**: `TripForm(forms.ModelForm[Trip])` — `ModelForm` subscripts directly, unlike the generic views (`accounts/forms.py:7` shows the pattern). `Meta.model = Trip`, `Meta.fields = ("name", "date", "description")` as a tuple. A `widgets` entry giving `date` a `forms.DateInput(attrs={"type": "date"})` so browsers show a native date picker — this is the repo's first widget override and is justified because a bare text input for a date is a usability failure, not a styling preference. A `clean_name()` that strips whitespace and rejects a name that is empty after stripping, following the normalize-then-check-then-return idiom at `accounts/forms.py:16-21`, with a plain-English capitalized message ending in a period.
+**Contract**: `TripForm(forms.ModelForm[Trip])` — `ModelForm` subscripts directly, unlike the generic views (`accounts/forms.py:7` shows the pattern). `Meta.model = Trip`, `Meta.fields = ("name", "date", "description")` as a tuple. A `widgets` entry giving `date` a `forms.DateInput(attrs={"type": "date"})` so browsers show a native date picker — this is the repo's first widget override and is justified because a bare text input for a date is a usability failure, not a styling preference.
+
+**No `clean_name()`.** Django already delivers the whitespace rule: `forms.CharField` takes `strip=True` by default (`django/forms/fields.py:276`) and the ModelForm-generated field inherits it, so `to_python` strips whitespace-only input to `""` and `validate()` then raises the `required` error — a `clean_name()` hook would never be reached, and when it *is* reached its input is already stripped. The `accounts/forms.py:16-21` idiom does not transfer: `clean_email()`'s guard runs a duplicate query and is reachable; a `clean_name()` guard is not. Phase 1 has just brought `trips` under `fail_under = 80`, so adding one would plant a permanently uncoverable branch in the newly measured package. The Phase 3 test "blank name re-renders with a field error and creates nothing" passes on the built-in validation unchanged.
 
 #### 2. The views
 
@@ -234,11 +268,19 @@ The slice's actual outcome: a form, two views, two templates, and the repo's fir
 
 **Intent**: A list scoped to the requesting user, and a create view that assigns ownership server-side and confirms the save.
 
-**Contract**: The `TYPE_CHECKING` shim from `accounts/views.py:21-24`, copied with the correct arities — `_TripListViewBase = ListView[Trip]` (one parameter) and `_TripCreateViewBase = CreateView[Trip, TripForm]` (two parameters).
+**Contract**: The `TYPE_CHECKING` shim from `accounts/views.py:21-24`, copied with **three** aliases, not two — every base whose django-stubs declaration is generic but whose runtime class is not:
 
-`TripListView(LoginRequiredMixin, _TripListViewBase)` overrides `get_queryset()` to return `Trip.objects.filter(owner=self.request.user)`. `template_name` may be left to the `trips/trip_list.html` default, which matches the app-namespaced template layout for free.
+- `_TripListViewBase = ListView[Trip]` (one parameter)
+- `_TripCreateViewBase = CreateView[Trip, TripForm]` (two parameters)
+- `_SuccessMessageMixinBase = SuccessMessageMixin[TripForm]` — bare `SuccessMessageMixin` in the `else` branch
 
-`TripCreateView(LoginRequiredMixin, SuccessMessageMixin, _TripCreateViewBase)` sets `form_class = TripForm`, `success_url = reverse_lazy("trips:list")`, and a `success_message` confirming the trip was saved (satisfying the US-01 acceptance line at `prd.md:51`). `form_valid()` sets `form.instance.owner = self.request.user` before delegating to `super()`.
+`SuccessMessageMixin` has the same split personality the shim exists for: `django-stubs/contrib/messages/views.pyi:10` declares `class SuccessMessageMixin(Generic[_F])`, so mypy `--strict` rejects the bare form with `Missing type arguments for generic type "SuccessMessageMixin"  [type-arg]`, while `django/contrib/messages/views.py:4` is a plain class, so `SuccessMessageMixin[TripForm]` raises `TypeError: type 'SuccessMessageMixin' is not subscriptable` at import. The repo has zero `# type: ignore`, so the shim is the only way through. `LoginRequiredMixin` is genuinely non-generic (`mixins.pyi:18`) and must **not** be shimmed.
+
+`TripListView(LoginRequiredMixin, _TripListViewBase)` overrides `get_queryset()` to return `Trip.objects.filter(owner=self.request.user)`. `template_name` may be left to the `trips/trip_list.html` default: `MultipleObjectTemplateResponseMixin` derives the name from `self.object_list.model`, which `get_queryset()` supplies.
+
+`TripCreateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripCreateViewBase)` sets `form_class = TripForm`, **`template_name = "trips/trip_form.html"`**, `success_url = reverse_lazy("trips:list")`, and a `success_message` confirming the trip was saved (satisfying the US-01 acceptance line at `prd.md:51`). `form_valid()` sets `form.instance.owner = self.request.user` before delegating to `super()`.
+
+**Caution**: `template_name` on the create view is **not** optional — `ListView`'s implicit resolution does not generalize to `CreateView`. With only `form_class` set, `ModelFormMixin.get_form_class()` returns early and never assigns `self.model` (`edit.py:81-89`), `self.object` is `None` (`edit.py:176,180`), and `SingleObjectTemplateResponseMixin.get_template_names()` therefore finds no candidate and re-raises `ImproperlyConfigured`. Setting it explicitly matches `SignUpView` (`accounts/views.py:31`); `model = Trip` plus the default `template_name_suffix = "_form"` would also work. The failure is asymmetric and hides from the happy path: a *valid* POST redirects without rendering, so "a valid POST creates a trip and redirects" passes green while `GET /trips/new/` and every invalid re-render 500.
 
 **Caution**: `LoginRequiredMixin` must precede the shim base in the MRO. This is the repo's first mixin-based protection; S-03 and S-04 will copy whatever lands here, so it is worth being deliberate.
 
@@ -407,14 +449,11 @@ Review finding F7 established that stale agent-facing docs are a defect class, n
 
 **Intent**: Give the queued non-feature work a durable home that is actually read. The roadmap's existing `## Parked` section is for PRD features; engineering debt needs its own table so it is not confused with deliberately deferred product scope.
 
-**Contract**: A new `## Engineering Backlog` section with a table of `Item | Why it matters | Proposed fix | Trigger`, holding:
+**Contract**: A new `## Engineering Backlog` section with a table of `Item | Proposed fix | Trigger` — three columns, matching the table below. Every row's trigger must be a condition *this* slice does not already meet; anything already due gets done in Phase 1 (#9) instead of filed. Holding:
 
 | Item | Proposed fix | Trigger |
 |---|---|---|
-| CI runs no tests, ruff, black, isort, or mypy — only `manage.py check`, and only on push to `master` | Add a `pull_request` trigger and a job running `uv run pytest --cov` plus the lint/type gates, before the `railway up` step | Before S-03 — the north star slice adds file upload and map rendering, where a silent regression is most costly |
-| Dead `main.py` placeholder at the repo root | Delete it | Any slice touching repo-root files |
-| No `testpaths` in `[tool.pytest.ini_options]` | Set `testpaths = ["tests"]` so app-local `tests.py` files can never be collected | Alongside the CI job, since that is when collection scope starts mattering |
-| `S608` ruff ignore is inapplicable — the project has no raw SQL | Remove the ignore from `pyproject.toml:40` | Any slice touching lint config |
+| CI runs no tests, ruff, black, isort, or mypy — only `manage.py check` plus the migration guard Phase 1 added, and only on push to `master` | Add a `pull_request` trigger and a job running `uv run pytest --cov` plus the lint/type gates, before the `railway up` step | Before S-03 — the north star slice adds file upload and map rendering, where a silent regression is most costly |
 | Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration |
 | `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline |
 | The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists |
@@ -445,6 +484,8 @@ Review finding F7 established that stale agent-facing docs are a defect class, n
 
 **Contract**: **Before** merging to `master`, run `railway service files download /data/db.sqlite3 ./backup-$(date +%Y%m%d-%H%M%S).sqlite3` (`DEPLOY.md:20-28`), keeping the file until `/healthz/` confirms health. Requires an SSH key registered via `railway ssh keys add`. **After** the deploy, append a row to the known-good deployment table (`DEPLOY.md:5-10`) with the deployment ID and commit sha, as S-01 did.
 
+Also **after** the deploy, create the production superuser this environment has never had — no `createsuperuser` step exists in `railway.json`, `DEPLOY.md`, or `deployment-plan.md`, so the admin registered in Phase 1 #8 is currently unreachable in production. Run it once over `railway ssh`, with the credentials stored in the password manager and never in the repo, and add the step to `DEPLOY.md` as a documented one-time task so the next environment rebuild does not lose it.
+
 ### Success Criteria
 
 #### Automated Verification
@@ -464,6 +505,7 @@ Review finding F7 established that stale agent-facing docs are a defect class, n
 - The full primary flow works in production: register → log in → create a trip → see it in the list
 - A second production account sees only its own trips
 - `DEPLOY.md`'s known-good table has a new row for this deploy
+- A production superuser exists, the admin is reachable over HTTPS, and `DEPLOY.md` documents the one-time step
 
 **Implementation Note**: This is the final phase. Confirm production verification succeeded before archiving the change.
 
@@ -541,11 +583,13 @@ This is the repo's first schema migration against production, and the deploy pat
 - [ ] 1.7 No `models.W042` or other system-check warnings
 - [ ] 1.8 Quality gates pass
 - [ ] 1.9 No `trips/tests.py` exists
+- [ ] 1.10 CI gate carries the migration check
+- [ ] 1.11 Lint passes with the `S608` ignore removed and `main.py` gone
 
 #### Manual
 
-- [ ] 1.10 Trip creates and reads back with expected ordering in the shell
-- [ ] 1.11 Django admin still loads
+- [ ] 1.12 Trip creates and reads back with expected ordering in the shell
+- [ ] 1.13 Django admin loads and lists Trip
 
 ### Phase 2: Base template and shared chrome
 
@@ -620,3 +664,4 @@ This is the repo's first schema migration against production, and the deploy pat
 - [ ] 5.10 Full primary flow works in production
 - [ ] 5.11 A second production account sees only its own trips
 - [ ] 5.12 `DEPLOY.md` known-good table has a new row
+- [ ] 5.13 Production superuser exists, admin reachable, one-time step documented

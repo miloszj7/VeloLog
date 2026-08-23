@@ -73,3 +73,19 @@ def test_site_root_redirects_to_trip_list(client: Client) -> None:
 
     assert response.status_code == 302
     assert response.headers["Location"] == reverse("trips:list")
+
+
+@pytest.mark.django_db
+def test_login_from_next_redirect_lands_back_on_original_page(client: Client) -> None:
+    User.objects.create_user(username="rider", password="correct-horse-battery-staple")
+
+    denied = client.get(reverse("trips:list"))
+    login_url = denied.headers["Location"]
+
+    response = client.post(
+        login_url,
+        {"username": "rider", "password": "correct-horse-battery-staple"},
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == reverse("trips:list")

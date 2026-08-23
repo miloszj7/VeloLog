@@ -447,28 +447,28 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [x] 1.1 Full suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
-- [x] 1.2 Full suite still passes normally (`uv run pytest --cov`)
-- [x] 1.3 Coverage remains at or above `fail_under = 80`
-- [x] 1.4 Strict typing passes on the new fixture and test (`uv run mypy .`)
-- [x] 1.5 Lint and format gates pass (ruff, black, isort)
-- [x] 1.6 Security test fails when the `if not DEBUG:` block is removed (mutation check, then revert)
+- [x] 1.1 Full suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`) — ac1356c
+- [x] 1.2 Full suite still passes normally (`uv run pytest --cov`) — ac1356c
+- [x] 1.3 Coverage remains at or above `fail_under = 80` — ac1356c
+- [x] 1.4 Strict typing passes on the new fixture and test (`uv run mypy .`) — ac1356c
+- [x] 1.5 Lint and format gates pass (ruff, black, isort) — ac1356c
+- [x] 1.6 Security test fails when the `if not DEBUG:` block is removed (mutation check, then revert) — ac1356c
 
 #### Manual
 
-- [x] 1.7 `.env.example` reads as useful guidance for a first-time clone
+- [x] 1.7 `.env.example` reads as useful guidance for a first-time clone — ac1356c
 
 ### Phase 2: Coverage-scope guard
 
 #### Automated
 
-- [ ] 2.1 Suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
-- [ ] 2.2 Guard fails when an entry is removed from `[tool.coverage.run] source` (mutation check, then revert)
-- [ ] 2.3 Strict typing, lint, and format gates pass
+- [x] 2.1 Suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
+- [x] 2.2 Guard fails when an entry is removed from `[tool.coverage.run] source` (mutation check, then revert)
+- [x] 2.3 Strict typing, lint, and format gates pass
 
 #### Manual
 
-- [ ] 2.4 Assertion message names the missing package and where to add it
+- [x] 2.4 Assertion message names the missing package and where to add it
 
 ### Phase 3: Rewire the deploy workflow
 

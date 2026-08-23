@@ -127,7 +127,9 @@ The migration is a single purely-additive `CreateModel` matching the model field
   not enforce this (`select` omits `D`), so no gate catches the regression.
 - **Fix**: Add a one-line docstring to `TripListView.get_queryset`, `TripCreateView.form_valid`, and
   `TripAdmin`, matching the `accounts/` wording style.
-- **Decision**: PENDING
+- **Decision**: FIXED — added one-line docstrings to `trips/views.py:27` (`get_queryset`), `:39`
+  (`form_valid`), and `trips/admin.py:14` (`TripAdmin`); `ruff check`, `mypy`, and
+  `pytest tests/trips/` re-run, all green.
 
 ### F4 — `change.md` status never advanced past `implementing`
 

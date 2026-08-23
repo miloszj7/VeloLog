@@ -183,7 +183,9 @@ The migration is a single purely-additive `CreateModel` matching the model field
      scenario-vs-line gap lesson #3 warns about.
 - **Fix**: Take `rider: User` as a parameter in the four model tests, `assert client.login(...)` in the
   fixture, and add one test for an unauthenticated GET of `trips:create`.
-- **Decision**: PENDING
+- **Decision**: FIXED — `test_trip_model.py` now takes the `rider` fixture, `conftest.py:20` asserts
+  `client.login(...)`, and `test_unauthenticated_get_redirects_to_login` was added to
+  `test_trip_creation.py`; full suite re-run, 27 passed, 99.06% coverage.
 
 ### F7 — The `?next=` chain works only by accident of an actionless form
 

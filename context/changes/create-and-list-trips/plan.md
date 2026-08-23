@@ -631,31 +631,31 @@ This is the repo's first schema migration against production, and the deploy pat
 
 #### Automated
 
-- [x] 4.1 Full suite passes
-- [x] 4.2 No dangling `accounts:landing` or `landing.html` references
-- [x] 4.3 No unused imports in `accounts/views.py`
-- [x] 4.4 URL configuration resolves
-- [x] 4.5 Coverage gate still met
-- [x] 4.6 Quality gates pass
+- [x] 4.1 Full suite passes — 5041b7a
+- [x] 4.2 No dangling `accounts:landing` or `landing.html` references — 5041b7a
+- [x] 4.3 No unused imports in `accounts/views.py` — 5041b7a
+- [x] 4.4 URL configuration resolves — 5041b7a
+- [x] 4.5 Coverage gate still met — 5041b7a
+- [x] 4.6 Quality gates pass — 5041b7a
 
 #### Manual
 
-- [x] 4.7 Login lands on the trip list
-- [x] 4.8 Signup lands on the trip list with an empty state
-- [x] 4.9 `/` while logged in redirects to the trip list
-- [x] 4.10 `/` while logged out ends at login and returns after auth
-- [x] 4.11 Logout from the trip list clears the session
+- [x] 4.7 Login lands on the trip list — 5041b7a
+- [x] 4.8 Signup lands on the trip list with an empty state — 5041b7a
+- [x] 4.9 `/` while logged in redirects to the trip list — 5041b7a
+- [x] 4.10 `/` while logged out ends at login and returns after auth — 5041b7a
+- [x] 4.11 Logout from the trip list clears the session — 5041b7a
 
 ### Phase 5: Documentation, deferred-work register, and deploy readiness
 
 #### Automated
 
-- [ ] 5.1 Full suite passes
-- [ ] 5.2 Coverage gate met
-- [ ] 5.3 `manage.py check --deploy` passes with `DEBUG=False`
-- [ ] 5.4 No pending model changes
-- [ ] 5.5 Quality gates pass
-- [ ] 5.6 `context/foundation/lessons.md` exists and is non-empty
+- [x] 5.1 Full suite passes
+- [x] 5.2 Coverage gate met
+- [x] 5.3 `manage.py check --deploy` passes with `DEBUG=False`
+- [x] 5.4 No pending model changes
+- [x] 5.5 Quality gates pass
+- [x] 5.6 `context/foundation/lessons.md` exists and is non-empty
 
 #### Manual
 

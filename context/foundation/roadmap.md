@@ -116,7 +116,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 | Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | GitHub Issue | Linear Issue | Notes |
 | ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ------------ | ------------ | ----- |
 | S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | [#1](https://github.com/miloszj7/VeloLog/issues/1) | [10X-1](https://linear.app/miloszj/issue/10X-1/s-01-user-can-register-log-in-and-log-out) | Run `/10x-plan user-registration-login` |
-| S-02       | `create-and-list-trips`          | Create and list trips                                       | no                      | [#2](https://github.com/miloszj7/VeloLog/issues/2) | [10X-2](https://linear.app/miloszj/issue/10X-2/s-02-user-can-create-a-trip-and-see-it-in-their-trip-list) | Waiting on S-01 |
+| S-02       | `create-and-list-trips`          | Create and list trips                                       | yes                     | [#2](https://github.com/miloszj7/VeloLog/issues/2) | [10X-2](https://linear.app/miloszj/issue/10X-2/s-02-user-can-create-a-trip-and-see-it-in-their-trip-list) | Planned and implemented (Phase 5, `/10x-implement create-and-list-trips`) |
 | S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | no                      | [#3](https://github.com/miloszj7/VeloLog/issues/3) | [10X-3](https://linear.app/miloszj/issue/10X-3/s-03-user-can-upload-a-gpx-file-and-see-the-route-as-a-static-map) | Waiting on S-02 |
 | S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | no                      | [#4](https://github.com/miloszj7/VeloLog/issues/4) | [10X-4](https://linear.app/miloszj/issue/10X-4/s-04-user-can-edit-and-delete-a-trip) | Waiting on S-02 |
 | S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | [#5](https://github.com/miloszj7/VeloLog/issues/5) | [10X-5](https://linear.app/miloszj/issue/10X-5/s-05-user-can-view-basic-trip-stats) | Waiting on S-03 |
@@ -140,6 +140,22 @@ _None — the PRD has 0 Open Questions, and no cross-cutting sequencing question
 - **No route planning or track editing** — Why parked: PRD Non-Goals — VeloLog is a log/viewer, not a planner or editor.
 - **No native mobile app** — Why parked: PRD Non-Goals — a responsive web app is sufficient for v1.
 - **No AI or geographic enrichment features** — Why parked: PRD Non-Goals — deferred to v2+.
+
+## Engineering Backlog
+
+Non-feature engineering debt, distinct from `## Parked` (which holds deliberately deferred
+PRD scope). Each row's trigger names the condition that makes the fix due — nothing here
+is picked up until its trigger fires.
+
+| Item | Proposed fix | Trigger |
+|---|---|---|
+| CI runs no tests, ruff, black, isort, or mypy — only `manage.py check` plus the migration guard S-02 added, and only on push to `master` | Add a `pull_request` trigger and a job running `uv run pytest --cov` plus the lint/type gates, before the `railway up` step | Before S-03 — the north star slice adds file upload and map rendering, where a silent regression is most costly |
+| Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration |
+| `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline |
+| The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists |
+| No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs` | When the first production incident is diagnosed by guesswork |
+| The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open |
+| `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 |
 
 ## Done
 

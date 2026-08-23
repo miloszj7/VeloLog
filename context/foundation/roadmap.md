@@ -147,16 +147,16 @@ Non-feature engineering debt, distinct from `## Parked` (which holds deliberatel
 PRD scope). Each row's trigger names the condition that makes the fix due — nothing here
 is picked up until its trigger fires.
 
-| Item | Proposed fix | Trigger | Change ID | Status |
-|---|---|---|---|---|
-| CI runs no tests, ruff, black, isort, or mypy — only `manage.py check` plus the migration guard S-02 added, and only on push to `master` | Add a `pull_request` trigger and a job running `uv run pytest --cov` plus the lint/type gates, before the `railway up` step | Before S-03 — the north star slice adds file upload and map rendering, where a silent regression is most costly | `ci-quality-gates` | done |
-| `gates` is not a required check — a merge can still be forced past a red run | Enable branch protection on `master` requiring the `gates` check | Immediately after `ci-quality-gates` merges | — | open |
-| Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration | — | open |
-| `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline | — | open |
-| The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists | — | open |
-| No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs` | When the first production incident is diagnosed by guesswork | — | open |
-| The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open | — | open |
-| `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | — | open |
+| Item | Proposed fix | Trigger | Change ID | Status | GitHub Issue |
+|---|---|---|---|---|---|
+| CI runs no tests, ruff, black, isort, or mypy — only `manage.py check` plus the migration guard S-02 added, and only on push to `master` | Add a `pull_request` trigger and a job running `uv run pytest --cov` plus the lint/type gates, before the `railway up` step | Before S-03 — the north star slice adds file upload and map rendering, where a silent regression is most costly | `ci-quality-gates` | done | [#7](https://github.com/miloszj7/VeloLog/issues/7) |
+| `gates` is not a required check — a merge can still be forced past a red run | Enable branch protection on `master` requiring the `gates` check | Immediately after `ci-quality-gates` merges | — | open | — |
+| Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration | — | open | — |
+| `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline | — | open | — |
+| The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists | — | open | — |
+| No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs` | When the first production incident is diagnosed by guesswork | — | open | — |
+| The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open | — | open | — |
+| `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | — | open | — |
 
 ## Done
 

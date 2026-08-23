@@ -29,6 +29,7 @@ At migration time the roadmap had 5 slices and 0 foundations.
 | `roadmap` | `#6e7681` | Generic marker: this issue originated from `roadmap.md` |
 | `type:slice` | `#0e8a16` | Corresponds to a roadmap `S-NN` — vertical slice |
 | `type:foundation` | `#5319e7` | Corresponds to a roadmap `F-NN` — foundation (none existed at migration time; label created for future use) |
+| `type:eng-backlog` | `#8250df` | Corresponds to a roadmap `## Engineering Backlog` row — non-slice, non-foundation engineering debt (added 2026-08-23 for issue #7, `ci-quality-gates`; not part of the original migration scope) |
 | `status:proposed` | `#ededed` | Mirrors roadmap `Status: proposed` |
 | `status:ready` | `#c2e0c6` | Mirrors roadmap `Status: ready` |
 | `status:planning` | `#bfd4f2` | Mirrors roadmap `Status: planning` |

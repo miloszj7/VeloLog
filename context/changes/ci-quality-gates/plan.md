@@ -447,16 +447,16 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [ ] 1.1 Full suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
-- [ ] 1.2 Full suite still passes normally (`uv run pytest --cov`)
-- [ ] 1.3 Coverage remains at or above `fail_under = 80`
-- [ ] 1.4 Strict typing passes on the new fixture and test (`uv run mypy .`)
-- [ ] 1.5 Lint and format gates pass (ruff, black, isort)
-- [ ] 1.6 Security test fails when the `if not DEBUG:` block is removed (mutation check, then revert)
+- [x] 1.1 Full suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
+- [x] 1.2 Full suite still passes normally (`uv run pytest --cov`)
+- [x] 1.3 Coverage remains at or above `fail_under = 80`
+- [x] 1.4 Strict typing passes on the new fixture and test (`uv run mypy .`)
+- [x] 1.5 Lint and format gates pass (ruff, black, isort)
+- [x] 1.6 Security test fails when the `if not DEBUG:` block is removed (mutation check, then revert)
 
 #### Manual
 
-- [ ] 1.7 `.env.example` reads as useful guidance for a first-time clone
+- [x] 1.7 `.env.example` reads as useful guidance for a first-time clone
 
 ### Phase 2: Coverage-scope guard
 

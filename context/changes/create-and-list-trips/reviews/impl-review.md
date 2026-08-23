@@ -252,7 +252,9 @@ The migration is a single purely-additive `CreateModel` matching the model field
   - Confidence: MEDIUM — cheap and safe, but only delivers part of what the backlog row scopes.
   - Blind spot: Haven't verified CI runtime headroom or whether the runner has everything `pytest` needs
     beyond `SECRET_KEY`.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — no code change; confirmed the Engineering Backlog row already exists at
+  `context/foundation/roadmap.md:152` with the "Before S-03" trigger (mirrored in `plan.md:456`), so the
+  deferral is tracked and nothing is forgotten.
 
 ## Notable positives
 

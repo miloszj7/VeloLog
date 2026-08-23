@@ -17,5 +17,5 @@ def other_rider(db: None) -> User:
 
 @pytest.fixture
 def auth_client(client: Client, rider: User) -> Client:
-    client.login(username="rider", password="correct-horse-battery-staple")
+    assert client.login(username="rider", password="correct-horse-battery-staple")
     return client

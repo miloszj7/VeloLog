@@ -74,3 +74,11 @@ def test_unauthenticated_post_redirects_to_login_and_creates_nothing(client: Cli
     assert response.status_code == 302
     assert response.headers["Location"].startswith(reverse("login"))
     assert not Trip.objects.exists()
+
+
+@pytest.mark.django_db
+def test_unauthenticated_get_redirects_to_login(client: Client) -> None:
+    response = client.get(reverse("trips:create"))
+
+    assert response.status_code == 302
+    assert response.headers["Location"].startswith(reverse("login"))

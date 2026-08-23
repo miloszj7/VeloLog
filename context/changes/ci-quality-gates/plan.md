@@ -474,14 +474,14 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [ ] 3.1 `gates` check is listed on the pull request for this branch
-- [ ] 3.2 `gates` passes on the pull request
-- [ ] 3.3 `deploy` job reports as skipped on the pull-request run
+- [x] 3.1 `gates` check is listed on the pull request for this branch
+- [x] 3.2 `gates` passes on the pull request
+- [x] 3.3 `deploy` job reports as skipped on the pull-request run
 - [x] 3.4 Every command in `gates` matches one that passes locally under the CI-equivalence command's environment
 
 #### Manual
 
-- [ ] 3.5 A deliberately-broken commit shows `gates` red and `deploy` skipped, then reverted
+- [x] 3.5 A deliberately-broken commit shows `gates` red and `deploy` skipped, then reverted
 - [ ] 3.6 After merge, `gates` runs before `railway up`
 - [ ] 3.7 Deployed app still responds on `/healthz/`
 

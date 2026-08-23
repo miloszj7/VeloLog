@@ -82,7 +82,8 @@ The migration is a single purely-additive `CreateModel` matching the model field
     test to Django's escaping implementation.
   - Confidence: HIGH — the vacuity is empirically demonstrated, not inferred.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED — renamed fixture trip to `"Other Rider Trip"` in
+  `tests/trips/test_trip_list.py:24,30`; `tests/trips/test_trip_list.py` re-run, 5 passed.
 
 ### F2 — The plan's own prose about `ModelForm`/`ModelAdmin` subscriptability is factually wrong
 

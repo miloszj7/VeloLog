@@ -109,7 +109,9 @@ The migration is a single purely-additive `CreateModel` matching the model field
   - Confidence: HIGH — subscriptability verified empirically for all three classes.
   - Blind spot: None significant. (Worth also considering as a durable lesson, since `lessons.md` is what
     `/10x-implement` re-reads — the triage "Record as lesson" path covers that.)
-- **Decision**: PENDING
+- **Decision**: FIXED — corrected `plan.md:149` and `plan.md:261`; both now state that `ModelForm` and
+  `ModelAdmin` are not subscriptable at runtime under django-stubs and require the `TYPE_CHECKING` shim,
+  and that only `UserCreationForm` subscripts directly.
 
 ### F3 — Missing method/class docstrings, regressing an S-01 review fix
 

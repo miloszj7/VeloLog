@@ -610,40 +610,40 @@ This is the repo's first schema migration against production, and the deploy pat
 
 #### Automated
 
-- [x] 3.1 All new trips tests pass
-- [x] 3.2 Full suite passes
-- [x] 3.3 Coverage gate met with `trips` in scope
-- [x] 3.4 Type checking passes, including both shim arities
-- [x] 3.5 No pending model changes
-- [x] 3.6 Quality gates pass
+- [x] 3.1 All new trips tests pass — 670b789
+- [x] 3.2 Full suite passes — 670b789
+- [x] 3.3 Coverage gate met with `trips` in scope — 670b789
+- [x] 3.4 Type checking passes, including both shim arities — 670b789
+- [x] 3.5 No pending model changes — 670b789
+- [x] 3.6 Quality gates pass — 670b789
 
 #### Manual
 
-- [x] 3.7 Empty state shows on a fresh account
-- [x] 3.8 Creating a trip redirects, confirms, and displays
-- [x] 3.9 Date field renders a native picker
-- [x] 3.10 Blank name shows an inline error and creates nothing
-- [x] 3.11 A second user sees only their own list
-- [x] 3.12 Logged-out access redirects to login and returns after auth
+- [x] 3.7 Empty state shows on a fresh account — 670b789
+- [x] 3.8 Creating a trip redirects, confirms, and displays — 670b789
+- [x] 3.9 Date field renders a native picker — 670b789
+- [x] 3.10 Blank name shows an inline error and creates nothing — 670b789
+- [x] 3.11 A second user sees only their own list — 670b789
+- [x] 3.12 Logged-out access redirects to login and returns after auth — 670b789
 
 ### Phase 4: Retire the landing page and claim the site root
 
 #### Automated
 
-- [ ] 4.1 Full suite passes
-- [ ] 4.2 No dangling `accounts:landing` or `landing.html` references
-- [ ] 4.3 No unused imports in `accounts/views.py`
-- [ ] 4.4 URL configuration resolves
-- [ ] 4.5 Coverage gate still met
-- [ ] 4.6 Quality gates pass
+- [x] 4.1 Full suite passes
+- [x] 4.2 No dangling `accounts:landing` or `landing.html` references
+- [x] 4.3 No unused imports in `accounts/views.py`
+- [x] 4.4 URL configuration resolves
+- [x] 4.5 Coverage gate still met
+- [x] 4.6 Quality gates pass
 
 #### Manual
 
-- [ ] 4.7 Login lands on the trip list
-- [ ] 4.8 Signup lands on the trip list with an empty state
-- [ ] 4.9 `/` while logged in redirects to the trip list
-- [ ] 4.10 `/` while logged out ends at login and returns after auth
-- [ ] 4.11 Logout from the trip list clears the session
+- [x] 4.7 Login lands on the trip list
+- [x] 4.8 Signup lands on the trip list with an empty state
+- [x] 4.9 `/` while logged in redirects to the trip list
+- [x] 4.10 `/` while logged out ends at login and returns after auth
+- [x] 4.11 Logout from the trip list clears the session
 
 ### Phase 5: Documentation, deferred-work register, and deploy readiness
 

@@ -5,7 +5,7 @@ from django.urls import reverse
 
 
 @pytest.mark.django_db
-def test_login_with_valid_credentials_redirects_to_landing(client: Client) -> None:
+def test_login_with_valid_credentials_redirects_to_trip_list(client: Client) -> None:
     User.objects.create_user(username="rider", password="correct-horse-battery-staple")
 
     response = client.post(
@@ -14,7 +14,7 @@ def test_login_with_valid_credentials_redirects_to_landing(client: Client) -> No
     )
 
     assert response.status_code == 302
-    assert response.headers["Location"] == reverse("accounts:landing")
+    assert response.headers["Location"] == reverse("trips:list")
     assert "_auth_user_id" in client.session
 
 
@@ -34,7 +34,7 @@ def test_login_with_invalid_credentials_shows_error(client: Client) -> None:
 
 
 @pytest.mark.django_db
-def test_logout_clears_session_and_landing_requires_login_again(client: Client) -> None:
+def test_logout_clears_session_and_trip_list_requires_login_again(client: Client) -> None:
     User.objects.create_user(username="rider", password="correct-horse-battery-staple")
     client.login(username="rider", password="correct-horse-battery-staple")
 
@@ -43,25 +43,33 @@ def test_logout_clears_session_and_landing_requires_login_again(client: Client) 
     assert logout_response.status_code == 302
     assert "_auth_user_id" not in client.session
 
-    landing_response = client.get(reverse("accounts:landing"))
-    assert landing_response.status_code == 302
-    assert landing_response.headers["Location"].startswith(reverse("login"))
+    list_response = client.get(reverse("trips:list"))
+    assert list_response.status_code == 302
+    assert list_response.headers["Location"].startswith(reverse("login"))
 
 
 @pytest.mark.django_db
-def test_unauthenticated_landing_redirects_to_login_with_next(client: Client) -> None:
-    response = client.get(reverse("accounts:landing"))
+def test_unauthenticated_trip_list_redirects_to_login_with_next(client: Client) -> None:
+    response = client.get(reverse("trips:list"))
 
     assert response.status_code == 302
-    assert response.headers["Location"] == f"{reverse('login')}?next={reverse('accounts:landing')}"
+    assert response.headers["Location"] == f"{reverse('login')}?next={reverse('trips:list')}"
 
 
 @pytest.mark.django_db
-def test_authenticated_landing_shows_username(client: Client) -> None:
+def test_authenticated_trip_list_shows_logout_control(client: Client) -> None:
     User.objects.create_user(username="rider", password="correct-horse-battery-staple")
     client.login(username="rider", password="correct-horse-battery-staple")
 
-    response = client.get(reverse("accounts:landing"))
+    response = client.get(reverse("trips:list"))
 
     assert response.status_code == 200
-    assert "rider" in response.content.decode()
+    assert reverse("logout") in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_site_root_redirects_to_trip_list(client: Client) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == reverse("trips:list")

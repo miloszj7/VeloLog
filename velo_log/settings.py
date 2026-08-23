@@ -135,7 +135,7 @@ STORAGES = {
 # https://docs.djangoproject.com/en/6.0/topics/auth/default/
 
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "accounts:landing"
+LOGIN_REDIRECT_URL = "trips:list"
 LOGOUT_REDIRECT_URL = "login"
 
 if not DEBUG:

@@ -145,7 +145,8 @@ The migration is a single purely-additive `CreateModel` matching the model field
   doc stamp is not "major drift".
 - **Fix**: Already resolved — this review stamps `status: impl_reviewed` and refreshes `updated`, which
   supersedes the planned advance. No further action needed.
-- **Decision**: PENDING
+- **Decision**: FIXED — confirmed `change.md:4` already reads `status: impl_reviewed`,
+  `updated: 2026-08-23`; no further action needed.
 
 ### F5 — Admin changelist N+1 on the `owner` FK
 

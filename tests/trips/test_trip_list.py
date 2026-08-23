@@ -21,13 +21,13 @@ def test_list_shows_own_trips(auth_client: Client, rider: User) -> None:
 def test_list_does_not_show_another_users_trips(
     auth_client: Client, rider: User, other_rider: User
 ) -> None:
-    other_trip = Trip.objects.create(name="Other's Trip", date="2026-06-01", owner=other_rider)
+    other_trip = Trip.objects.create(name="Other Rider Trip", date="2026-06-01", owner=other_rider)
 
     response = auth_client.get(reverse("trips:list"))
 
     assert response.status_code == 200
     assert other_trip not in response.context["object_list"]
-    assert "Other's Trip" not in response.content.decode()
+    assert "Other Rider Trip" not in response.content.decode()
 
 
 @pytest.mark.django_db

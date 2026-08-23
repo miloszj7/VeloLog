@@ -659,10 +659,10 @@ This is the repo's first schema migration against production, and the deploy pat
 
 #### Manual
 
-- [ ] 5.7 Pre-deploy SQLite backup downloaded and retained
-- [ ] 5.8 `railway logs` shows migration ran and gunicorn serving
-- [ ] 5.9 `/healthz/` returns `{"status": "ok"}` over HTTPS
-- [ ] 5.10 Full primary flow works in production
-- [ ] 5.11 A second production account sees only its own trips
-- [ ] 5.12 `DEPLOY.md` known-good table has a new row
-- [ ] 5.13 Production superuser exists, admin reachable, one-time step documented
+- [x] 5.7 Pre-deploy SQLite backup downloaded and retained — 9a5070b
+- [x] 5.8 `railway logs` shows migration ran and gunicorn serving — 9a5070b
+- [x] 5.9 `/healthz/` returns `{"status": "ok"}` over HTTPS — 9a5070b
+- [x] 5.10 Full primary flow works in production — 9a5070b
+- [x] 5.11 A second production account sees only its own trips — 9a5070b
+- [x] 5.12 `DEPLOY.md` known-good table has a new row — 6857cda
+- [x] 5.13 Production superuser exists, admin reachable, one-time step documented — 6857cda

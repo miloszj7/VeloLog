@@ -8,6 +8,7 @@ Update this table after every production deploy.
 |---|---|---|
 | 2026-08-21 | `fe1df79b-aa06-49b2-8965-15f16992cfe4` | First production deploy (Phase 5). `collectstatic` + `migrate` + gunicorn all succeeded; `/healthz/` returns 200 with a real DB write/read round-trip on the mounted Volume. |
 | 2026-08-22 | `365f39af-95a3-403a-8f78-14fb4aa162c1` | Ships S-01 (`user-registration-login`) — register/log in/log out. Verified via `railway status` (service Online) and `/healthz/` returning `{"status": "ok"}`. |
+| 2026-08-23 | `f2197620-9267-4a92-b9e2-40abbf84b9fa` | Ships S-02 (`create-and-list-trips`) — create/list trips. Verified via `railway status` (deployment status `SUCCESS`, instance `RUNNING`). |
 
 ## Rollback
 
@@ -56,9 +57,10 @@ Run this immediately before any deploy that includes a migration, and keep the b
 
 ## Production superuser (one-time)
 
+**Status: created (2026-08-23).** Django admin is reachable in production.
+
 No `createsuperuser` step exists in `railway.json`, `DEPLOY.md`, or `deployment-plan.md`,
-so the Django admin (registered for `Trip` in S-02) is unreachable in production until
-this runs once:
+so this must be re-run manually if it's ever needed again:
 
 ```bash
 railway ssh

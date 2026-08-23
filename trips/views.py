@@ -25,6 +25,7 @@ class TripListView(LoginRequiredMixin, _TripListViewBase):
     """Lists the requesting user's own trips."""
 
     def get_queryset(self) -> QuerySet[Trip]:
+        """Restrict the list to trips owned by the requesting user."""
         return Trip.objects.filter(owner=cast(User, self.request.user))
 
 
@@ -37,5 +38,6 @@ class TripCreateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripCreateVi
     success_message = "Trip saved."
 
     def form_valid(self, form: TripForm) -> HttpResponse:
+        """Assign the requesting user as owner before saving the trip."""
         form.instance.owner = cast(User, self.request.user)
         return super().form_valid(form)

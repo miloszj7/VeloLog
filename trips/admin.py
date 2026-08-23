@@ -12,4 +12,6 @@ else:
 
 @admin.register(Trip)
 class TripAdmin(_TripAdminBase):
+    """Admin read/repair path for the Trip model."""
+
     list_display = ("name", "date", "owner")

@@ -17,12 +17,30 @@ Railway has no atomic rollback command for this setup. To roll back:
 2. In the Railway dashboard → service → Deployments tab, locate that deployment and use **Redeploy** on it (or `railway service redeploy` if it's still the most recent successful build).
 3. If the rollback needs a schema revert too (not just a code revert), restore the SQLite backup taken before the migration — see **Restore** below.
 
+## SSH alias (one-time setup)
+
+After registering an SSH key with Railway (`railway ssh keys add`), generate a permanent
+`~/.ssh/config` alias for the service so `ssh`/`scp`/`sftp` work directly, without going
+through `railway ssh`:
+
+```bash
+railway ssh config --service VeloLog --alias railway-velolog
+```
+
+Then connect with `ssh railway-velolog`.
+
 ## Backup — before running a schema migration in production
 
 The SQLite file lives on the mounted Volume at `/data/db.sqlite3`. Requires an SSH key registered with Railway (`railway ssh keys add`, see the `deploy/phase-2-env-settings` branch history for the one-time setup).
 
+Backups are kept locally in `backup/db/` (gitignored — never commit a production DB dump).
+
+In Git Bash on Windows, MSYS path conversion mangles the leading `/data/...` remote path
+into a Windows path unless disabled with `MSYS_NO_PATHCONV=1`:
+
 ```bash
-railway service files download /data/db.sqlite3 ./backup-$(date +%Y%m%d-%H%M%S).sqlite3
+mkdir -p backup/db
+MSYS_NO_PATHCONV=1 railway service files download /data/db.sqlite3 ./backup/db/backup-$(date +%Y%m%d-%H%M%S).sqlite3
 ```
 
 Run this immediately before any deploy that includes a migration, and keep the backup file until the deploy is confirmed healthy via `/healthz/`.

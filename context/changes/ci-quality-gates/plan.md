@@ -462,13 +462,13 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [x] 2.1 Suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
-- [x] 2.2 Guard fails when an entry is removed from `[tool.coverage.run] source` (mutation check, then revert)
-- [x] 2.3 Strict typing, lint, and format gates pass
+- [x] 2.1 Suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`) — c5d77ed
+- [x] 2.2 Guard fails when an entry is removed from `[tool.coverage.run] source` (mutation check, then revert) — c5d77ed
+- [x] 2.3 Strict typing, lint, and format gates pass — c5d77ed
 
 #### Manual
 
-- [x] 2.4 Assertion message names the missing package and where to add it
+- [x] 2.4 Assertion message names the missing package and where to add it — c5d77ed
 
 ### Phase 3: Rewire the deploy workflow
 
@@ -477,7 +477,7 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 - [ ] 3.1 `gates` check is listed on the pull request for this branch
 - [ ] 3.2 `gates` passes on the pull request
 - [ ] 3.3 `deploy` job reports as skipped on the pull-request run
-- [ ] 3.4 Every command in `gates` matches one that passes locally under the CI-equivalence command's environment
+- [x] 3.4 Every command in `gates` matches one that passes locally under the CI-equivalence command's environment
 
 #### Manual
 

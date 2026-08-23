@@ -161,7 +161,8 @@ The migration is a single purely-additive `CreateModel` matching the model field
   Note: the list *view* is clean — `trip_list.html:9-13` touches only `name`, `date`, and `description`,
   never `trip.owner`, so `select_related` is genuinely unnecessary there.
 - **Fix**: Add `list_select_related = ("owner",)` to `TripAdmin`.
-- **Decision**: PENDING
+- **Decision**: FIXED — added `list_select_related = ("owner",)` to `TripAdmin` (`trips/admin.py:18`);
+  `ruff check` and `mypy` re-run, clean.
 
 ### F6 — Test hygiene: unused fixtures, discarded login result, one untested path
 

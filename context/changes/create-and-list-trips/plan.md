@@ -574,37 +574,37 @@ This is the repo's first schema migration against production, and the deploy pat
 
 #### Automated
 
-- [x] 1.1 Migration is generated and committed
-- [x] 1.2 No pending model changes (`makemigrations --check --dry-run`)
-- [x] 1.3 Migration applies cleanly to a fresh database
-- [x] 1.4 Model tests pass
-- [x] 1.5 Full suite still passes
-- [x] 1.6 `trips` appears in the coverage report
-- [x] 1.7 No `models.W042` or other system-check warnings
-- [x] 1.8 Quality gates pass
-- [x] 1.9 No `trips/tests.py` exists
-- [x] 1.10 CI gate carries the migration check
-- [x] 1.11 Lint passes with the `S608` ignore removed and `main.py` gone
+- [x] 1.1 Migration is generated and committed — 84256db
+- [x] 1.2 No pending model changes (`makemigrations --check --dry-run`) — 84256db
+- [x] 1.3 Migration applies cleanly to a fresh database — 84256db
+- [x] 1.4 Model tests pass — 84256db
+- [x] 1.5 Full suite still passes — 84256db
+- [x] 1.6 `trips` appears in the coverage report — 84256db
+- [x] 1.7 No `models.W042` or other system-check warnings — 84256db
+- [x] 1.8 Quality gates pass — 84256db
+- [x] 1.9 No `trips/tests.py` exists — 84256db
+- [x] 1.10 CI gate carries the migration check — 84256db
+- [x] 1.11 Lint passes with the `S608` ignore removed and `main.py` gone — 84256db
 
 #### Manual
 
-- [x] 1.12 Trip creates and reads back with expected ordering in the shell
-- [x] 1.13 Django admin loads and lists Trip
+- [x] 1.12 Trip creates and reads back with expected ordering in the shell — 84256db
+- [x] 1.13 Django admin loads and lists Trip — 84256db
 
 ### Phase 2: Base template and shared chrome
 
 #### Automated
 
-- [ ] 2.1 Full suite passes with no test modifications
-- [ ] 2.2 The invalid-login error assertion still passes
-- [ ] 2.3 Templates resolve (`manage.py check`)
-- [ ] 2.4 Quality gates pass
+- [x] 2.1 Full suite passes with no test modifications
+- [x] 2.2 The invalid-login error assertion still passes
+- [x] 2.3 Templates resolve (`manage.py check`)
+- [x] 2.4 Quality gates pass
 
 #### Manual
 
-- [ ] 2.5 Login and signup pages render correctly with titles intact
-- [ ] 2.6 Logout button present on authenticated pages, absent on login
-- [ ] 2.7 Invalid login still displays the non-field error
+- [x] 2.5 Login and signup pages render correctly with titles intact
+- [x] 2.6 Logout button present on authenticated pages, absent on login
+- [x] 2.7 Invalid login still displays the non-field error
 
 ### Phase 3: Create and list views
 

@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Sign up — VeloLog</title>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}Sign up — VeloLog{% endblock %}
+
+{% block content %}
     <h1>Sign up</h1>
     <form method="post">
         {% csrf_token %}
@@ -19,5 +17,4 @@
         <button type="submit">Sign up</button>
     </form>
     <p><a href="{% url 'login' %}">Already have an account? Log in</a></p>
-</body>
-</html>
+{% endblock %}

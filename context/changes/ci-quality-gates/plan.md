@@ -482,8 +482,8 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 #### Manual
 
 - [x] 3.5 A deliberately-broken commit shows `gates` red and `deploy` skipped, then reverted
-- [ ] 3.6 After merge, `gates` runs before `railway up`
-- [ ] 3.7 Deployed app still responds on `/healthz/`
+- [x] 3.6 After merge, `gates` runs before `railway up`
+- [x] 3.7 Deployed app still responds on `/healthz/`
 
 ### Phase 4: Documentation and status
 

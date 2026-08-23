@@ -1,13 +1,18 @@
-name: Deploy to Railway
+name: Gates and Deploy
 
 on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
-  deploy:
+  gates:
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-check-only-not-a-real-secret
     steps:
       - uses: actions/checkout@v4
 
@@ -17,12 +22,39 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Django check (merge gate)
-        env:
-          SECRET_KEY: ci-check-only-not-a-real-secret
-        run: |
-          uv run python manage.py check
-          uv run python manage.py makemigrations --check --dry-run
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run black --check .
+
+      - name: Import order
+        run: uv run isort --check-only .
+
+      - name: Types
+        run: uv run mypy .
+
+      - name: Django check
+        run: uv run python manage.py check
+
+      - name: Migration guard
+        run: uv run python manage.py makemigrations --check --dry-run
+
+      - name: Tests
+        run: uv run pytest --cov
+
+  deploy:
+    needs: gates
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync --locked
 
       - name: Install Railway CLI
         run: npm i -g @railway/cli

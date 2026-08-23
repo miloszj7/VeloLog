@@ -3,6 +3,17 @@
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
+from pytest_django.fixtures import Settings
+
+
+@pytest.fixture(autouse=True)
+def _disable_ssl_redirect(settings: Settings) -> None:
+    """Keep the test client on plain HTTP regardless of whether `.env` supplies `DEBUG`.
+
+    Without this, `SECURE_SSL_REDIRECT` (set when `DEBUG` resolves false, e.g. in CI
+    with no `.env`) makes every test-client request 301 to `https://testserver/`.
+    """
+    settings.SECURE_SSL_REDIRECT = False
 
 
 @pytest.fixture

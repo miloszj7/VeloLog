@@ -215,7 +215,11 @@ The migration is a single purely-additive `CreateModel` matching the model field
   - Tradeoff: Leaves the fragility in place rather than removing it.
   - Confidence: MEDIUM — a test guards the regression but does not eliminate the implicit coupling.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — added `<input type="hidden" name="next" value="{{ next }}">` to
+  `accounts/templates/accounts/login.html:8`, confirmed `{{ next }}` is populated (Django's `LoginView`
+  supplies it via `redirect_field_name` in `get_context_data`), and added
+  `test_login_from_next_redirect_lands_back_on_original_page` to `test_login_logout.py` following the
+  full chain (denied → login → back on `trips:list`); full suite re-run, 28 passed, 99.06% coverage.
 
 ### F8 — CI still deploys to production without running the test suite
 

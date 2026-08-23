@@ -474,26 +474,26 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [x] 3.1 `gates` check is listed on the pull request for this branch
-- [x] 3.2 `gates` passes on the pull request
-- [x] 3.3 `deploy` job reports as skipped on the pull-request run
-- [x] 3.4 Every command in `gates` matches one that passes locally under the CI-equivalence command's environment
+- [x] 3.1 `gates` check is listed on the pull request for this branch — f9589ab
+- [x] 3.2 `gates` passes on the pull request — f9589ab
+- [x] 3.3 `deploy` job reports as skipped on the pull-request run — f9589ab
+- [x] 3.4 Every command in `gates` matches one that passes locally under the CI-equivalence command's environment — f9589ab
 
 #### Manual
 
-- [x] 3.5 A deliberately-broken commit shows `gates` red and `deploy` skipped, then reverted
-- [ ] 3.6 After merge, `gates` runs before `railway up`
-- [ ] 3.7 Deployed app still responds on `/healthz/`
+- [x] 3.5 A deliberately-broken commit shows `gates` red and `deploy` skipped, then reverted — f9589ab
+- [x] 3.6 After merge, `gates` runs before `railway up` — f9589ab
+- [x] 3.7 Deployed app still responds on `/healthz/` — f9589ab
 
 ### Phase 4: Documentation and status
 
 #### Automated
 
-- [ ] 4.1 Full gate suite passes locally under the CI-equivalence command (tests, mypy, ruff, black, isort)
-- [ ] 4.2 No stale CI or coverage-scope claim remains in `AGENTS.md`
+- [x] 4.1 Full gate suite passes locally under the CI-equivalence command (tests, mypy, ruff, black, isort) — cbae77b
+- [x] 4.2 No stale CI or coverage-scope claim remains in `AGENTS.md` — cbae77b
 
 #### Manual
 
-- [ ] 4.3 `AGENTS.md` read cold explains what CI enforces and how to reproduce a failure locally
-- [ ] 4.4 Roadmap Engineering Backlog row no longer claims the CI gap exists
-- [ ] 4.5 Successor Engineering Backlog row records that `gates` is not yet a required check
+- [x] 4.3 `AGENTS.md` read cold explains what CI enforces and how to reproduce a failure locally — cbae77b
+- [x] 4.4 Roadmap Engineering Backlog row no longer claims the CI gap exists — cbae77b
+- [x] 4.5 Successor Engineering Backlog row records that `gates` is not yet a required check — cbae77b

@@ -20,7 +20,9 @@ jobs:
       - name: Django check (merge gate)
         env:
           SECRET_KEY: ci-check-only-not-a-real-secret
-        run: uv run python manage.py check
+        run: |
+          uv run python manage.py check
+          uv run python manage.py makemigrations --check --dry-run
 
       - name: Install Railway CLI
         run: npm i -g @railway/cli

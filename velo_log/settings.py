@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "accounts",
+    "trips",
 ]
 
 MIDDLEWARE = [
@@ -61,7 +62,7 @@ ROOT_URLCONF = "velo_log.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -134,7 +135,7 @@ STORAGES = {
 # https://docs.djangoproject.com/en/6.0/topics/auth/default/
 
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "accounts:landing"
+LOGIN_REDIRECT_URL = "trips:list"
 LOGOUT_REDIRECT_URL = "login"
 
 if not DEBUG:

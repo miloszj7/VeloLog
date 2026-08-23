@@ -2,21 +2,12 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.contrib.auth import login
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
 
 from accounts.forms import SignUpForm
-
-
-@login_required
-def landing(request: HttpRequest) -> HttpResponse:
-    """Render the authenticated user's landing page."""
-    return render(request, "accounts/landing.html")
-
 
 if TYPE_CHECKING:
     _SignUpViewBase = CreateView[User, SignUpForm]

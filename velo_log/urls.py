@@ -19,7 +19,8 @@ from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.sessions.backends.db import SessionStore
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.urls import include, path
+from django.urls import include, path, reverse_lazy
+from django.views.generic import RedirectView
 
 
 def healthz(request: HttpRequest) -> HttpResponse:
@@ -34,6 +35,7 @@ def healthz(request: HttpRequest) -> HttpResponse:
 
 
 urlpatterns = [
+    path("", RedirectView.as_view(url=reverse_lazy("trips:list"), permanent=False)),
     path("admin/", admin.site.urls),
     path("healthz/", healthz, name="healthz"),
     path("accounts/", include("accounts.urls")),
@@ -43,4 +45,5 @@ urlpatterns = [
         name="login",
     ),
     path("accounts/logout/", LogoutView.as_view(), name="logout"),
+    path("trips/", include("trips.urls")),
 ]

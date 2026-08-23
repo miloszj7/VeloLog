@@ -14,6 +14,9 @@ VeloLog is a greenfield Django 6 web app — a trip-centric personal diary for m
 - `manage.py` — Django CLI entry point; always invoke via `uv run python manage.py`.
 - `pyproject.toml` — single source of truth for dependencies and tool config.
 - `context/` — 10x PRD/shaping artifacts. See `@context/foundation/prd.md` for scope and `@context/foundation/tech-stack.md` for stack rationale.
+- `templates/` — project-level shared templates (`base.html` and other cross-cutting chrome that doesn't belong to a single app). `TEMPLATES[0]["DIRS"]` points here; `APP_DIRS` stays `True` so app-namespaced templates still resolve.
+- `accounts/` — registration, login/logout.
+- `trips/` — the second feature app: create and list a user's trips.
 
 New Django apps belong at the **repo root** alongside `velo_log/` (e.g. `trips/`, `gpx/`), registered in `velo_log/settings.py` under `INSTALLED_APPS`.
 
@@ -35,7 +38,7 @@ Linting is configured in `pyproject.toml`: `ruff`, `black`, `isort`, and `mypy -
 
 ## Testing
 
-`pytest` + `pytest-django` are configured; tests live in `tests/` at the repo root. Coverage runs against `accounts` with `fail_under = 80` (`[tool.coverage.run]` / `[tool.coverage.report]` in `pyproject.toml`). See `@~/.claude/CLAUDE.md` for fixture patterns and integration-test skip conventions.
+`pytest` + `pytest-django` are configured; tests live in `tests/` at the repo root. Coverage runs against `accounts`, `trips`, and `velo_log` with `fail_under = 80` (`[tool.coverage.run]` / `[tool.coverage.report]` in `pyproject.toml`). See `@~/.claude/CLAUDE.md` for fixture patterns and integration-test skip conventions.
 
 ## Commits & Git Workflow
 

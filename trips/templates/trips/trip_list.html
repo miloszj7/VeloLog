@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Your trips — VeloLog{% endblock %}
+
+{% block content %}
+    <h1>Your trips</h1>
+    <p><a href="{% url 'trips:create' %}">New trip</a></p>
+    <ul>
+        {% for trip in object_list %}
+            <li>
+                <strong>{{ trip.name }}</strong> — {{ trip.date }}
+                <p>{{ trip.description }}</p>
+            </li>
+        {% empty %}
+            <li>You haven't logged any trips yet. Create your first one to get started.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

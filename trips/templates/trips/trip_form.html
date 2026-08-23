@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Sign up — VeloLog{% endblock %}
+{% block title %}New trip — VeloLog{% endblock %}
 
 {% block content %}
-    <h1>Sign up</h1>
+    <h1>New trip</h1>
     <form method="post">
         {% csrf_token %}
         {{ form.non_field_errors }}
@@ -14,7 +14,6 @@
                 {{ field.errors }}
             </p>
         {% endfor %}
-        <button type="submit">Sign up</button>
+        <button type="submit">Save trip</button>
     </form>
-    <p><a href="{% url 'login' %}">Already have an account? Log in</a></p>
 {% endblock %}

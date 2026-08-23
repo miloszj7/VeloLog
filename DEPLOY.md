@@ -36,6 +36,21 @@ Run this immediately before any deploy that includes a migration, and keep the b
    ```
 3. Redeploy (or restart) the service so gunicorn picks up the restored file, then verify via `/healthz/`.
 
+## Production superuser (one-time)
+
+No `createsuperuser` step exists in `railway.json`, `DEPLOY.md`, or `deployment-plan.md`,
+so the Django admin (registered for `Trip` in S-02) is unreachable in production until
+this runs once:
+
+```bash
+railway ssh
+uv run python manage.py createsuperuser
+```
+
+Store the credentials in the password manager — never in the repo or in `DEPLOY.md`.
+Re-run only if the production database is ever rebuilt from scratch (a restore from a
+pre-superuser backup, or a fresh Volume).
+
 ## Spend alert
 
 A $5 Hobby-plan usage alert was set in Railway account billing settings during Phase 0.2 — confirm it's still active after any billing-related change.

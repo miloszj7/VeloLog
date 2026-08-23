@@ -574,22 +574,22 @@ This is the repo's first schema migration against production, and the deploy pat
 
 #### Automated
 
-- [ ] 1.1 Migration is generated and committed
-- [ ] 1.2 No pending model changes (`makemigrations --check --dry-run`)
-- [ ] 1.3 Migration applies cleanly to a fresh database
-- [ ] 1.4 Model tests pass
-- [ ] 1.5 Full suite still passes
-- [ ] 1.6 `trips` appears in the coverage report
-- [ ] 1.7 No `models.W042` or other system-check warnings
-- [ ] 1.8 Quality gates pass
-- [ ] 1.9 No `trips/tests.py` exists
-- [ ] 1.10 CI gate carries the migration check
-- [ ] 1.11 Lint passes with the `S608` ignore removed and `main.py` gone
+- [x] 1.1 Migration is generated and committed
+- [x] 1.2 No pending model changes (`makemigrations --check --dry-run`)
+- [x] 1.3 Migration applies cleanly to a fresh database
+- [x] 1.4 Model tests pass
+- [x] 1.5 Full suite still passes
+- [x] 1.6 `trips` appears in the coverage report
+- [x] 1.7 No `models.W042` or other system-check warnings
+- [x] 1.8 Quality gates pass
+- [x] 1.9 No `trips/tests.py` exists
+- [x] 1.10 CI gate carries the migration check
+- [x] 1.11 Lint passes with the `S608` ignore removed and `main.py` gone
 
 #### Manual
 
-- [ ] 1.12 Trip creates and reads back with expected ordering in the shell
-- [ ] 1.13 Django admin loads and lists Trip
+- [x] 1.12 Trip creates and reads back with expected ordering in the shell
+- [x] 1.13 Django admin loads and lists Trip
 
 ### Phase 2: Base template and shared chrome
 

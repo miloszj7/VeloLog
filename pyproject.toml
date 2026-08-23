@@ -36,9 +36,6 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "C4", "S"]
-ignore = [
-    "S608",   # trusted-config table names in INSERT f-strings
-]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S106"]   # assert/test-passwords are fine in tests
@@ -58,9 +55,10 @@ django_settings_module = "velo_log.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "velo_log.settings"
 python_files = ["tests.py", "test_*.py"]
+testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["accounts", "velo_log"]
+source = ["accounts", "trips", "velo_log"]
 omit = ["velo_log/wsgi.py", "velo_log/asgi.py", "velo_log/settings.py"]
 
 [tool.coverage.report]

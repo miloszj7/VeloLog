@@ -75,7 +75,8 @@ without also attempting a deploy.
 A pull request targeting `master` runs a `gates` job covering lint, formatting, import
 order, strict typing, Django checks, the migration guard, and the test suite with
 coverage. A push to `master` runs the same job, and `railway up` executes only if it
-passed. The suite's result no longer depends on whether a `.env` file happens to exist.
+passed. The suite's result no longer depends on `.env` for anything but `SECRET_KEY`,
+which CI supplies explicitly at the job level.
 
 Verify by: opening the PR for this branch and observing the `gates` check run and pass,
 and confirming the deploy job reports as skipped on the PR run.
@@ -84,7 +85,8 @@ and confirming the deploy job reports as skipped on the PR run.
 
 - **GitHub branch protection** — requiring the `gates` check before merge is a repository
   setting, not a file in the repo. It cannot be done from a commit; flagged for the user
-  to click after merge.
+  to click after merge, and recorded as a successor Engineering Backlog row in Phase 4 so
+  the reminder outlives this change folder.
 - **Dependency caching or CI speed tuning** — no `actions/cache`, no uv cache key, no
   `concurrency: cancel-in-progress`. The whole suite runs in ~25s; optimizing is premature.
 - **Raising `fail_under`** — it stays at 80 despite actual coverage being 93%. The scope
@@ -108,11 +110,20 @@ it lands.
 **Ordering.** Phase 1's fixture must be committed before Phase 3's workflow change. The
 converse order produces a red gate whose cause is the settings divergence, not the code.
 
-**Reproducing the CI environment locally.** Prefix any command with `DEBUG=False` to
-simulate the `.env`-less CI environment — `.env` is read via `os.environ.setdefault`
-semantics, so an explicit shell variable wins over the file. This is the check that
-matters after Phase 1, and running the suite the normal way will not catch a regression
-in it.
+**Reproducing the CI environment locally.** `.env` is read via `os.environ.setdefault`
+semantics, so explicit shell variables win over the file — but only for the vars actually
+overridden. `DEBUG=False` alone is *not* a CI simulation: `.env` still supplies
+`SECRET_KEY`, `ALLOWED_HOSTS` and `DB_PATH`, which is precisely the blind spot that made
+F1 possible. Override everything `.env` provides:
+
+```
+SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov
+```
+
+This exact string is the **CI-equivalence command**, and it is the string that goes into
+`AGENTS.md` in Phase 4 and into every success criterion below. Running the suite the normal
+way will not catch a regression in it. (`DB_PATH` needs no override — the SQLite backend
+uses an in-memory test database.)
 
 **Do not override `DEBUG` itself in the fixture.** Overriding `DEBUG` would re-run the
 whole `if not DEBUG:` block's inverse and defeat the point of keeping the suite
@@ -154,10 +165,20 @@ the one line that matters.
 `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` are `True`, `SECURE_PROXY_SSL_HEADER`
 equals `("HTTP_X_FORWARDED_PROTO", "https")`, and `SECURE_HSTS_SECONDS` is positive. It
 must read the values from a freshly-evaluated settings module rather than the live
-`django.conf.settings`, since the autouse fixture has already mutated the latter — e.g.
-via `importlib` reload under a patched environment, or by asserting on the module-level
-constants. Whichever mechanism is used, the test must fail if the `if not DEBUG:` block is
-deleted.
+`django.conf.settings`, since the autouse fixture has already mutated the latter.
+
+The mechanism is **`importlib.reload(velo_log.settings)` inside
+`mock.patch.dict(os.environ, {"DEBUG": "False"})`** — `read_env` uses `setdefault`
+semantics, so the patched value wins over `.env`. Reload the module again outside the
+patch as teardown, so the mutated `sys.modules` entry does not leak into later tests.
+
+Do **not** assert on the module-level constants directly instead: locally `DEBUG` is true,
+the `if not DEBUG:` block at `settings.py:141` never executes, and those names do not
+exist as module attributes — verified, `hasattr(velo_log.settings, "SECURE_SSL_REDIRECT")`
+is `False` on this branch. That variant would pass in CI and raise `AttributeError` under a
+plain `uv run pytest`, breaking success criterion 1.2.
+
+The test must fail if the `if not DEBUG:` block is deleted.
 
 #### 3. Environment documentation
 
@@ -166,16 +187,23 @@ deleted.
 **Intent**: The CI failure traced directly to an undocumented `DEBUG` default; document it
 so a fresh checkout knows which variables shape behavior.
 
-**Contract**: Ensure `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, and `DB_PATH` are all present
-as keys with no real values, each with a short comment noting its default and effect —
-specifically that `DEBUG` defaults to `False` and that a false `DEBUG` turns on HTTPS
-redirect. Add only what is missing; do not restructure the file.
+**Contract**: All four keys are **already present** — verified: `SECRET_KEY=`,
+`DEBUG=False`, `ALLOWED_HOSTS=`, `DB_PATH=`, with zero comments. So this change is purely
+additive commentary: add a short comment to each key noting its default and effect. Do not
+add keys and do not restructure the file.
+
+The `DEBUG` comment must address the trap the committed value creates: a contributor who
+copies `.env.example` to `.env` verbatim inherits `DEBUG=False`, which turns on the HTTPS
+redirect and produces the 301 failures described in Current State Analysis. State that the
+committed `False` is intentional (it matches the production default and CI) and that it is
+safe under test only because the Phase 1 autouse fixture neutralizes
+`SECURE_SSL_REDIRECT`.
 
 ### Success Criteria:
 
 #### Automated Verification:
 
-- Full suite passes in a CI-like environment: `DEBUG=False uv run pytest --cov`
+- Full suite passes under the CI-equivalence command: `SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`
 - Full suite still passes normally: `uv run pytest --cov`
 - Coverage remains at or above `fail_under = 80`
 - Strict typing passes on the new fixture and test: `uv run mypy .`
@@ -210,17 +238,31 @@ next slice.
 in the coverage source list, so the coverage gate cannot be silently narrowed.
 
 **Contract**: A test that reads `[tool.coverage.run] source` from `pyproject.toml` (via
-`tomllib`, stdlib on 3.14) and asserts every non-`django.contrib` entry of
-`INSTALLED_APPS` appears in it. The comparison must treat a first-party app as any
-`INSTALLED_APPS` entry that does not start with `django.`, and the failure message must
-name the missing package and point at `pyproject.toml` so the fix is obvious from CI logs
-alone.
+`tomllib`, stdlib on 3.14) and asserts every first-party `INSTALLED_APPS` package appears
+in it. The failure message must name the missing package and point at `pyproject.toml` so
+the fix is obvious from CI logs alone.
+
+**First-party detection**: normalize each `INSTALLED_APPS` entry to its top-level package
+(`entry.split(".")[0]`) and treat it as first-party only if a directory of that name exists
+at the repo root. Compare that normalized set against `source`.
+
+Do **not** use "does not start with `django.`" as the test. It is accurate for today's
+list (`settings.py:38-47` is `django.contrib.*` plus `accounts`, `trips`) but breaks on two
+shapes the next slice can introduce, and in both directions:
+
+- A third-party app (`whitenoise.runserver_nostatic`, `django_extensions`) would be wrongly
+  demanded in coverage `source` — the repo-root directory check excludes it.
+- A dotted AppConfig path (`gpx.apps.GpxConfig`, which `startapp` scaffolding encourages)
+  would never string-match the `"gpx"` entry in `source` and would fail even when correctly
+  configured — normalizing to the top-level package fixes it.
+
+Either miss produces a false red on S-03, the exact slice this guard was written for.
 
 ### Success Criteria:
 
 #### Automated Verification:
 
-- Suite passes: `DEBUG=False uv run pytest --cov`
+- Suite passes under the CI-equivalence command: `SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`
 - The guard fails when an entry is temporarily removed from `[tool.coverage.run] source` (mutation check, then revert)
 - Strict typing, lint, and format gates pass
 
@@ -255,8 +297,18 @@ provably blocks a deploy, and a pull request gets checked without attempting one
 - A new `gates` job on `ubuntu-latest`: checkout, `astral-sh/setup-uv@v3`,
   `uv sync --locked`, then `ruff check .`, `black --check .`, `isort --check-only .`,
   `mypy .`, `manage.py check`, `makemigrations --check --dry-run`, and `pytest --cov`.
-  All Django-touching steps need `SECRET_KEY` in the environment, matching the existing
-  inline CI-only value.
+- `SECRET_KEY: ci-check-only-not-a-real-secret` is declared **at the job level** on
+  `gates` (a `env:` block on the job, not on individual steps), reusing the existing
+  inline CI-only value from `deploy.yml`. This is deliberate and must not be narrowed to
+  per-step: four of the steps import the settings module, and `SECRET_KEY` is the one env
+  var with no default (`velo_log/settings.py:28`), so each would raise
+  `ImproperlyConfigured` in a `.env`-less runner. `manage.py check` and
+  `makemigrations --check` import it directly; `mypy .` imports it because
+  `[tool.django-stubs] django_settings_module = "velo_log.settings"`
+  (`pyproject.toml:52-53`) makes the plugin load it at type-check time; `pytest --cov`
+  imports it because pytest-django calls `django.setup()` from `DJANGO_SETTINGS_MODULE`
+  (`pyproject.toml:56`). The ruff/black/isort steps simply ignore it. Job-level scope also
+  stays correct when a future step is added.
 - The `deploy` job keeps its Railway steps, gains `needs: gates`, and gains
   `if: github.event_name == 'push'` so pull requests never deploy. Its now-redundant
   `manage.py check` / `makemigrations` step is removed, since `gates` owns it.
@@ -272,7 +324,7 @@ The workflow name should stop claiming it only deploys — it now gates as well.
 - Workflow YAML parses and the run appears on the PR: the `gates` check is listed on the pull request for this branch
 - `gates` passes on the pull request
 - The `deploy` job reports as skipped on the pull-request run
-- Every command in `gates` matches one that passes locally under `DEBUG=False`
+- Every command in `gates` matches one that passes locally under the CI-equivalence command's environment (`SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS=`)
 
 #### Manual Verification:
 
@@ -303,8 +355,11 @@ tell that CI enforces it or that the suite must pass with no `.env`.
 **Contract**: Extend the Testing / Commits sections to state that `gates` runs lint,
 format, import order, strict typing, Django checks, the migration guard, and
 `pytest --cov` on every pull request to `master` and every push to it, that the Railway
-deploy is blocked on it, and that the suite must pass with no `.env` present
-(`DEBUG=False uv run pytest`).
+deploy is blocked on it, and that the suite must pass with no `.env` present. Quote the
+CI-equivalence command verbatim as the way to reproduce a CI failure locally:
+`SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`.
+Do not write `DEBUG=False uv run pytest` — that leaves `.env` supplying `SECRET_KEY` and
+`ALLOWED_HOSTS`, so it does not reproduce CI, and `AGENTS.md` loads every session.
 
 #### 2. Roadmap and change status
 
@@ -317,17 +372,25 @@ change is implemented.
 frontmatter `updated:` is bumped. `change.md` frontmatter `status:` advances per the
 change lifecycle and `updated:` is bumped.
 
+In the same edit, add a **new** Engineering Backlog row so the unapplied half of the gate
+stays recorded in the repo: gap = "`gates` is not a required check — a merge can still be
+forced past a red run", fix = "enable branch protection on `master` requiring the `gates`
+check", trigger = "immediately after this change merges". Without it, the row being marked
+`done` is the only durable trace of this work item, and the branch-protection reminder
+survives only in `plan-brief.md`'s Open Risks — which nobody reads once the change closes.
+
 ### Success Criteria:
 
 #### Automated Verification:
 
-- Full gate suite passes locally: `DEBUG=False uv run pytest --cov`, `uv run mypy .`, `uv run ruff check .`, `uv run black --check .`, `uv run isort --check-only .`
+- Full gate suite passes locally: the CI-equivalence command (`SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`), `uv run mypy .`, `uv run ruff check .`, `uv run black --check .`, `uv run isort --check-only .`
 - No stale claim remains in `AGENTS.md`: its description of coverage scope and CI matches `pyproject.toml` and `deploy.yml`
 
 #### Manual Verification:
 
 - `AGENTS.md` read cold explains what CI enforces and how to reproduce a CI failure locally
 - The roadmap's Engineering Backlog row no longer claims the CI gap exists
+- A successor Engineering Backlog row records that `gates` is not yet a required check
 
 ---
 
@@ -348,7 +411,9 @@ change lifecycle and `updated:` is bumped.
 
 ### Manual Testing Steps:
 
-1. Run `DEBUG=False uv run pytest --cov` — this is what CI does; it must pass.
+1. Run the CI-equivalence command
+   `SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`
+   — this is what CI does; it must pass.
 2. Open the PR and confirm `gates` appears and passes, and `deploy` is skipped.
 3. Push a formatting violation; confirm `gates` fails and `deploy` does not run. Revert.
 4. Merge and confirm `gates` → `deploy` ordering, then hit `/healthz/` on the deployed app.
@@ -382,7 +447,7 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [ ] 1.1 Full suite passes in a CI-like environment (`DEBUG=False uv run pytest --cov`)
+- [ ] 1.1 Full suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
 - [ ] 1.2 Full suite still passes normally (`uv run pytest --cov`)
 - [ ] 1.3 Coverage remains at or above `fail_under = 80`
 - [ ] 1.4 Strict typing passes on the new fixture and test (`uv run mypy .`)
@@ -397,7 +462,7 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [ ] 2.1 Suite passes (`DEBUG=False uv run pytest --cov`)
+- [ ] 2.1 Suite passes under the CI-equivalence command (`SECRET_KEY=… DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`)
 - [ ] 2.2 Guard fails when an entry is removed from `[tool.coverage.run] source` (mutation check, then revert)
 - [ ] 2.3 Strict typing, lint, and format gates pass
 
@@ -412,7 +477,7 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 - [ ] 3.1 `gates` check is listed on the pull request for this branch
 - [ ] 3.2 `gates` passes on the pull request
 - [ ] 3.3 `deploy` job reports as skipped on the pull-request run
-- [ ] 3.4 Every command in `gates` matches one that passes locally under `DEBUG=False`
+- [ ] 3.4 Every command in `gates` matches one that passes locally under the CI-equivalence command's environment
 
 #### Manual
 
@@ -424,10 +489,11 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [ ] 4.1 Full gate suite passes locally (tests, mypy, ruff, black, isort)
+- [ ] 4.1 Full gate suite passes locally under the CI-equivalence command (tests, mypy, ruff, black, isort)
 - [ ] 4.2 No stale CI or coverage-scope claim remains in `AGENTS.md`
 
 #### Manual
 
 - [ ] 4.3 `AGENTS.md` read cold explains what CI enforces and how to reproduce a failure locally
 - [ ] 4.4 Roadmap Engineering Backlog row no longer claims the CI gap exists
+- [ ] 4.5 Successor Engineering Backlog row records that `gates` is not yet a required check

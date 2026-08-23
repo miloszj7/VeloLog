@@ -595,36 +595,36 @@ This is the repo's first schema migration against production, and the deploy pat
 
 #### Automated
 
-- [x] 2.1 Full suite passes with no test modifications
-- [x] 2.2 The invalid-login error assertion still passes
-- [x] 2.3 Templates resolve (`manage.py check`)
-- [x] 2.4 Quality gates pass
+- [x] 2.1 Full suite passes with no test modifications — 5bd02ef
+- [x] 2.2 The invalid-login error assertion still passes — 5bd02ef
+- [x] 2.3 Templates resolve (`manage.py check`) — 5bd02ef
+- [x] 2.4 Quality gates pass — 5bd02ef
 
 #### Manual
 
-- [x] 2.5 Login and signup pages render correctly with titles intact
-- [x] 2.6 Logout button present on authenticated pages, absent on login
-- [x] 2.7 Invalid login still displays the non-field error
+- [x] 2.5 Login and signup pages render correctly with titles intact — 5bd02ef
+- [x] 2.6 Logout button present on authenticated pages, absent on login — 5bd02ef
+- [x] 2.7 Invalid login still displays the non-field error — 5bd02ef
 
 ### Phase 3: Create and list views
 
 #### Automated
 
-- [ ] 3.1 All new trips tests pass
-- [ ] 3.2 Full suite passes
-- [ ] 3.3 Coverage gate met with `trips` in scope
-- [ ] 3.4 Type checking passes, including both shim arities
-- [ ] 3.5 No pending model changes
-- [ ] 3.6 Quality gates pass
+- [x] 3.1 All new trips tests pass
+- [x] 3.2 Full suite passes
+- [x] 3.3 Coverage gate met with `trips` in scope
+- [x] 3.4 Type checking passes, including both shim arities
+- [x] 3.5 No pending model changes
+- [x] 3.6 Quality gates pass
 
 #### Manual
 
-- [ ] 3.7 Empty state shows on a fresh account
-- [ ] 3.8 Creating a trip redirects, confirms, and displays
-- [ ] 3.9 Date field renders a native picker
-- [ ] 3.10 Blank name shows an inline error and creates nothing
-- [ ] 3.11 A second user sees only their own list
-- [ ] 3.12 Logged-out access redirects to login and returns after auth
+- [x] 3.7 Empty state shows on a fresh account
+- [x] 3.8 Creating a trip redirects, confirms, and displays
+- [x] 3.9 Date field renders a native picker
+- [x] 3.10 Blank name shows an inline error and creates nothing
+- [x] 3.11 A second user sees only their own list
+- [x] 3.12 Logged-out access redirects to login and returns after auth
 
 ### Phase 4: Retire the landing page and claim the site root
 

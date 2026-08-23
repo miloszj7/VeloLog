@@ -4,18 +4,19 @@
 - **Plan**: `context/changes/ci-quality-gates/plan.md`
 - **Mode**: Deep
 - **Date**: 2026-08-23
-- **Verdict**: REVISE
+- **Verdict**: REVISE → **SOUND** after triage (all 6 findings fixed in the plan)
 - **Findings**: 2 critical, 3 warnings, 1 observation
+- **Triaged**: 2026-08-23 — 6 fixed, 0 skipped, 0 accepted, 0 dismissed
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| End-State Alignment | WARNING |
-| Lean Execution | PASS |
-| Architectural Fitness | WARNING |
-| Blind Spots | FAIL |
-| Plan Completeness | WARNING |
+| Dimension | At review | After triage |
+|-----------|-----------|--------------|
+| End-State Alignment | WARNING | PASS |
+| Lean Execution | PASS | PASS |
+| Architectural Fitness | WARNING | PASS |
+| Blind Spots | FAIL | PASS |
+| Plan Completeness | WARNING | PASS |
 
 ## Grounding
 
@@ -71,7 +72,8 @@ phase headings match verbatim; every success-criteria bullet has a numbered chec
     django-stubs and pytest-django import that module by design.
   - Blind spot: Not reproducible locally — `.env` supplies `SECRET_KEY` via `read_env`,
     so the failure only appears on the first CI run. Same root cause as F3.
-- **Decision**: PENDING
+- **Decision**: FIXED — job-level `env:` mandated in the Phase 3 contract, with the four
+  settings-importing steps named explicitly.
 
 ### F2 — Security test offers two mechanisms; one of them fails locally
 
@@ -93,7 +95,8 @@ phase headings match verbatim; every success-criteria bullet has a numbered chec
   — `read_env` uses setdefault semantics, so the patched value wins — and require a
   reload back to the unpatched state afterwards so the mutated `sys.modules` entry
   doesn't leak into later tests.
-- **Decision**: PENDING
+- **Decision**: FIXED — alternative dropped; `importlib.reload` under
+  `mock.patch.dict` mandated, with reload-back teardown and an explicit "do not" note.
 
 ### F3 — "Reproducing the CI environment locally" doesn't reproduce it
 
@@ -128,7 +131,9 @@ phase headings match verbatim; every success-criteria bullet has a numbered chec
     wasn't readable (dotfile access denied), so the exact divergence on that one var is
     unverified. `setup_test_environment()` appends `testserver` regardless, so it
     shouldn't matter.
-- **Decision**: PENDING
+- **Decision**: FIXED — CI-equivalence command defined in Critical Implementation Details
+  and propagated to the Desired End State, Phase 1/2/3/4 criteria, Phase 4's `AGENTS.md`
+  contract, Testing Strategy step 1, and Progress items 1.1 / 2.1 / 3.4 / 4.1.
 
 ### F4 — Coverage guard's "first-party" heuristic will misfire
 
@@ -148,7 +153,8 @@ phase headings match verbatim; every success-criteria bullet has a numbered chec
 - **Fix**: Normalize each entry to its top-level package (`entry.split(".")[0]`) and
   treat it as first-party only if a directory of that name exists at the repo root.
   Compare that normalized set against `source`.
-- **Decision**: PENDING
+- **Decision**: FIXED — Phase 2 contract now mandates top-level-package normalization plus
+  a repo-root directory check, with both misfire shapes spelled out as a "do not".
 
 ### F5 — Backlog row marked `done` while the thing that makes it a gate is unapplied
 
@@ -165,7 +171,8 @@ phase headings match verbatim; every success-criteria bullet has a numbered chec
   row: "`gates` is not a required check — a merge can still be forced past a red run",
   fix = enable branch protection on `master` requiring `gates`, trigger = "immediately
   after this change merges".
-- **Decision**: PENDING
+- **Decision**: FIXED — successor backlog row added to the Phase 4 contract, cross-noted in
+  "What We're NOT Doing", and made verifiable as new criterion 4.5.
 
 ### F6 — `.env.example` already has all four keys
 
@@ -182,7 +189,8 @@ phase headings match verbatim; every success-criteria bullet has a numbered chec
 - **Fix**: Reword the contract to "the keys are already present — add a comment to
   each" and require the `DEBUG` comment to say that copying `False` here is intentional
   and safe only because the Phase 1 fixture neutralizes the HTTPS redirect under test.
-- **Decision**: PENDING
+- **Decision**: FIXED — Phase 1 Change 3 contract rewritten as comment-only, with the
+  verified current contents recorded and the `DEBUG` copy-trap note required.
 
 ## Notes
 

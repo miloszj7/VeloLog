@@ -489,11 +489,11 @@ reverting `deploy.yml`, which restores the previous ungated deploy exactly.
 
 #### Automated
 
-- [x] 4.1 Full gate suite passes locally under the CI-equivalence command (tests, mypy, ruff, black, isort)
-- [x] 4.2 No stale CI or coverage-scope claim remains in `AGENTS.md`
+- [x] 4.1 Full gate suite passes locally under the CI-equivalence command (tests, mypy, ruff, black, isort) — cbae77b
+- [x] 4.2 No stale CI or coverage-scope claim remains in `AGENTS.md` — cbae77b
 
 #### Manual
 
-- [x] 4.3 `AGENTS.md` read cold explains what CI enforces and how to reproduce a failure locally
-- [x] 4.4 Roadmap Engineering Backlog row no longer claims the CI gap exists
-- [x] 4.5 Successor Engineering Backlog row records that `gates` is not yet a required check
+- [x] 4.3 `AGENTS.md` read cold explains what CI enforces and how to reproduce a failure locally — cbae77b
+- [x] 4.4 Roadmap Engineering Backlog row no longer claims the CI gap exists — cbae77b
+- [x] 4.5 Successor Engineering Backlog row records that `gates` is not yet a required check — cbae77b

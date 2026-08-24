@@ -249,7 +249,9 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
   `.venv` is gitignored and the Railway CLI honours `.gitignore`, so nothing is uploaded — this
   is waste, not breakage.
 - **Fix**: Delete the `Install uv` and `Install dependencies` steps from the `deploy` job.
-- **Decision**: PENDING
+- **Decision**: FIXED — both steps removed from `.github/workflows/deploy.yml`'s `deploy`
+  job. Not runnable locally (a real `push` event); will be observed on the next push to
+  `master`.
 
 ### F7 — Unpinned `@railway/cli` runs in the job holding `RAILWAY_TOKEN`
 

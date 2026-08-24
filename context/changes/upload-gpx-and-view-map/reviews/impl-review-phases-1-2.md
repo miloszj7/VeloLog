@@ -366,14 +366,20 @@ plan did not anticipate or did not require proving.
 - **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
 - **Dimension**: Pattern Consistency
 - **Location**: `tests/test_media_storage.py:118`, `:126`
-- **Detail**: These two call `velo_log_urls._media_root_misconfigured()` directly, where every
+- **Detail**: These two call `velo_log_urls.media_root_misconfiguration()` directly, where every
   other test in the repo — including the other five in the same file — asserts through the test
   client. Both docstrings justify it (routing a real request would write into the working tree)
   and the justification is sound, but the coupling means a rename or an inline silently drops the
   only coverage of the absolute-path and DEBUG-skip branches.
 - **Fix**: Promote the function to a public name (e.g. `media_root_misconfiguration()`) if it is
   going to serve as a test seam.
-- **Decision**: PENDING
+- **Decision**: FIXED — `_media_root_misconfigured` renamed to `media_root_misconfiguration` across
+  all four sites (`velo_log/urls.py` definition and `healthz` call site, both test call sites). The
+  seam is now a deliberate public name rather than a private one reached around, so a future rename
+  has to confront the tests instead of silently orphaning the absolute-path and DEBUG-skip branches.
+  The tests keep asserting against the function directly — routing them through `/healthz/` would
+  write the probe file into the working tree, which is exactly what the location guard exists to
+  prevent.
 
 ## Notes carried forward (no finding)
 

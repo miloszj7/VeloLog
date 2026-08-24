@@ -618,13 +618,18 @@ posture). Embedding the coordinate array must use `{{ ...|json_script }}`, not `
 - `context/changes/upload-gpx-and-view-map/research/gpxpy-context7-docs.md` — Context7 API
   capture. **Accurate and usable as-is**; the exception pair to catch
   (`GPXXMLSyntaxException`, `GPXException`) is correct.
-- `context/changes/upload-gpx-and-view-map/research/leaflet-context7-docs.md` — **use with
-  care**: the snippets are Leaflet **2.0-alpha ESM**, not stable 1.9.4, because it was
-  fetched from `/leaflet/leaflet`. To get usable 1.x docs, re-fetch from
-  **`/websites/leafletjs`** and confirm the returned code uses `L.map(...)` rather than
-  `new LeafletMap(...)` — see "How to re-fetch Leaflet 1.x docs from Context7" in §1. Its
-  own recommendation at `:68,96` (server-side parse, core `Polyline`, no plugin) is the
-  right call and is what this research endorses.
+- `context/changes/upload-gpx-and-view-map/research/leaflet-1.9.4-context7-docs.md` —
+  **the Leaflet reference to implement against.** Fetched from `/websites/leafletjs` per §1;
+  every snippet passes the 1.x tell-tale test. It also records explicitly which S-03 needs
+  Context7 did *not* cover (the `L.map` interaction options that make the map behave as a
+  static image, and `fitBounds` padding/`maxZoom`) — both load-bearing, both to be verified
+  against `leafletjs.com/reference.html` or the vendored `leaflet.js` at implement time.
+- `context/changes/upload-gpx-and-view-map/research/leaflet-context7-docs.md` — **superseded
+  for implementation purposes** by the file above. The snippets are Leaflet **2.0-alpha
+  ESM**, not stable 1.9.4, because it was fetched from `/leaflet/leaflet`. Keep it as
+  2.0 reference material for the eventual FR-015 upgrade. Its own recommendation at
+  `:68,96` (server-side parse, core `Polyline`, no plugin) is the right call and is what
+  this research endorses.
 - `context/changes/upload-gpx-and-view-map/research/map-library-research.md` — **two
   corrections**: `@raruto/leaflet-elevation` is GPL-3.0 (not "MIT-style", `:41`) and pins
   `leaflet ^1.7.0`; and "serve the GPX file from Django media/static" (`:20,30`) conflicts

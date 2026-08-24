@@ -108,7 +108,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
 - **Fix**: Add `leaflet.js.map` to the vendored file list in Phase 5 §1, and state the
   rule once — every vendored asset's `sourceMappingURL` and `url()` targets must be
   vendored alongside it, or the comment stripped.
-- **Decision**: PENDING
+- **Decision**: FIXED. Phase 5 §1 now lists `leaflet.js.map` and states the sibling-reference rule once, covering both reference kinds (`url()` and `sourceMappingURL`) with the storage class that resolves them. It also records the correct response to a `MissingFileError` — vendor the missing sibling, never relax `WHITENOISE_MANIFEST_STRICT` or downgrade the storage class.
 
 ### F3 — The specified entity-expansion test is unsatisfiable, and the DoS it names is unmitigated
 

@@ -200,8 +200,8 @@ plan did not anticipate or did not require proving.
   clean; CI-equivalent `pytest --cov` 51 passed (was 50), TOTAL 99.51%.
 
   Note this closes only the `upload_to` half of the coverage hole. F7 — `points` and the four
-  bounds never round-tripped through the database — is the same `_make_track` shortcut and remains
-  PENDING.
+  bounds never round-tripped through the database — is the same `_make_track` shortcut and was
+  still PENDING when this decision was written; it was fixed afterwards in `e85c19c`.
 
 ### F4 — `/healthz/` performs unthrottled DB and volume I/O for any anonymous caller
 

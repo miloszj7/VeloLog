@@ -392,6 +392,18 @@ survives only in `plan-brief.md`'s Open Risks — which nobody reads once the ch
 - The roadmap's Engineering Backlog row no longer claims the CI gap exists
 - A successor Engineering Backlog row records that `gates` is not yet a required check
 
+### Addendum (post-merge, PR #8, `docs/ci-quality-gates-follow-up`)
+
+Beyond this contract's three edits, the Engineering Backlog table in `roadmap.md` was
+restructured from 3 columns (`Item` / `Proposed fix` / `Trigger`) to 6, adding
+`Change ID`, `Status`, and `GitHub Issue`, and rewritten for all 8 rows — not just the
+`ci-quality-gates` row this phase owned. `context/foundation/github-issues-migration.md`
+also gained a `type:eng-backlog` label row, self-annotated "not part of the original
+migration scope." Recorded here per the impl review (F3) so the addition is visible
+against this plan rather than only in the follow-up PR's own history. The restructure is
+itself partial progress on the still-open "tracker statuses never propagate" backlog row —
+see that row's note in `roadmap.md` for what remains.
+
 ---
 
 ## Testing Strategy

@@ -77,8 +77,9 @@ db.sqlite3
 db.sqlite3-journal
 staticfiles/
 
-# Local production DB backups (see DEPLOY.md)
-backup/db/
+# Local production backups — DB dumps and media copies (see DEPLOY.md).
+# The whole directory is ignored: never commit a production dump of any kind.
+backup/
 
 # Flask stuff:
 instance/

@@ -287,7 +287,21 @@ plan did not anticipate or did not require proving.
   types would be unambiguous — a property no test currently checks.
 - **Fix**: `assert GpxTrack.objects.get(pk=track.pk).points == POINTS`, plus the same for the four
   bound floats.
-- **Decision**: PENDING
+- **Decision**: FIXED — `test_points_and_bounds_survive_a_round_trip_through_the_database` re-reads
+  from a fresh query and pins the values *and* the types: every coordinate in `points` and all four
+  bounds must be `float`. Value equality alone would already catch a JSON string, but the property
+  the plan actually relies on is the type, so it is asserted rather than inferred.
+
+  Verified the test bites, rather than assuming it would: with `points` redeclared as a
+  `TextField`, it fails on the reloaded value being the string
+  `'[[50.06, 19.94], [50.07, 19.95]]'`. That is the plausible regression — the SQLite column is
+  text either way, so nothing else in the suite would have noticed.
+
+  Together with F3 this closes the `_make_track` shortcut in both directions: the file field is now
+  exercised through a real save, and the JSON and float columns through a real read.
+
+  Gates: ruff / black / isort / `mypy` (42 files) / `manage.py check` / `makemigrations --check`
+  clean; CI-equivalent `pytest --cov` 52 passed (was 51), TOTAL 99.51%.
 
 ### F8 — `GpxTrackAdmin` changelist is tuned; the change form is not
 

@@ -93,6 +93,14 @@ exits 0; the flow above completes end to end against a real browser on a deploye
   `py.typed`, verified executing on this repo's CPython 3.14.5 with `backend = STDLIB`.
   Do **not** add `lxml`: it silently switches gpxpy's parser backend and changes
   entity-resolution defaults with no gate that would notice.
+- **The stdlib backend rejects XXE but expands internal entities.** Measured on this venv's
+  CPython 3.14: an *external* entity reference raises `ParseError: undefined entity`, while
+  *internal nested* entity definitions expand — four levels reached 10,000 characters, and
+  `xml.etree.ElementTree` is documented-vulnerable to billion laughs. So "XXE" and
+  "entity expansion" are two different outcomes here, and only the first is free. A file
+  well under the 10 MB cap can expand to gigabytes of memory at upload time on an endpoint
+  any authenticated user can reach — which is why Phase 4 §3 rejects DTDs outright rather
+  than relying on the backend (see Critical Implementation Details).
 - **The `TYPE_CHECKING` base-alias idiom is mandatory** for every Django generic
   (`trips/views.py:14-21`, `trips/forms.py:7-10`, `trips/admin.py:7-10`) — django-stubs
   generics are not subscriptable at runtime.
@@ -174,6 +182,15 @@ trips `disallow_any_generics` (write `UploadedFile[Any]`); `gpxpy.parse` is type
 directly yields `[type-var]`, not `[arg-type]` — and `strict` enables
 `warn_unused_ignores`, so a mis-coded `# type: ignore[arg-type]` produces two errors instead
 of zero. Decode to `str` and pass the string.
+
+**Entity expansion is mitigated by rejecting DTDs, not by the parser.** The stdlib backend
+gives XXE protection for free and no billion-laughs protection at all, so the measure cannot
+live inside `gpxpy`. `gpx/parsing.py` therefore rejects any `<!DOCTYPE` in the decoded text
+*before* parsing. This is a deliberate text-level pre-check sitting outside the parser and
+needs a comment saying so, or a later reader will read it as redundant with `gpxpy` and
+remove it. A legitimate GPX file carries no internal DTD, so there is no false-positive cost.
+Note what this does **not** bound: a plain, entity-free payload — see Performance
+Considerations.
 
 **ruff gives zero protection on this slice's security surface.** `gpxpy.parse` is opaque to
 the `S3xx` rules (they key on resolved qualified names like `ET.parse`); `S320`/`S410` are
@@ -524,7 +541,9 @@ would notice.
 form is not catching third-party exceptions directly.
 
 **Contract**: A 10 MB upload ceiling in bytes and the allowed extension tuple as named
-constants. A `GpxParseError` base exception for the app, raised by the parsing module.
+constants. A `GpxParseError` base exception for the app, raised by the parsing module — for
+the rejected-DTD case as well as the parse failures, so the form has one exception type to
+catch.
 
 #### 3. Parsing module
 
@@ -534,7 +553,16 @@ constants. A `GpxParseError` base exception for the app, raised by the parsing m
 security surface is a single reviewable file rather than logic spread through a form.
 
 **Contract**: One function taking GPX text and returning a small frozen dataclass carrying
-the ordered `[lat, lon]` point list and the four bounds floats. It catches
+the ordered `[lat, lon]` point list and the four bounds floats.
+
+Before parsing, it rejects any document type declaration: if `<!DOCTYPE` appears in the
+decoded text, raise `GpxParseError` without handing the text to `gpxpy`. This is the slice's
+entity-expansion mitigation — the pinned stdlib backend rejects external entities on its own
+but expands internal ones (see Key Discoveries), so the guard has to sit here. It carries a
+comment saying why, since nothing in the toolchain would prompt for it and it reads as
+redundant otherwise.
+
+It catches
 `gpxpy.gpx.GPXXMLSyntaxException` (malformed XML) and `gpxpy.gpx.GPXException` (valid XML,
 invalid GPX) **separately** — they are two distinct user-facing failures — plus
 `UnicodeDecodeError` from the decode step, and re-raises all three as `GpxParseError` with
@@ -556,7 +584,9 @@ members — narrow before use or mypy's `union-attr` fires.
 `TYPE_CHECKING` base-alias idiom. `clean_file()` enforces, in order: size against the 10 MB
 constant; extension against the allowed tuple, case-insensitively; then decode and parse via
 `gpx/parsing.py`, converting `GpxParseError` into a `ValidationError` whose message
-distinguishes "not valid XML" from "not valid GPX". The parsed result is stashed on the form
+distinguishes "not valid XML" from "not valid GPX". A file rejected for carrying a DOCTYPE
+falls in the "not valid XML" bucket for the user — the message stays about the file being
+unusable and does not explain the mitigation. The parsed result is stashed on the form
 for the view to persist without re-parsing.
 
 **Critical**: `clean_file()` reads the upload to parse it and **must `seek(0)` before
@@ -645,10 +675,13 @@ nothing in the pipeline knows it exists.
 
 *Parsing* — a valid track yields the expected point list and bounds; malformed XML raises
 `GpxParseError`; well-formed XML that is not GPX raises `GpxParseError`; a GPX with zero
-track points raises `GpxParseError`; an XXE / entity-expansion payload is **rejected rather
-than expanded**, asserted on the outcome; and a test pins gpxpy's parser backend to the
-stdlib one, so adding `lxml` later cannot silently change entity-resolution defaults without
-turning a gate red.
+track points raises `GpxParseError`. Entity handling is **two** tests, not one, because the
+two payloads behave differently against the pinned backend: an *external*-entity (XXE)
+payload raises `GpxParseError`, and a *nested internal*-entity (billion laughs) payload also
+raises `GpxParseError` — the second is the one that proves the §3 DTD guard exists, since
+without it the backend expands rather than rejects. Assert the outcome, not the message. A
+further test pins gpxpy's parser backend to the stdlib one, so adding `lxml` later cannot
+silently change entity-resolution defaults without turning a gate red.
 
 *Upload* — a valid upload creates exactly one track, persists a file whose bytes match what
 was submitted (this is what catches a missing `seek(0)`), and redirects to the detail page;
@@ -688,7 +721,7 @@ known-good-deployments row and the restore drill.
 - `uv sync --locked` succeeds — `uv.lock` is committed with `pyproject.toml`
 - Full CI-equivalent suite passes with coverage at or above `fail_under = 80`
 - An upload test asserts persisted file **content**, not only a status code
-- A parsing test asserts an entity-expansion payload is rejected, and a test pins the stdlib parser backend
+- Two parsing tests assert an XXE payload and a nested-entity payload are each rejected, and a test pins the stdlib parser backend
 - Cross-user upload and cross-user download are both asserted to return 404
 
 #### Manual Verification:
@@ -988,8 +1021,8 @@ proven by CI and requires a live Railway session.
 ### Unit Tests
 
 - **Parsing** (`gpx/parsing.py`): valid track → expected points and bounds; malformed XML;
-  well-formed non-GPX; zero-point track; entity-expansion payload rejected; parser backend
-  pinned to stdlib.
+  well-formed non-GPX; zero-point track; XXE payload rejected; nested-entity payload
+  rejected (proves the DTD guard); parser backend pinned to stdlib.
 - **Form validation**: over-cap size; wrong extension (and case-insensitivity); unparseable
   content; the `seek(0)` contract, proven by asserting persisted file content.
 - **Model**: `related_name` reachability; cascade on trip delete; upload path contains
@@ -1119,7 +1152,7 @@ on the second one, because the in-container default is writable.
 - [ ] 4.2 `uv sync --locked` succeeds — `uv.lock` committed with `pyproject.toml`
 - [ ] 4.3 Full CI-equivalent suite passes with coverage at or above `fail_under = 80`
 - [ ] 4.4 An upload test asserts persisted file content, not only a status code
-- [ ] 4.5 A parsing test asserts an entity-expansion payload is rejected; a test pins the stdlib parser backend
+- [ ] 4.5 XXE and nested-entity payloads are each asserted rejected; a test pins the stdlib parser backend
 - [ ] 4.6 Cross-user upload and cross-user download both asserted to return 404
 
 #### Manual

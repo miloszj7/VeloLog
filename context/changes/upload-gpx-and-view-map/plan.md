@@ -1211,14 +1211,14 @@ not a cost that stays invisible forever.
 
 #### Automated
 
-- [x] 2.1 Migration guard is clean
-- [x] 2.2 Coverage guard passes with the new app
-- [x] 2.3 Lint, format, import order, and strict typing pass on the new package
-- [x] 2.4 Full CI-equivalent suite passes, coverage at or above `fail_under = 80`
+- [x] 2.1 Migration guard is clean — 54b06a4
+- [x] 2.2 Coverage guard passes with the new app — 54b06a4
+- [x] 2.3 Lint, format, import order, and strict typing pass on the new package — 54b06a4
+- [x] 2.4 Full CI-equivalent suite passes, coverage at or above `fail_under = 80` — 54b06a4
 
 #### Manual
 
-- [x] 2.5 `GpxTrack` appears in Django admin and a row can be inspected without error
+- [x] 2.5 `GpxTrack` appears in Django admin and a row can be inspected without error — 54b06a4
 
 ### Phase 3: Trip detail view
 

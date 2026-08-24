@@ -157,6 +157,7 @@ is picked up until its trigger fires.
 | No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs` | When the first production incident is diagnosed by guesswork | — | open | — |
 | The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open | — | open | — |
 | `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | — | open | — |
+| `.github/workflows/deploy.yml` pins `actions/checkout@v4` and `astral-sh/setup-uv@v3.2.4`, both of which target the deprecated Node 20 runtime — CI already logs a deprecation warning since GitHub forces them onto Node 24 anyway | Bump `actions/checkout` to `v5+` and `astral-sh/setup-uv` to a Node-24-runtime major (`v10` confirmed Node 24; exact cutover unverified), re-pinning both to commit SHAs with trailing version comments per the existing convention | Before GitHub removes the forced Node 24 fallback and these actions stop running altogether | `ci-quality-gates` (found post-merge, F11) | open | — |
 
 ## Done
 

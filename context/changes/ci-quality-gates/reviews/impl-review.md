@@ -5,7 +5,7 @@
 - **Scope**: Full plan — Phases 1–4 of 4 (all 20 Progress checkboxes `[x]`)
 - **Date**: 2026-08-23
 - **Verdict**: NEEDS ATTENTION
-- **Findings**: 0 critical, 4 warnings, 6 observations
+- **Findings**: 0 critical, 4 warnings, 7 observations (F11 added 2026-08-24, post-triage)
 
 ## Verdicts
 
@@ -343,6 +343,34 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
 - **Fix**: Add `permissions:\n  contents: read` above `jobs:`. Leave `concurrency:` for a
   follow-up.
 - **Decision**: PENDING
+
+### F11 — `actions/checkout@v4` and `astral-sh/setup-uv@v3.2.4` both target the deprecated Node 20 runtime
+
+- **Severity**: 👁 OBSERVATION
+- **Impact**: 🏃 LOW — quick decision; fix is obvious and narrowly scoped
+- **Dimension**: Safety & Quality
+- **Location**: .github/workflows/deploy.yml:17, :20 (`gates`); :51 (`deploy`)
+- **Detail**: Added 2026-08-24, after the initial triage pass, from a run-log warning
+  surfaced post-fix rather than during the original review:
+
+  ```text
+  Node.js 20 is deprecated. The following actions target Node.js 20 but are being
+  forced to run on Node.js 24: actions/checkout@v4, astral-sh/setup-uv@v3
+  ```
+
+  Verified via the GitHub API: `actions/checkout@v4`'s `action.yml` declares
+  `using: node20`; `v5`/`v6`/`v7` all declare `using: node24`. `astral-sh/setup-uv`'s
+  `v3.2.4` (the SHA F7 pinned to) also declares `using: node20`; `v10.0.1` declares
+  `using: node24` — the exact cutover version wasn't pinned down. F7's pin (a SHA
+  *within* the v3 line) fixed tag-mutability, not the runtime declaration — the two are
+  orthogonal, so the warning is unaffected by that fix. Runners already force these
+  actions onto Node 24 regardless, so this is a deprecation-noise/forward-compat issue
+  today, not a broken build.
+- **Fix**: Bump `actions/checkout` to `v5+` and `astral-sh/setup-uv` to a Node-24-runtime
+  major (`v10` confirmed; the true cutover version is unverified), re-pinning both to
+  commit SHAs with trailing version comments per the F7 convention.
+- **Decision**: DEFERRED — queued to `roadmap.md`'s Engineering Backlog rather than fixed
+  inline; see that row for trigger.
 
 ## Notes on what was checked and found clean
 

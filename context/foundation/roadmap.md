@@ -3,7 +3,7 @@ project: VeloLog
 version: 1
 status: draft
 created: 2026-08-22
-updated: 2026-08-23
+updated: 2026-08-24
 prd_version: 2
 main_goal: speed
 top_blocker: time
@@ -151,12 +151,13 @@ is picked up until its trigger fires.
 |---|---|---|---|---|---|
 | CI runs no tests, ruff, black, isort, or mypy — only `manage.py check` plus the migration guard S-02 added, and only on push to `master` | Add a `pull_request` trigger and a job running `uv run pytest --cov` plus the lint/type gates, before the `railway up` step | Before S-03 — the north star slice adds file upload and map rendering, where a silent regression is most costly | `ci-quality-gates` | done | [#7](https://github.com/miloszj7/VeloLog/issues/7) |
 | `gates` is not a required check — a merge can still be forced past a red run | Enable branch protection on `master` requiring the `gates` check | Immediately after `ci-quality-gates` merges | — | open | — |
-| Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration | — | open | — |
+| Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration | — (partial: `ci-quality-gates` PR #8 added the `GitHub Issue` column read by this row, but the gap it describes — no sync *back* from GitHub — is untouched) | open | — |
 | `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline | — | open | — |
 | The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists | — | open | — |
 | No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs` | When the first production incident is diagnosed by guesswork | — | open | — |
 | The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open | — | open | — |
 | `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | — | open | — |
+| `.github/workflows/deploy.yml` pins `actions/checkout@v4` and `astral-sh/setup-uv@v3.2.4`, both of which target the deprecated Node 20 runtime — CI already logs a deprecation warning since GitHub forces them onto Node 24 anyway | Bump `actions/checkout` to `v5+` and `astral-sh/setup-uv` to a Node-24-runtime major (`v10` confirmed Node 24; exact cutover unverified), re-pinning both to commit SHAs with trailing version comments per the existing convention | Before GitHub removes the forced Node 24 fallback and these actions stop running altogether | `ci-quality-gates` (found post-merge, F11) | open | — |
 
 ## Done
 

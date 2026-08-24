@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
 
 from gpx.models import GpxTrack, gpx_upload_path
 from trips.models import Trip
@@ -79,3 +80,32 @@ def test_tracks_come_back_newest_first(trip: Trip) -> None:
     newer = _make_track(trip, original_filename="newer.gpx")
 
     assert list(GpxTrack.objects.all()) == [newer, older]
+
+
+@pytest.mark.django_db
+def test_saving_through_the_field_routes_the_name_through_gpx_upload_path(trip: Trip) -> None:
+    """`upload_to` must be wired to the field, not merely correct when called directly.
+
+    Every other test here calls `gpx_upload_path` by hand, so dropping `upload_to=` from
+    the field leaves them all green while the stored name reverts to the user's own —
+    the exact property the function's docstring calls security-critical. This is the only
+    test that saves real bytes through the descriptor and inspects what landed.
+
+    The filename is deliberately *benign*. A traversal string would fail this test even
+    with `upload_to` gone, because Django's own `get_valid_name` rejects it — proving its
+    guard rather than ours. `ride.gpx` is a name storage would happily keep, so the
+    assertions below can only pass if `gpx_upload_path` replaced it.
+    """
+    track = _make_track(trip)
+
+    track.file.save("ride.gpx", ContentFile(b"<gpx/>"), save=True)
+
+    stored_name = track.file.name
+    assert stored_name is not None
+    assert stored_name.startswith(f"gpx/{trip.owner_id}/{trip.pk}/")
+    assert stored_name.endswith(".gpx")
+    assert "ride" not in stored_name
+    # The row must carry the generated name too, not just the in-memory instance.
+    assert GpxTrack.objects.get(pk=track.pk).file.name == stored_name
+    with track.file.open("rb") as handle:
+        assert handle.read() == b"<gpx/>"

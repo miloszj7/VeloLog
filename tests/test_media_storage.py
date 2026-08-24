@@ -148,8 +148,12 @@ def test_healthz_fails_when_media_root_is_inside_base_dir_and_debug_is_false(
     body = response.json()
     assert body["status"] == "error"
     assert body["media"] == "error"
-    assert body["media_root"] == str(in_container_media_root)
-    assert "MEDIA_ROOT" in body["media_error"]
+    assert body["media_error"] == "inside_base_dir"
+    # /healthz/ is unauthenticated, so the body must name the *class* of fault and not the
+    # server's filesystem layout. Asserted against the raw response rather than the parsed
+    # key, so a path leaking through some other field fails too.
+    assert "media_root" not in body
+    assert str(in_container_media_root) not in response.content.decode()
     # The location check must short-circuit before anything touches the misconfigured
     # root, so the probe must not have created it just to prove it was writable.
     assert not in_container_media_root.exists()
@@ -289,3 +293,23 @@ def test_healthz_serves_a_cached_verdict_instead_of_reprobing(
 
     cache.clear()
     assert client.get(reverse("healthz")).status_code == 500
+
+
+def test_healthz_reports_the_media_root_only_under_debug(
+    client: Client, db: None, settings: Settings
+) -> None:
+    """The path is withheld from anonymous callers, not from a developer running locally.
+
+    Both values of DEBUG are set explicitly rather than leaning on the ambient one, which
+    depends on whether a local `.env` is present. Asserting only the withholding half
+    would leave the disclosing branch uncovered, so the local convenience could break
+    unnoticed.
+    """
+    settings.DEBUG = False
+    assert "media_root" not in client.get(reverse("healthz")).json()
+
+    settings.DEBUG = True
+    cache.clear()
+    body = client.get(reverse("healthz")).json()
+
+    assert body["media_root"] == str(settings.MEDIA_ROOT)

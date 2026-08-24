@@ -82,8 +82,24 @@ def _database_round_trips() -> bool:
         return False
 
 
+def _media_root_context() -> dict[str, str]:
+    """Carry the offending path to the log without putting it in the message.
+
+    Per the project logging rule this is `extra`, not interpolation — which means it is
+    invisible until E-06 lands a `LOGGING` dict whose formatter renders these fields. Any
+    such dict must therefore include `velo_log` and a formatter that emits `media_root`,
+    or the only server-side record of *which* path was wrong disappears while the
+    response deliberately withholds it from the caller.
+    """
+    return {"media_root": str(settings.MEDIA_ROOT)}
+
+
 def media_root_misconfiguration() -> str | None:
-    """Return why MEDIA_ROOT is unusable in production, or None when it is fine.
+    """Return a code for why MEDIA_ROOT is unusable in production, or None when it is fine.
+
+    The return value is a stable machine code rather than a sentence, because it reaches
+    an anonymous caller: /healthz/ has no auth, and an absolute server path is recon
+    material to chain with any later traversal bug. The path itself goes to the log.
 
     Writability alone proves nothing: with MEDIA_ROOT unset the default is
     BASE_DIR / "media" *inside the container*, where a write succeeds — so a
@@ -95,12 +111,15 @@ def media_root_misconfiguration() -> str | None:
         return None
     media_root = Path(settings.MEDIA_ROOT)
     if not media_root.is_absolute():
-        return f"MEDIA_ROOT {settings.MEDIA_ROOT!r} is not an absolute path"
+        logger.error("healthz: MEDIA_ROOT is not an absolute path", extra=_media_root_context())
+        return "not_absolute"
     if media_root.resolve().is_relative_to(Path(settings.BASE_DIR).resolve()):
-        return (
-            f"MEDIA_ROOT {settings.MEDIA_ROOT!r} resolves inside BASE_DIR — uploads would "
-            "land on ephemeral container disk instead of the mounted volume"
+        logger.error(
+            "healthz: MEDIA_ROOT resolves inside BASE_DIR — uploads would land on ephemeral "
+            "container disk instead of the mounted volume",
+            extra=_media_root_context(),
         )
+        return "inside_base_dir"
     return None
 
 
@@ -171,10 +190,13 @@ def healthz(request: HttpRequest) -> HttpResponse:
         "status": "ok" if ok else "error",
         "database": "ok" if database_ok else "error",
         "media": "ok" if media_ok else "error",
-        "media_root": str(settings.MEDIA_ROOT),
     }
     if misconfigured is not None:
         payload["media_error"] = misconfigured
+    # Local convenience only. In production this is an unauthenticated disclosure of the
+    # server's filesystem layout; the log carries it there instead.
+    if settings.DEBUG:
+        payload["media_root"] = str(settings.MEDIA_ROOT)
     return JsonResponse(payload, status=200 if ok else 500)
 
 

@@ -8,6 +8,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   gates:
     runs-on: ubuntu-latest

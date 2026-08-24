@@ -411,7 +411,18 @@ plan did not anticipate or did not require proving.
   the store-unreachable case.
 - **Fix**: Note the coupling in a comment beside the media settings block, so E-06 adds an
   explicit `velo_log` logger entry rather than discovering this later.
-- **Decision**: PENDING
+- **Decision**: FIXED, and noted in both places rather than one. The finding's fix put the note in
+  `velo_log/settings.py`, which is where the dict gets written; it is also on the E-06 row in
+  `roadmap.md`, which is where the work gets picked up. A note in only the first is not read until
+  someone has already decided how to scope the dict.
+  The obligation is larger than the finding stated, because F5 landed in between. It is no longer
+  only "add a `velo_log` logger": the media path now travels as `extra={"media_root": ...}` and
+  `logging.lastResort` renders the message alone, so that field is **already invisible** rather
+  than merely at risk. E-06 therefore owes a formatter that emits it as well. Both halves are
+  written out in each place.
+  Deliberately not fixed here: no `LOGGING` dict was added. The plan's "What We're NOT Doing"
+  excludes it and E-06 owns it — this records the constraints so E-06 inherits them instead of
+  rediscovering them after an incident.
 
 ### F10 — Two tests bind to a private function name instead of asserting through HTTP
 

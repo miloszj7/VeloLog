@@ -130,7 +130,33 @@ plan did not anticipate or did not require proving.
   - Confidence: HIGH — the empty-string return was reproduced directly.
   - Blind spot: Whether the same hardening is wanted for `DB_PATH` in this slice, or left for a
     separate change.
-- **Decision**: PENDING
+- **Decision**: FIXED — the blind spot was resolved in favour of hardening both keys in this
+  slice. Rather than repeat `env(K, default="") or <fallback>` at two call sites, the rule is
+  stated once as `env_or(key, fallback)` in `velo_log/settings.py`, and `DB_PATH` and `MEDIA_ROOT`
+  both route through it. `DB_PATH` was the weaker half — verified that
+  `django/db/backends/sqlite3/base.py:156` rejects an empty `NAME`, so it always failed loudly —
+  but leaving it alone would have left the two adjacent lines gratuitously asymmetric.
+
+  Extracting the helper is also what made the rule testable: both settings resolve at import time
+  and `tests/conftest.py` re-points `MEDIA_ROOT` per test, so nothing in-process can observe what
+  a blank key produces. `tests/test_settings_env.py` covers absent / blank / set against the
+  helper, plus a subprocess that resolves both settings with the keys blank from a foreign cwd —
+  so re-inlining either call site fails rather than passing on the helper's own coverage. Verified
+  in both directions: with the call sites reverted the wiring test fails on
+  `media_root == ''`; with them wired it passes.
+
+  `.env.example` was handed to the user per `CLAUDE.md` and verified via `git diff` before
+  staging. Note this half turned out **not** to be load-bearing: once blank resolves to the
+  fallback, the blank key was already harmless. It was kept for the documentation signal — a
+  commented-out key reads as an override to opt into, which leaves `SECRET_KEY` and
+  `ALLOWED_HOSTS` as the only keys blank on purpose. The prose in `settings.py` and the test that
+  cited `.env.example` as the reason for the rule was rewritten in the same commit, since the
+  template no longer ships blanks.
+
+  Landed as three commits, fixes before this record: `00f2682` (helper, both call sites, tests),
+  `b0573cd` (template plus the prose it invalidated), then this one. Gates after each: ruff /
+  black / isort / `mypy` (42 files) / `manage.py check` / `makemigrations --check` clean;
+  CI-equivalent `pytest --cov` 50 passed (was 46), TOTAL 99.51%.
 
 ### F3 — No test proves `upload_to=gpx_upload_path` is actually wired to the field
 

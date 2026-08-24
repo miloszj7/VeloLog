@@ -277,7 +277,24 @@ plan did not anticipate or did not require proving.
   caller (`"media": "misconfigured"`, plus a stable machine code such as
   `"media_error": "not_absolute"` / `"inside_base_dir"`). Gate the literal path on
   `settings.DEBUG` if it is wanted for local convenience.
-- **Decision**: PENDING
+- **Decision**: FIXED as written. `media_root_misconfiguration` returns `"not_absolute"` /
+  `"inside_base_dir"`; the path reaches the response only under `DEBUG`.
+  One judgement call inside the fix: the path goes to the log via `extra=`, per the project
+  logging rule, rather than interpolated into the message. That was chosen knowing it makes the
+  path **invisible in production today** — F9 is precisely that no `LOGGING` dict exists, so this
+  logger falls through to `logging.lastResort`, whose formatter renders the message and drops
+  `extra`. Until E-06 lands, the path is withheld from the caller and not yet visible in the log.
+  `_media_root_context`'s docstring carries that obligation so E-06 cannot drop it silently; this
+  tightens F9 from a note into a concrete requirement.
+  Both halves of the `DEBUG` gate were mutation-checked — disclosing unconditionally and never
+  disclosing each fail a different test.
+  **Two plan statements are now stale, one of them load-bearing.** Phase 1 §5 (`plan.md:333`) says
+  the test asserts `/healthz/` "names the media root as the reason"; it now asserts the code. That
+  is wording only — the intent, asserting an outcome rather than a settings read, is intact. But
+  Phase 6's manual criterion (`plan.md:804`) requires that "production `/healthz/` reports that
+  media root" before the phase merges, and production runs `DEBUG=False`, so that check can no
+  longer be performed as written. Phase 6 has not run yet, so this is a live obligation, not a
+  historical note — see the follow-up amendment.
 
 ### F6 — The gates cannot see F1: 100% statement coverage, no branch coverage, no cleanup assertion
 

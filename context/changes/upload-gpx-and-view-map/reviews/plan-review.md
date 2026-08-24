@@ -77,7 +77,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
   - Confidence: HIGH as a step, weaker as a durable guard.
   - Blind spot: Relies on the operator remembering at merge time.
 - **Note**: A and B compose — A is the guard, B is the step. Doing both is cheap.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A + Fix B. Phase 1 §3 now reports the resolved `MEDIA_ROOT` and, at `DEBUG=False`, 500s unless it is absolute and outside `BASE_DIR`; Phase 1 §5 asserts that as an outcome (Progress 1.7). New Phase 4 §10 owns setting `MEDIA_ROOT=/data/media` in Railway and extending `DEPLOY.md` backup/restore to `/data/media`, gated pre-merge by Progress 4.11–4.12; Phase 6 §4 reduced to verifying those against production. Migration Notes now separate the two failure modes the probe covers.
 
 ### F2 — Vendored asset list omits leaflet.js.map; collectstatic fails
 

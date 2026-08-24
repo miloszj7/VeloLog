@@ -40,7 +40,7 @@ Linting is configured in `pyproject.toml`: `ruff`, `black`, `isort`, and `mypy -
 
 `pytest` + `pytest-django` are configured; tests live in `tests/` at the repo root. Coverage runs against `accounts`, `trips`, and `velo_log` with `fail_under = 80` (`[tool.coverage.run]` / `[tool.coverage.report]` in `pyproject.toml`). See `@~/.claude/CLAUDE.md` for fixture patterns and integration-test skip conventions.
 
-The suite must pass with **no `.env` present** — CI never has one. Reproduce a CI failure locally with the CI-equivalence command, which overrides every variable `.env` would otherwise supply:
+The suite must pass with **no `.env` present** — CI never has one. Reproduce a CI failure locally with the CI-equivalence command, which overrides every `.env` variable except `DB_PATH` (deliberately unset — the test suite uses an in-memory SQLite database, so no DB file path is ever read):
 
 ```
 SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov

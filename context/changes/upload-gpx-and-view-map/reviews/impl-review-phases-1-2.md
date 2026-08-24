@@ -236,7 +236,30 @@ plan did not anticipate or did not require proving.
     carry it.
   - Confidence: MEDIUM — depends on what is actually probing this URL, which is unknown.
   - Blind spot: Whether anything outside Railway currently polls `/healthz/` has not been checked.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A. Both blind spots were resolved before deciding. Nothing polls this
+  URL — `railway.json` sets no `healthcheckPath` and `deploy.yml` never curls it; every reference
+  in `DEPLOY.md` (`:9`, `:10`, `:47`, `:56`) is a human checking it by hand after a deploy or a
+  restore. That removed Fix B's "external monitor must be reconfigured" cost *and* Fix A's "keeps
+  it useful to an external monitor" strength, so neither survived as stated. The start command
+  passes no `--workers`, so gunicorn runs one and a per-process cache is service-wide today —
+  unless the platform injects `WEB_CONCURRENCY`, which is not visible from the repo; the bound
+  merely loosens to N × workers if it does.
+  What actually decided it: the probe is expensive *on purpose*. Only a real write proves the
+  Volume is mounted and writable, which is the failure it exists to catch, so the work cannot be
+  made cheaper without discarding the point of it. The only lever left is frequency — which is
+  caching. Fix B was also weaker than written: its "pairs naturally with F5" claim does not hold,
+  since F5's fix stands alone and needs no token.
+  Implemented as a 30-second cache over a `_HealthVerdict` dataclass rather than over the rendered
+  response, so F5 can reshape the body without touching what is cached.
+  Two consequences recorded rather than fixed: `FileSystemStorage._save` still creates
+  `MEDIA_ROOT/healthz/` once on the Volume — caching changes nothing there — and the cached verdict
+  is stale by up to 30s, which costs nothing because both consumers restart the process first and
+  no `CACHES` setting exists, so LocMem is cleared on restart.
+  The fix silently gutted an existing test: `test_repeated_probes_leave_no_files_behind` drives
+  three probes, and with the cache in place only the first did real I/O — it would have passed
+  against a cleanup that stranded a file on every call. Restored by clearing the cache per
+  iteration. Both that test and the new cache test were mutation-checked: disabling the cache fails
+  the new one, removing the probe's `finally` cleanup fails the restored one.
 
 ### F5 — `/healthz/` discloses the absolute server media path to anonymous callers
 

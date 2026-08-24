@@ -194,8 +194,8 @@ as the bare string `"gpx"` — a dotted `gpx.apps.GpxConfig` never string-matche
 
 Remove B1, B2 and B3 and prove the fix with a test that performs a real storage write. No
 model, no user-visible change. After this phase the repo can persist an uploaded file
-without 500ing, and `/healthz/` reports whether the Volume's media directory is actually
-writable.
+without 500ing, and `/healthz/` reports where media is being written and whether that
+location is actually writable.
 
 ### Changes Required:
 
@@ -225,8 +225,9 @@ tested choice. All of it must be side-effect free at import.
 Railway environment agree on what has to be set.
 
 **Contract**: A commented `MEDIA_ROOT` entry alongside the existing keys, with no real value.
-The production value (`/data/media`, on the mounted Volume) is documented in `DEPLOY.md` in
-Phase 6, not committed here.
+The production value (`/data/media`, on the mounted Volume) is documented in `DEPLOY.md` and
+set in the Railway environment in Phase 4 §10 — the phase whose merge makes uploads live —
+not committed here.
 
 #### 3. Media round-trip in the health check
 
@@ -235,11 +236,19 @@ Phase 6, not committed here.
 **Intent**: `infrastructure.md:59` records that a `RAILWAY_RUN_UID` regression makes Volume
 writes **fail silently** — the pre-mortem's exact wording is "GPX upload records were quietly
 lost". The existing `/healthz/` proves DB writes only; nothing proves a media write.
+Writability alone is not enough: with `MEDIA_ROOT` unset, the §1 default is
+`BASE_DIR / "media"` **inside the container**, where a write succeeds — so a writability-only
+probe returns 200 while every uploaded file sits on ephemeral disk. The probe must therefore
+assert *where* it wrote, not only that it could.
 
 **Contract**: `healthz` gains a `default_storage` write → read-back → delete round-trip
 against a throwaway key, mirroring the shape of the existing `SessionStore` round-trip. The
 response distinguishes which subsystem failed rather than collapsing both into one boolean,
-and still returns 500 when either fails.
+and still returns 500 when either fails. The response body also reports the resolved
+`MEDIA_ROOT`, and when `DEBUG=False` the check fails (500) unless that path is absolute and
+outside `BASE_DIR` — the in-container default is treated as a misconfiguration in production,
+not a pass. Under `DEBUG=True` the location assertion is skipped, so the local default stays
+usable.
 
 #### 4. Test fixtures for media
 
@@ -261,7 +270,9 @@ settings assertion would pass against a `STORAGES` dict that still cannot resolv
 **Contract**: One test saves bytes through `default_storage`, reads them back, and asserts
 content equality and that the file landed under `MEDIA_ROOT`. One test asserts `MEDIA_URL`
 is not `"/"` and does not shadow the root redirect. One test asserts `/healthz/` returns 200
-with both round-trips reporting ok.
+with both round-trips reporting ok. One test asserts that with `DEBUG=False` and a
+`MEDIA_ROOT` inside `BASE_DIR`, `/healthz/` returns 500 and names the media root as the
+reason — the guard added in §3, asserted as an outcome rather than a settings read.
 
 ### Success Criteria:
 
@@ -273,6 +284,7 @@ with both round-trips reporting ok.
 - Full CI-equivalent suite passes: `SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov`
 - `tests/test_media_storage.py` proves a real `default_storage` round-trip, not a settings assertion
 - `tests/test_settings_security.py` still passes — settings remain import-safe with only `DEBUG` set
+- A test asserts `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR`
 
 #### Manual Verification:
 
@@ -649,6 +661,25 @@ nothing; an unauthenticated POST redirects to login and creates nothing.
 *Download* — the owner gets 200 with the original bytes and an attachment disposition; a
 different user gets 404; an unauthenticated request redirects to login.
 
+#### 10. Deploy gate — `MEDIA_ROOT` and the media backup procedure
+
+**Files**: `DEPLOY.md` — plus one Railway environment change, made outside the repo
+
+**Intent**: This is the merge that puts uploads in production, and `deploy.yml`'s deploy job
+fires on every push to `master`. Two things must therefore be true **before** this phase
+merges, not in Phase 6: `MEDIA_ROOT` actually points at the Volume, and the files it starts
+collecting have a backup procedure. `DEPLOY.md:33-56` currently backs up
+`/data/db.sqlite3` only.
+
+**Contract**: `MEDIA_ROOT=/data/media` is set in the Railway environment and confirmed via
+`railway variables`; the Phase 1 `/healthz/` location guard is what proves it took effect.
+`DEPLOY.md`'s Backup and Restore sections extend to `/data/media`, using the same
+`railway service files` mechanism and the same `MSYS_NO_PATHCONV=1` caveat already documented
+for Git Bash, and record that a `RAILWAY_RUN_UID` regression makes Volume writes fail
+**silently** (`infrastructure.md:59`) — which the `/healthz/` media round-trip now detects.
+`backup/` is already gitignored; confirm the media pattern is covered. Phase 6 keeps the
+known-good-deployments row and the restore drill.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -666,6 +697,8 @@ different user gets 404; an unauthenticated request redirects to login.
 - Uploading a `.txt`, an oversized file, and a corrupted `.gpx` each show a readable inline error and leave the trip unchanged
 - Uploading a second file replaces the first, and the download link returns the newest file
 - The downloaded file opens correctly in another GPX viewer
+- `MEDIA_ROOT=/data/media` is confirmed set in Railway via `railway variables`, and production `/healthz/` reports that media root — **before** this phase is merged
+- `DEPLOY.md`'s Backup and Restore sections cover `/data/media`
 
 **Implementation Note**: After completing this phase and all automated verification passes,
 pause here for manual confirmation before proceeding.
@@ -893,17 +926,13 @@ environment variable in production.
 
 **File**: `DEPLOY.md`
 
-**Intent**: `DEPLOY.md:33-56` backs up and restores `/data/db.sqlite3` only. From this slice
-on, half the durable state — every GPX file a user has uploaded — has no backup procedure at
-all, during the exact window it first matters.
+**Intent**: The `/data/media` backup and restore procedure and the `MEDIA_ROOT` note landed
+in Phase 4 §10 — they had to, since Phase 4 is the merge that puts uploads in production. What
+is left here is verifying those commands against production and recording the deploy.
 
-**Contract**: The Backup and Restore sections extend to `/data/media`, using the same
-`railway service files` mechanism and the same `MSYS_NO_PATHCONV=1` caveat already documented
-for Git Bash. A note records that `MEDIA_ROOT=/data/media` must be set as a Railway
-environment variable, and that a `RAILWAY_RUN_UID` regression makes Volume writes fail
-**silently** (`infrastructure.md:59`) — which is what the Phase 1 `/healthz/` media
-round-trip now detects. The known-good deployments table gains a row for this deploy.
-`backup/` is already gitignored; confirm the media pattern is covered.
+**Contract**: The Phase 4 §10 Backup and Restore additions are exercised against production
+and corrected wherever the run contradicts them. The known-good deployments table gains a row
+for this deploy.
 
 #### 5. Restore drill
 
@@ -995,8 +1024,12 @@ carries it.
 There is no existing media data to migrate — this slice creates the media directory's first
 contents. `MEDIA_ROOT` must be set to `/data/media` in the Railway environment **before** the
 first upload, or files land on ephemeral container disk and are lost on the next redeploy.
-The Phase 1 `/healthz/` media round-trip is what surfaces a misconfiguration here, including
-the silent-write-failure mode that `infrastructure.md:59` records.
+Setting it is owned by Phase 4 §10, gated by Progress 4.11 — the phase whose merge makes
+uploads live. Two distinct failures are then covered by the Phase 1 `/healthz/` probe: the
+silent-write-failure mode that `infrastructure.md:59` records (caught by the write →
+read-back → delete round-trip) and an unset or in-container `MEDIA_ROOT` (caught by the
+location assertion, which only applies at `DEBUG=False`). A writability-only probe would pass
+on the second one, because the in-container default is writable.
 
 ## References
 
@@ -1027,11 +1060,12 @@ the silent-write-failure mode that `infrastructure.md:59` records.
 - [ ] 1.4 Full CI-equivalent suite passes
 - [ ] 1.5 `tests/test_media_storage.py` proves a real `default_storage` round-trip
 - [ ] 1.6 `tests/test_settings_security.py` still passes — settings remain import-safe
+- [ ] 1.7 `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR`
 
 #### Manual
 
-- [ ] 1.7 No stray files appear under the repo working tree after a full test run
-- [ ] 1.8 `/healthz/` returns 200 and reports both the DB and media round-trips
+- [ ] 1.8 No stray files appear under the repo working tree after a full test run
+- [ ] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips
 
 ### Phase 2: The `gpx` app and the `GpxTrack` model
 
@@ -1076,6 +1110,8 @@ the silent-write-failure mode that `infrastructure.md:59` records.
 - [ ] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing
 - [ ] 4.9 A second upload replaces the first; the download link returns the newest file
 - [ ] 4.10 The downloaded file opens correctly in another GPX viewer
+- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` reports it — before merge
+- [ ] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media`
 
 ### Phase 5: Map rendering and the static pipeline
 

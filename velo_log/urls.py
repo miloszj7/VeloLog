@@ -55,7 +55,7 @@ def _database_round_trips() -> bool:
         return False
 
 
-def _media_root_misconfigured() -> str | None:
+def media_root_misconfiguration() -> str | None:
     """Return why MEDIA_ROOT is unusable in production, or None when it is fine.
 
     Writability alone proves nothing: with MEDIA_ROOT unset the default is
@@ -115,7 +115,7 @@ def healthz(request: HttpRequest) -> HttpResponse:
     not be created and written to just to prove it was writable.
     """
     database_ok = _database_round_trips()
-    misconfigured = _media_root_misconfigured()
+    misconfigured = media_root_misconfiguration()
     media_ok = misconfigured is None and _media_round_trips()
     ok = database_ok and media_ok
 

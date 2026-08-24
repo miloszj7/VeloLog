@@ -163,7 +163,7 @@ def test_media_root_location_check_is_skipped_under_debug(settings: Settings) ->
     settings.DEBUG = True
     settings.MEDIA_ROOT = str(Path(settings.BASE_DIR) / "media")
 
-    assert velo_log_urls._media_root_misconfigured() is None
+    assert velo_log_urls.media_root_misconfiguration() is None
 
 
 def test_media_root_must_be_absolute_in_production(settings: Settings) -> None:
@@ -171,7 +171,7 @@ def test_media_root_must_be_absolute_in_production(settings: Settings) -> None:
     settings.DEBUG = False
     settings.MEDIA_ROOT = "media"
 
-    reason = velo_log_urls._media_root_misconfigured()
+    reason = velo_log_urls.media_root_misconfiguration()
 
     assert reason is not None
     assert "absolute" in reason

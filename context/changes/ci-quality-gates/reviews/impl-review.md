@@ -5,7 +5,7 @@
 - **Scope**: Full plan — Phases 1–4 of 4 (all 20 Progress checkboxes `[x]`)
 - **Date**: 2026-08-23
 - **Verdict**: NEEDS ATTENTION
-- **Findings**: 0 critical, 4 warnings, 7 observations (F11 added 2026-08-24, post-triage)
+- **Findings**: 0 critical, 4 warnings, 7 observations (F11 added 2026-08-24, post-triage) — all triaged
 
 ## Verdicts
 
@@ -349,7 +349,11 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
   concern but still arguably out of this change's scope.
 - **Fix**: Add `permissions:\n  contents: read` above `jobs:`. Leave `concurrency:` for a
   follow-up.
-- **Decision**: PENDING
+- **Decision**: FIXED — `permissions:\n  contents: read` added above `jobs:` in
+  `.github/workflows/deploy.yml`, pinning the `GITHUB_TOKEN` scope explicitly rather than
+  relying on the repo default. `concurrency:` left as a follow-up per the plan's scope
+  exclusion of speed-tuning controls. Not runnable locally (workflow-level YAML); will be
+  observed on the next PR/push run.
 
 ### F11 — `actions/checkout@v4` and `astral-sh/setup-uv@v3.2.4` both target the deprecated Node 20 runtime
 

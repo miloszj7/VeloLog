@@ -123,8 +123,18 @@ exits 0; the flow above completes end to end against a real browser on a deploye
 - **No trip stats** — distance/duration is S-05. This plan persists the parsed track in a
   shape S-05 can build on, and adds no second dependency for it.
 - **No trip edit/delete** — that is S-04.
-- **No point-count cap or downsampling.** Considered and declined; the 10 MB size cap is the
-  only volume bound in v1. Recorded as an open risk in the brief.
+- **No point-count cap or downsampling.** Considered and declined. The 10 MB size cap is the
+  only limit on point count in v1 — see Performance Considerations for what that does and
+  does not bound. Recorded as an open risk in the brief.
+- **No request-body size limit.** The 10 MB cap is a validation rule, not a resource bound:
+  `clean_file()` runs only after Django has already received the whole request body and
+  spooled it to a `TemporaryUploadedFile`. Nothing upstream caps body size — gunicorn has no
+  body limit, and `DATA_UPLOAD_MAX_MEMORY_SIZE` does not apply to file-upload fields. A
+  single multi-gigabyte POST therefore fills the container's temp disk before any validation
+  code runs. Accepted for v1: the endpoint is behind `LoginRequiredMixin` on a near-private
+  app, the same posture already recorded for the residual concurrent-signup race. It is
+  accepted **explicitly**, not described as bounded — a reader who believes the cap is a
+  resource bound will never revisit it.
 - **No quarantine store for rejected uploads.**
 - **No `LOGGING` configuration** — E-06 stays open; its trigger has not fired.
 - **No branch protection change** — E-02 stays open.
@@ -1070,11 +1080,20 @@ proven by CI and requires a live Railway session.
 
 Parsing happens once, at upload, not per page view — so the detail view does no XML work and
 cannot degrade as a track grows. The remaining cost is the coordinate array embedded in the
-page: a 10 MB GPX can carry a very large number of points, and the size cap is the only bound
+page: a 10 MB GPX can carry a very large number of points, and the size cap is the only limit
 on it. That is an accepted v1 risk; a point cap or downsampling was considered and declined.
 If the detail page ever feels slow, point count is the first thing to measure, and the
 parse-on-upload design means downsampling can be added later without touching the render
 path.
+
+What the cap does **not** bound is upload-time resource use. It rejects an oversized file; it
+does not prevent one being uploaded. `clean_file()` runs after the entire request body has
+been received and spooled to a `TemporaryUploadedFile`, and no request-body limit exists
+anywhere in front of it (see "What We're NOT Doing"). Two upload-time exposures therefore
+remain in v1, both accepted rather than mitigated: an unbounded request body filling the
+container's temp disk, and — for entity-free payloads — parse cost proportional to whatever
+was received. The DTD rejection in Phase 4 §3 closes the *amplification* case, where a small
+file expands to a large one; it does nothing about a genuinely large one.
 
 Tile fetches go to `tile.openstreetmap.org` from the browser. There is no server-side
 dependency on OSM, so an OSM outage degrades the map to a blank tile layer with the route

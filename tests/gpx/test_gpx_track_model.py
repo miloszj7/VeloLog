@@ -109,3 +109,32 @@ def test_saving_through_the_field_routes_the_name_through_gpx_upload_path(trip: 
     assert GpxTrack.objects.get(pk=track.pk).file.name == stored_name
     with track.file.open("rb") as handle:
         assert handle.read() == b"<gpx/>"
+
+
+@pytest.mark.django_db
+def test_points_and_bounds_survive_a_round_trip_through_the_database(trip: Trip) -> None:
+    """Phase 5 renders the map straight from these columns, so their shape has to hold.
+
+    `_make_track` assigns them in memory, where a `points` column that came back as a
+    JSON *string* would still satisfy every other test in this file. Only a re-read from
+    a fresh query can tell the difference. The bounds are four explicit `FloatField`s
+    rather than a nested blob precisely so their types are unambiguous — asserted here
+    rather than assumed.
+    """
+    track = _make_track(trip)
+
+    reloaded = GpxTrack.objects.get(pk=track.pk)
+
+    assert reloaded.points == POINTS
+    assert all(isinstance(value, float) for point in reloaded.points for value in point)
+    assert (reloaded.min_latitude, reloaded.min_longitude) == (50.06, 19.94)
+    assert (reloaded.max_latitude, reloaded.max_longitude) == (50.07, 19.95)
+    assert all(
+        isinstance(bound, float)
+        for bound in (
+            reloaded.min_latitude,
+            reloaded.min_longitude,
+            reloaded.max_latitude,
+            reloaded.max_longitude,
+        )
+    )

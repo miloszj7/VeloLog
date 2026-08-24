@@ -324,7 +324,9 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
 - **Fix**: No change now. If a second environment-sensitive failure appears, switch
   `DJANGO_SETTINGS_MODULE` to a dedicated `velo_log.settings_test` module rather than adding a
   sixth per-setting override.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED — no code change; risk documented as-is per the plan's deliberate
+  scope decision (`plan.md:128-130`). Trigger for revisiting: a second environment-sensitive
+  test failure, at which point switch to a dedicated `velo_log.settings_test` module.
 
 ### F10 — No `permissions:` block and no `concurrency:` group
 

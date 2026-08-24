@@ -44,6 +44,7 @@ def test_installed_apps_are_covered() -> None:
         for app in INSTALLED_APPS
         if (REPO_ROOT / (top_level := app.split(".")[0])).is_dir()
     }
+    assert first_party_apps, "guard found no first-party apps — check REPO_ROOT / INSTALLED_APPS"
 
     missing = first_party_apps - coverage_source
     assert not missing, (

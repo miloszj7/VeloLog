@@ -268,7 +268,10 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
   because this change rewrote the file and doubled the number of jobs running `setup-uv`.
 - **Fix**: Pin `@railway/cli` to an exact version and `astral-sh/setup-uv` to a commit SHA with
   a `# v3.x.y` trailing comment.
-- **Decision**: PENDING
+- **Decision**: FIXED — `astral-sh/setup-uv` pinned to the `v3.2.4` commit SHA
+  (`caf0cab7a618c569241d31dcd442f54681755d39`) with a trailing comment; `@railway/cli`
+  pinned to `5.43.1` (both latest as of 2026-08-24, verified via the GitHub API and npm).
+  Not runnable locally; will be observed on the next PR/push run.
 
 ### F8 — `AGENTS.md` overstates the CI-equivalence command, and the `gates` job matches it only by coincidence
 

@@ -189,7 +189,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
 - **Fix**: Restate it accurately in Open Risks — the cap rejects oversized files but does
   not prevent their upload, and no request-body limit exists in v1. Accept the risk
   explicitly rather than describing it as bounded.
-- **Decision**: PENDING
+- **Decision**: FIXED. "What We're NOT Doing" gains an explicit "No request-body size limit" entry naming why the cap runs too late, and Performance Considerations separates what the cap bounds (render-time point count) from what it does not (upload-time body size and parse cost). Both are recorded as accepted, not bounded, and the amplification case the F3 DTD guard closes is distinguished from the plain large-payload case it does not.
 
 ### F6 — Upload-size settings specified without values
 

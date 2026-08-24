@@ -60,6 +60,10 @@ testpaths = ["tests"]
 [tool.coverage.run]
 source = ["accounts", "trips", "gpx", "velo_log"]
 omit = ["velo_log/wsgi.py", "velo_log/asgi.py", "velo_log/settings.py"]
+# Statement coverage read 100% on velo_log/urls.py while a defect sat in the line its
+# own comment was defending. Branch coverage is clean today; it is on so a future
+# half-covered conditional shows up as a gap instead of a full green column.
+branch = true
 
 [tool.coverage.report]
 fail_under = 80

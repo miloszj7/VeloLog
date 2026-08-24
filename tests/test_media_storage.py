@@ -246,3 +246,21 @@ def test_healthz_survives_a_cleanup_that_cannot_delete(
 
     assert response.status_code == 200
     assert response.json()["media"] == "ok"
+
+
+def test_repeated_probes_leave_no_files_behind(
+    client: Client, db: None, settings: Settings
+) -> None:
+    """The fixed key bounds accumulation only if each probe removes what it wrote.
+
+    `HEALTHZ_MEDIA_KEY`'s comment promises at most one stranded file on the Volume, but
+    /healthz/ is unauthenticated — anyone can drive this loop. Several sequential probes
+    must leave the directory as empty as they found it, not one file per call.
+    """
+    probe_dir = Path(settings.MEDIA_ROOT) / Path(velo_log_urls.HEALTHZ_MEDIA_KEY).parent
+
+    for _ in range(3):
+        assert client.get(reverse("healthz")).status_code == 200
+
+    assert probe_dir.is_dir(), "the probe should have created its parent directory"
+    assert list(probe_dir.iterdir()) == []

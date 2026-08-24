@@ -124,11 +124,44 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+# Media files (user uploads)
+# https://docs.djangoproject.com/en/6.0/topics/files/
+
+# Django replaces STORAGES wholesale rather than merging, so declaring "staticfiles"
+# alone drops the "default" alias every FileField resolves through. The binding is lazy
+# (it resolves on the first storage.save/url, not at startup), so nothing short of a real
+# storage write catches its absence — see tests/test_media_storage.py.
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Mirrors the DB_PATH idiom above: production points this at the mounted Railway Volume
+# (/data/media, see DEPLOY.md) so uploads survive a redeploy. The local default sits
+# inside the repo and is gitignored.
+MEDIA_ROOT = env("MEDIA_ROOT", default=str(BASE_DIR / "media"))
+
+# Must not be "/" — that is what an unset MEDIA_URL resolves to, and it collides with the
+# root RedirectView in velo_log/urls.py. No URL is ever served from this prefix (uploaded
+# files go through an ownership-scoped view); it exists so FileField.url is well-formed.
+MEDIA_URL = "media/"
+
+# Written out rather than inherited, so a later change to either is a visible diff.
+# Both currently hold Django's own defaults.
+# FILE_UPLOAD_MAX_MEMORY_SIZE is the in-memory vs TemporaryUploadedFile switchover for
+# file fields. Keep it below the upload cap: a real multi-day tour GPX then spools to
+# disk, which keeps the seek(0)-before-save contract on the tested path rather than the
+# rare one.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
+# DATA_UPLOAD_MAX_MEMORY_SIZE bounds non-file request data only; it does not apply to
+# file-upload fields and is therefore no bound at all on a GPX upload.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
 
 
 # Authentication

@@ -1193,19 +1193,19 @@ not a cost that stays invisible forever.
 
 #### Automated
 
-- [ ] 1.1 Lint, format, import order pass
-- [ ] 1.2 Strict typing passes
-- [ ] 1.3 Django check passes
-- [ ] 1.4 Full CI-equivalent suite passes
-- [ ] 1.5 `tests/test_media_storage.py` proves a real `default_storage` round-trip
-- [ ] 1.6 `tests/test_settings_security.py` still passes — settings remain import-safe
-- [ ] 1.7 `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR`
+- [x] 1.1 Lint, format, import order pass
+- [x] 1.2 Strict typing passes
+- [x] 1.3 Django check passes
+- [x] 1.4 Full CI-equivalent suite passes
+- [x] 1.5 `tests/test_media_storage.py` proves a real `default_storage` round-trip
+- [x] 1.6 `tests/test_settings_security.py` still passes — settings remain import-safe
+- [x] 1.7 `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR`
 
 #### Manual
 
-- [ ] 1.8 No stray files appear under the repo working tree after a full test run
-- [ ] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips
-- [ ] 1.10 A `runserver` write into the default `media/` leaves `git status` clean
+- [x] 1.8 No stray files appear under the repo working tree after a full test run
+- [x] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips
+- [x] 1.10 A `runserver` write into the default `media/` leaves `git status` clean
 
 ### Phase 2: The `gpx` app and the `GpxTrack` model
 

@@ -77,6 +77,11 @@ db.sqlite3
 db.sqlite3-journal
 staticfiles/
 
+# User uploads written by a local runserver. MEDIA_ROOT defaults to BASE_DIR / "media"
+# (velo_log/settings.py) when the env var is unset, which puts real GPX files inside the
+# repo. The test suite is covered separately by the autouse fixture in tests/conftest.py.
+media/
+
 # Local production backups — DB dumps and media copies (see DEPLOY.md).
 # The whole directory is ignored: never commit a production dump of any kind.
 backup/

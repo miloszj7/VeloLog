@@ -1,5 +1,7 @@
 """Shared pytest-django fixtures for the VeloLog test suite."""
 
+from pathlib import Path
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
@@ -14,6 +16,17 @@ def _disable_ssl_redirect(settings: Settings) -> None:
     with no `.env`) makes every test-client request 301 to `https://testserver/`.
     """
     settings.SECURE_SSL_REDIRECT = False
+
+
+@pytest.fixture(autouse=True)
+def _media_root_in_tmp_path(settings: Settings, tmp_path: Path) -> None:
+    """Redirect `MEDIA_ROOT` at pytest's `tmp_path` so no test writes into the working tree.
+
+    The suite must pass with no `.env` present, where `MEDIA_ROOT` falls back to
+    `BASE_DIR / "media"` — inside the repo. Assigning through the `settings` fixture fires
+    `setting_changed`, which resets the cached `default_storage` location.
+    """
+    settings.MEDIA_ROOT = str(tmp_path / "media")
 
 
 @pytest.fixture

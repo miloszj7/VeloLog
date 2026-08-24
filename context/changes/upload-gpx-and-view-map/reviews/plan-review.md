@@ -4,18 +4,32 @@
 - **Plan**: `context/changes/upload-gpx-and-view-map/plan.md`
 - **Mode**: Deep
 - **Date**: 2026-08-24
-- **Verdict**: REVISE
-- **Findings**: 3 critical, 3 warnings, 2 observations
+- **Verdict**: REVISE → **SOUND** after triage (2026-08-24)
+- **Findings**: 3 critical, 3 warnings, 2 observations — all 8 fixed in the plan
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| End-State Alignment | WARNING |
-| Lean Execution | PASS |
-| Architectural Fitness | PASS |
-| Blind Spots | FAIL |
-| Plan Completeness | WARNING |
+| Dimension | At review | After triage |
+|-----------|-----------|--------------|
+| End-State Alignment | WARNING | PASS |
+| Lean Execution | PASS | PASS |
+| Architectural Fitness | PASS | PASS |
+| Blind Spots | FAIL | PASS |
+| Plan Completeness | WARNING | PASS |
+
+**Post-triage verdict: SOUND.** Every finding was fixed in `plan.md` rather than skipped or
+dismissed. End-State Alignment clears because both promise gaps now have measures behind
+them: the health probe actually detects the misconfiguration it is credited for (F1), and the
+brief's "documented XML entity hardening" has a hardening measure, not only a test (F3).
+Blind Spots clears on the durability and resource questions being answered rather than
+absent — the deferred delete (F4), the bounded probe key (F8), and the S-04 orphan-file
+handoff (F7). One residual risk is now recorded as **explicitly accepted** rather than
+described as bounded: there is no request-body size limit in v1 (F5). Plan Completeness
+clears with the vendored asset list closed (F2) and the upload-size settings valued (F6).
+
+The Phase Independence caveats below stand unchanged, except that caveat 1's concern is now
+discharged inside the plan: Phase 4 §10 owns setting `MEDIA_ROOT` and extending the media
+backup runbook before that phase's merge.
 
 ## Grounding
 
@@ -273,3 +287,36 @@ There is no correctness reason to.
   present. The Progress block was checked against `SKILL.md`'s inline contract and passes.
 - The plan cites `prd.md:104-105` for the data-isolation requirement; the sentence is at
   `prd.md:105`. Cosmetic.
+
+## Triage — 2026-08-24
+
+Walked in severity order, one commit per fix, followed by one commit recording the decision
+(per `~/.claude/rules/git-workflow.md`: a decision record never precedes the fix it
+describes).
+
+| Finding | Severity | Decision |
+|---|---|---|
+| F1 — /healthz/ cannot detect the MEDIA_ROOT failure | ❌ CRITICAL | FIXED — Fix A + Fix B |
+| F2 — vendored asset list omits `leaflet.js.map` | ❌ CRITICAL | FIXED |
+| F3 — entity-expansion test unsatisfiable, DoS unmitigated | ❌ CRITICAL | FIXED — Fix A (reject DTDs) |
+| F4 — file deletion inside `atomic()` is not transactional | ⚠️ WARNING | FIXED — `transaction.on_commit` |
+| F5 — the 10 MB cap is not a resource bound | ⚠️ WARNING | FIXED — restated, risk accepted explicitly |
+| F6 — upload-size settings specified without values | ⚠️ WARNING | FIXED |
+| F7 — nothing removes files when a `GpxTrack` row is deleted | 💬 OBSERVATION | FIXED — S-04 handoff + `.gitignore` |
+| F8 — /healthz/ becomes an unauthenticated filesystem write | 💬 OBSERVATION | FIXED |
+
+Fixed: 8 · Skipped: 0 · Accepted: 0 · Dismissed: 0
+
+Mechanical re-check after all edits: one `## Progress` block, phase titles matching one to
+one, no stray checkboxes in phase bodies, and every Success Criteria bullet mapped to a
+sequentially numbered Progress entry (Phase 1: 10, Phase 2: 5, Phase 3: 5, Phase 4: 12,
+Phase 5: 12, Phase 6: 7).
+
+Two incidentals surfaced during triage and are **not** fixed, because they fall outside the
+findings triaged here:
+
+- `.gitignore:81` ignores `backup/db/` only. Phase 4 §10 says to "confirm the media pattern
+  is covered" — it is not; a `backup/media/` path would be committable. Worth folding into
+  Phase 4 when it is implemented.
+- The plan cites `prd.md:104-105` for data isolation; the sentence is at `prd.md:105`
+  (already noted as cosmetic below).

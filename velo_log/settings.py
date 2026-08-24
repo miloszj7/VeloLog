@@ -25,10 +25,11 @@ def env_or(key: str, fallback: str) -> str:
     """Read an optional path-like env var, treating a blank value as unset.
 
     `env(key, default=...)` returns the default only when the key is *absent*; a key
-    that is present but blank yields "". `.env.example` ships every optional key blank,
-    so a verbatim copy would otherwise resolve to "" — which `FileSystemStorage` turns
-    into `os.path.abspath("")`, the process CWD, silently writing uploads next to the
-    source tree instead of the configured location.
+    that is present but blank yields "". A blank is easy to arrive at — a hand-edited
+    `.env` keeping the key as a reminder, or a deploy environment that defines it empty
+    — and for MEDIA_ROOT the result is silent: `FileSystemStorage` turns "" into
+    `os.path.abspath("")`, the process CWD, writing uploads next to the source tree
+    instead of the configured location.
     """
     return env(key, default="") or fallback
 

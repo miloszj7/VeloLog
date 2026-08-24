@@ -1,11 +1,12 @@
 """Prove that an optional env var left blank resolves to its fallback, not to "".
 
-`.env.example` ships every optional key present and blank, so a verbatim copy is the
-normal starting point for a new developer. django-environ returns its `default` only
-when a key is *absent* — a blank key yields "", which `FileSystemStorage` turns into
-`os.path.abspath("")`, the process CWD. Uploads then land beside the source tree, where
-the `media/` gitignore entry does not match them, and `/healthz/` stays green because
-the location guard is skipped under DEBUG.
+django-environ returns a key's `default` only when the key is *absent* — present but
+blank yields "". A blank arrives easily: a hand-edited `.env` keeping the key as a
+reminder, or a deploy environment that defines it empty. For MEDIA_ROOT the result is
+silent, since `FileSystemStorage` turns "" into `os.path.abspath("")`, the process CWD.
+Uploads then land beside the source tree, where the `media/` gitignore entry does not
+match them, and `/healthz/` stays green because the location guard is skipped under
+DEBUG.
 """
 
 import json
@@ -28,7 +29,7 @@ def test_env_or_falls_back_when_the_key_is_absent(monkeypatch: pytest.MonkeyPatc
 def test_env_or_falls_back_when_the_key_is_present_but_blank(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The regression: this is how `.env.example` ships every optional key."""
+    """The regression: a key kept as a reminder, with no value filled in."""
     monkeypatch.setenv("VELOLOG_PROBE", "")
 
     assert env_or("VELOLOG_PROBE", "fallback") == "fallback"

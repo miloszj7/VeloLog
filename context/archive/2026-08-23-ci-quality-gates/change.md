@@ -1,10 +1,10 @@
 ---
 change_id: ci-quality-gates
 title: Run tests and lint/type gates in CI on pull requests, gating the Railway deploy
-status: impl_reviewed
+status: archived
 created: 2026-08-23
-updated: 2026-08-23
-archived_at: null
+updated: 2026-08-24
+archived_at: 2026-08-24T09:15:12Z
 ---
 
 ## Notes

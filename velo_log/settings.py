@@ -21,6 +21,18 @@ env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
 
 
+def env_or(key: str, fallback: str) -> str:
+    """Read an optional path-like env var, treating a blank value as unset.
+
+    `env(key, default=...)` returns the default only when the key is *absent*; a key
+    that is present but blank yields "". `.env.example` ships every optional key blank,
+    so a verbatim copy would otherwise resolve to "" — which `FileSystemStorage` turns
+    into `os.path.abspath("")`, the process CWD, silently writing uploads next to the
+    source tree instead of the configured location.
+    """
+    return env(key, default="") or fallback
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -84,7 +96,7 @@ WSGI_APPLICATION = "velo_log.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": env("DB_PATH", default=str(BASE_DIR / "db.sqlite3")),
+        "NAME": env_or("DB_PATH", str(BASE_DIR / "db.sqlite3")),
     }
 }
 
@@ -146,7 +158,7 @@ STORAGES = {
 # Mirrors the DB_PATH idiom above: production points this at the mounted Railway Volume
 # (/data/media, see DEPLOY.md) so uploads survive a redeploy. The local default sits
 # inside the repo and is gitignored.
-MEDIA_ROOT = env("MEDIA_ROOT", default=str(BASE_DIR / "media"))
+MEDIA_ROOT = env_or("MEDIA_ROOT", str(BASE_DIR / "media"))
 
 # Must not be "/" — that is what an unset MEDIA_URL resolves to, and it collides with the
 # root RedirectView in velo_log/urls.py. No URL is ever served from this prefix (uploaded

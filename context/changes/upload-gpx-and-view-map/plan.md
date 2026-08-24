@@ -250,8 +250,21 @@ idiom at `velo_log/settings.py:86`. `MEDIA_URL` is set to a non-root prefix (`"m
 it cannot collide with the root `RedirectView` at `velo_log/urls.py:38` — note that no URL is
 ever served from it (see Phase 4 §5); it exists so `FileField.url` is well-formed.
 `DATA_UPLOAD_MAX_MEMORY_SIZE` and `FILE_UPLOAD_MAX_MEMORY_SIZE` are set explicitly rather
-than inherited, making the in-memory vs `TemporaryUploadedFile` switchover a deliberate,
-tested choice. All of it must be side-effect free at import.
+than inherited — same values as the Django defaults they currently take, `2621440` (2.5 MB)
+each, written out so a later change is a visible diff rather than a framework default nobody
+looked at. They control different things and only one of them is about the upload:
+
+- `FILE_UPLOAD_MAX_MEMORY_SIZE` is the in-memory vs `TemporaryUploadedFile` switchover for
+  file fields. **Keep it at 2.5 MB — do not raise it to the 10 MB cap.** A real multi-day
+  tour GPX is comfortably over 2.5 MB, so it spools to disk, which makes the Phase 4
+  `seek(0)` contract the *tested* path rather than the rare one. Raising it to 10 MB would
+  buffer every upload whole in RAM and quietly turn `seek(0)` into dead code that only
+  breaks in production.
+- `DATA_UPLOAD_MAX_MEMORY_SIZE` bounds non-file request data and does **not** apply to
+  file-upload fields, so it is not a bound on the GPX upload at all (see "What We're NOT
+  Doing").
+
+All of it must be side-effect free at import.
 
 #### 2. Env documentation
 

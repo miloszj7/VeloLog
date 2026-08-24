@@ -9,6 +9,7 @@ tags: [research, codebase, compatibility, gpx, leaflet, gpxpy, media-storage, st
 status: complete
 last_updated: 2026-08-24
 last_updated_by: Miłosz Jarzynka
+last_updated_note: "Added the verified Context7 library ID that returns Leaflet 1.x docs, and the version tell-tale to check on every fetch"
 ---
 
 # Research: compatibility of the S-03 library choices with the VeloLog codebase
@@ -97,6 +98,46 @@ Consequence: the two docs cannot both be followed. **Pin Leaflet 1.9.4** — the
 ecosystem has not migrated, and the Leaflet team has committed to maintaining 1.9 — and
 treat `research/leaflet-context7-docs.md` as *2.0-alpha reference material only*, not as
 the implementation contract.
+
+#### How to re-fetch Leaflet 1.x docs from Context7 (verified live, 2026-08-24)
+
+Context7 splits Leaflet by **source, not by version** — and
+`resolve-library-id` returns **no `Versions:` list** for it, so there is no
+`/leaflet/leaflet/v1.9.4` to pin. Source selection is the only lever:
+
+| Library ID | Snippets | What it actually returns |
+|---|---|---|
+| `/leaflet/leaflet` | 933 | The **GitHub repo**, default branch = 2.0 dev → the `new LeafletMap('map')` / `import {TileLayer} from 'leaflet'` ESM snippets in `research/leaflet-context7-docs.md`. **Not 1.9.4.** |
+| `/websites/leafletjs` | 451 | The **docs site**, crawled as **1.x** ✅ — use this one for S-03 |
+| `/websites/leafletjs_reference-2_0_0` | 509 | Explicitly the 2.0.0 reference |
+
+Verified by querying `/websites/leafletjs` for map init + polyline + markers +
+`fitBounds`; it returned the classic global-`L` factory API that runs on 1.9.4:
+
+```javascript
+var map = L.map('map').fitWorld();
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+L.marker([51.5, -0.09]).addTo(map);
+var travel = L.polyline([sol, deneb]).addTo(map);
+map.fitBounds(latLngBounds);
+```
+
+**Caveat:** `/websites/leafletjs` is a crawl snapshot of `leafletjs.com`, and that site's
+own quick-start page already carries the Leaflet 2.0 import-map instructions. This ID can
+therefore flip to 2.0 syntax on a future re-crawl or when the site promotes 2.0 as stable.
+
+**So the durable check is the returned syntax, not the ID:**
+
+| Returned form | Leaflet major |
+|---|---|
+| `L.map(...)`, `L.tileLayer(...)`, `L.polyline(...)` | **1.x** — correct for S-03 |
+| `new LeafletMap(...)`, `new Polyline(...)`, `import {…} from 'leaflet'` | **2.0** — reject |
+
+That one-glance test is what would have caught the original mismatch, and it costs nothing
+to apply on every fetch.
 
 ### 2. `leaflet-gpx` — split docs, and redundant under the recommended path
 
@@ -532,11 +573,16 @@ posture). Embedding the coordinate array must use `{{ ...|json_script }}`, not `
   third-party JS API, no client-side silent failure (the PRD's only NFR), and no
   unauthenticated file endpoint. It also front-loads S-05's stats work onto the same `gpxpy`
   object model with no second dependency (`research/gpxpy-context7-docs.md:57-77`).
-- **Context7's index is a point-in-time snapshot of whatever version it crawled.** Here it
-  returned pre-release Leaflet 2.0-alpha docs for a library whose stable release is 1.9.4,
-  with nothing in the response marking it as pre-release. Candidate lesson: pin the version
-  *before* fetching library docs, and cross-check the package registry for what "latest"
-  actually resolves to.
+- **Context7 indexes a library per *source*, and each source is a point-in-time snapshot of
+  whatever branch or site it crawled.** Here `/leaflet/leaflet` (the GitHub repo, default
+  branch = 2.0 dev) returned pre-release 2.0-alpha docs for a library whose stable release
+  is 1.9.4, with nothing in the response marking it as pre-release. Version pinning was not
+  available as a remedy — `resolve-library-id` offered no `Versions:` list — so picking the
+  right source ID (`/websites/leafletjs`) was the only lever, and even that can drift on a
+  re-crawl. Candidate lesson: **cross-check the package registry for what "latest" actually
+  resolves to, then verify the returned snippets use that version's syntax** — for Leaflet
+  that is a one-glance `L.map(...)` vs `new LeafletMap(...)` test. Trusting a library ID is
+  not the same as trusting a version.
 
 ## Historical Context (from prior changes)
 
@@ -573,9 +619,12 @@ posture). Embedding the coordinate array must use `{{ ...|json_script }}`, not `
   capture. **Accurate and usable as-is**; the exception pair to catch
   (`GPXXMLSyntaxException`, `GPXException`) is correct.
 - `context/changes/upload-gpx-and-view-map/research/leaflet-context7-docs.md` — **use with
-  care**: the snippets are Leaflet **2.0-alpha ESM**, not stable 1.9.4. Its own
-  recommendation at `:68,96` (server-side parse, core `Polyline`, no plugin) is the right
-  call and is what this research endorses.
+  care**: the snippets are Leaflet **2.0-alpha ESM**, not stable 1.9.4, because it was
+  fetched from `/leaflet/leaflet`. To get usable 1.x docs, re-fetch from
+  **`/websites/leafletjs`** and confirm the returned code uses `L.map(...)` rather than
+  `new LeafletMap(...)` — see "How to re-fetch Leaflet 1.x docs from Context7" in §1. Its
+  own recommendation at `:68,96` (server-side parse, core `Polyline`, no plugin) is the
+  right call and is what this research endorses.
 - `context/changes/upload-gpx-and-view-map/research/map-library-research.md` — **two
   corrections**: `@raruto/leaflet-elevation` is GPL-3.0 (not "MIT-style", `:41`) and pins
   `leaflet ^1.7.0`; and "serve the GPX file from Django media/static" (`:20,30`) conflicts

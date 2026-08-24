@@ -340,7 +340,15 @@ plan did not anticipate or did not require proving.
   degrades as data grows.
 - **Fix**: Add `raw_id_fields = ("trip",)` (or `autocomplete_fields` once `TripAdmin` gains
   `search_fields`) and `readonly_fields = ("points", "uploaded_at")`.
-- **Decision**: PENDING
+- **Decision**: FIXED, with the fix corrected on two points as it was applied. `raw_id_fields =
+  ("trip",)` landed as written. `points` went to `exclude`, not `readonly_fields`: readonly stops
+  the editing but still renders the whole JSON payload into the page, so it would not have
+  addressed the degradation this finding's own Detail describes. `uploaded_at` is `auto_now_add`
+  and therefore already absent from the form — naming it in `readonly_fields` protects nothing, so
+  it stays only to make the timestamp visible on a repair page. Consequence accepted deliberately:
+  adding a `GpxTrack` by hand through the admin now fails, because `points` is NOT NULL with no
+  default. That is the intended direction — tracks arrive through the upload flow, and the admin is
+  a read/repair path. `manage.py check` passes, so the admin system checks accept the combination.
 
 ### F9 — The new logger has no configured handler, and E-06 could silently remove its last one
 

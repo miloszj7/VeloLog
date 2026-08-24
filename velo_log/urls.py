@@ -15,23 +15,189 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.sessions.backends.db import SessionStore
+from django.core.cache import cache
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.urls import include, path, reverse_lazy
 from django.views.generic import RedirectView
 
+logger = logging.getLogger(__name__)
+
+# A single fixed key, deliberately not a generated one. /healthz/ is unauthenticated, so
+# every anonymous probe runs this round-trip; with a generated name, a delete that started
+# failing would silently accumulate files on the very Volume the app depends on. A fixed
+# key bounds that: at most one file survives a probe that died before its cleanup ran, and
+# the next probe reclaims it. The bound holds only because each probe deletes the name its
+# own `save` returned — see `_media_round_trips`.
+HEALTHZ_MEDIA_KEY = "healthz/probe.txt"
+HEALTHZ_MEDIA_PAYLOAD = b"velolog-healthz"
+
+# The probe is expensive on purpose: only a real write proves the Volume is mounted and
+# writable, which is the failure it exists to catch — a read-only check passes on an
+# unmounted Volume. So the work cannot be made cheaper without discarding the point of
+# it, and the only lever left is how often it runs. /healthz/ is unauthenticated, so
+# without this an anonymous caller can drive an unbounded number of session INSERTs
+# against SQLite's single writer lock, serialising real user writes behind them.
+# Staleness costs nothing to either consumer: both restart the process first (DEPLOY.md
+# verifies after a redeploy or a restart) and no CACHES setting is configured, so this is
+# per-process LocMem and a restart clears it.
+HEALTHZ_CACHE_KEY = "healthz:verdict"
+HEALTHZ_CACHE_SECONDS = 30
+
+
+@dataclass(frozen=True)
+class _HealthVerdict:
+    """What the probes found, kept separate from how `/healthz/` renders them.
+
+    The cache holds this rather than the finished response so the body can be reshaped
+    without reshaping what gets cached.
+    """
+
+    database_ok: bool
+    media_ok: bool
+    media_misconfiguration: str | None
+
+
+def _database_round_trips() -> bool:
+    """Write and read a session row back to confirm the database is reachable."""
+    try:
+        store = SessionStore()
+        store["healthz"] = "ok"
+        store.save()
+        readback = SessionStore(session_key=store.session_key)
+        ok = readback.get("healthz") == "ok"
+        readback.delete()
+        return ok
+    except Exception:
+        logger.exception("healthz: database round-trip failed")
+        return False
+
+
+def _media_root_context() -> dict[str, str]:
+    """Carry the offending path to the log without putting it in the message.
+
+    Per the project logging rule this is `extra`, not interpolation — which means it is
+    invisible until E-06 lands a `LOGGING` dict whose formatter renders these fields. Any
+    such dict must therefore include `velo_log` and a formatter that emits `media_root`,
+    or the only server-side record of *which* path was wrong disappears while the
+    response deliberately withholds it from the caller.
+    """
+    return {"media_root": str(settings.MEDIA_ROOT)}
+
+
+def media_root_misconfiguration() -> str | None:
+    """Return a code for why MEDIA_ROOT is unusable in production, or None when it is fine.
+
+    The return value is a stable machine code rather than a sentence, because it reaches
+    an anonymous caller: /healthz/ has no auth, and an absolute server path is recon
+    material to chain with any later traversal bug. The path itself goes to the log.
+
+    Writability alone proves nothing: with MEDIA_ROOT unset the default is
+    BASE_DIR / "media" *inside the container*, where a write succeeds — so a
+    writability-only probe returns 200 while every uploaded file sits on ephemeral disk
+    and is lost on the next redeploy (infrastructure.md:59). Under DEBUG that local
+    default is the intended arrangement, so the assertion is skipped there.
+    """
+    if settings.DEBUG:
+        return None
+    media_root = Path(settings.MEDIA_ROOT)
+    if not media_root.is_absolute():
+        logger.error("healthz: MEDIA_ROOT is not an absolute path", extra=_media_root_context())
+        return "not_absolute"
+    if media_root.resolve().is_relative_to(Path(settings.BASE_DIR).resolve()):
+        logger.error(
+            "healthz: MEDIA_ROOT resolves inside BASE_DIR — uploads would land on ephemeral "
+            "container disk instead of the mounted volume",
+            extra=_media_root_context(),
+        )
+        return "inside_base_dir"
+    return None
+
+
+def _media_round_trips() -> bool:
+    """Write, read back and delete a probe file through `default_storage`.
+
+    `Storage.save` always routes through `get_available_name`, so the opening delete only
+    frees the key — it cannot keep the write off the suffix path. A concurrent probe that
+    re-takes the key in that window sends this write to `probe_<suffix>.txt`, so the name
+    `save` *returns* is the only one this call may read back or delete: reading the
+    constant key instead reports on someone else's bytes, and deleting it strands this
+    probe's file on the Volume for good. The delete sits in `finally` so a failed
+    read-back still cleans up after itself.
+    """
+    saved: str | None = None
+    try:
+        # Reclaims a file stranded by a probe that died before its own cleanup ran.
+        default_storage.delete(HEALTHZ_MEDIA_KEY)
+        saved = default_storage.save(HEALTHZ_MEDIA_KEY, ContentFile(HEALTHZ_MEDIA_PAYLOAD))
+        with default_storage.open(saved, "rb") as handle:
+            return bool(handle.read() == HEALTHZ_MEDIA_PAYLOAD)
+    except Exception:
+        logger.exception("healthz: media round-trip failed")
+        return False
+    finally:
+        if saved is not None:
+            try:
+                default_storage.delete(saved)
+            except Exception:
+                logger.exception("healthz: could not clean up the media probe file")
+
+
+def _probe_health() -> _HealthVerdict:
+    """Run both round-trips and report what they found.
+
+    The media root is checked for *location* before anything is written to it — a
+    misconfigured root must not be created and written to just to prove it was writable.
+    """
+    misconfigured = media_root_misconfiguration()
+    return _HealthVerdict(
+        database_ok=_database_round_trips(),
+        media_ok=misconfigured is None and _media_round_trips(),
+        media_misconfiguration=misconfigured,
+    )
+
 
 def healthz(request: HttpRequest) -> HttpResponse:
-    """Round-trip a write and read against the database to confirm it's reachable."""
-    store = SessionStore()
-    store["healthz"] = "ok"
-    store.save()
-    readback = SessionStore(session_key=store.session_key)
-    ok = readback.get("healthz") == "ok"
-    readback.delete()
-    return JsonResponse({"status": "ok" if ok else "error"}, status=200 if ok else 500)
+    """Report whether the database and the media store are both reachable and correct.
+
+    Each subsystem gets its own verdict rather than collapsing into one boolean, so an
+    operator can tell from the response body alone which half failed. The verdict is
+    cached — see `HEALTHZ_CACHE_SECONDS` for why the probe is rate-limited rather than
+    made cheaper.
+    """
+    verdict = cache.get(HEALTHZ_CACHE_KEY)
+    # `isinstance` rather than a `None` check: it covers the miss and anything else that
+    # ever lands under this key, so a foreign value degrades to a fresh probe.
+    if not isinstance(verdict, _HealthVerdict):
+        verdict = _probe_health()
+        cache.set(HEALTHZ_CACHE_KEY, verdict, HEALTHZ_CACHE_SECONDS)
+
+    database_ok = verdict.database_ok
+    media_ok = verdict.media_ok
+    misconfigured = verdict.media_misconfiguration
+    ok = database_ok and media_ok
+
+    payload = {
+        "status": "ok" if ok else "error",
+        "database": "ok" if database_ok else "error",
+        "media": "ok" if media_ok else "error",
+    }
+    if misconfigured is not None:
+        payload["media_error"] = misconfigured
+    # Local convenience only. In production this is an unauthenticated disclosure of the
+    # server's filesystem layout; the log carries it there instead.
+    if settings.DEBUG:
+        payload["media_root"] = str(settings.MEDIA_ROOT)
+    return JsonResponse(payload, status=200 if ok else 500)
 
 
 urlpatterns = [

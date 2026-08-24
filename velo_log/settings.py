@@ -21,6 +21,19 @@ env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env")
 
 
+def env_or(key: str, fallback: str) -> str:
+    """Read an optional path-like env var, treating a blank value as unset.
+
+    `env(key, default=...)` returns the default only when the key is *absent*; a key
+    that is present but blank yields "". A blank is easy to arrive at — a hand-edited
+    `.env` keeping the key as a reminder, or a deploy environment that defines it empty
+    — and for MEDIA_ROOT the result is silent: `FileSystemStorage` turns "" into
+    `os.path.abspath("")`, the process CWD, writing uploads next to the source tree
+    instead of the configured location.
+    """
+    return env(key, default="") or fallback
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -44,6 +57,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts",
     "trips",
+    "gpx",
 ]
 
 MIDDLEWARE = [
@@ -83,7 +97,7 @@ WSGI_APPLICATION = "velo_log.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": env("DB_PATH", default=str(BASE_DIR / "db.sqlite3")),
+        "NAME": env_or("DB_PATH", str(BASE_DIR / "db.sqlite3")),
     }
 }
 
@@ -124,11 +138,62 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+# Media files (user uploads)
+# https://docs.djangoproject.com/en/6.0/topics/files/
+
+# Django replaces STORAGES wholesale rather than merging, so declaring "staticfiles"
+# alone drops the "default" alias every FileField resolves through. The binding is lazy
+# (it resolves on the first storage.save/url, not at startup), so nothing short of a real
+# storage write catches its absence — see tests/test_media_storage.py.
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# Mirrors the DB_PATH idiom above: production points this at the mounted Railway Volume
+# (/data/media, see DEPLOY.md) so uploads survive a redeploy. The local default sits
+# inside the repo and is gitignored.
+MEDIA_ROOT = env_or("MEDIA_ROOT", str(BASE_DIR / "media"))
+
+# Must not be "/" — that is what an unset MEDIA_URL resolves to, and it collides with the
+# root RedirectView in velo_log/urls.py. No URL is ever served from this prefix (uploaded
+# files go through an ownership-scoped view); it exists so FileField.url is well-formed.
+MEDIA_URL = "media/"
+
+# Written out rather than inherited, so a later change to either is a visible diff.
+# Both currently hold Django's own defaults.
+# FILE_UPLOAD_MAX_MEMORY_SIZE is the in-memory vs TemporaryUploadedFile switchover for
+# file fields. Keep it below the upload cap: a real multi-day tour GPX then spools to
+# disk, which keeps the seek(0)-before-save contract on the tested path rather than the
+# rare one.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
+# DATA_UPLOAD_MAX_MEMORY_SIZE bounds non-file request data only; it does not apply to
+# file-upload fields and is therefore no bound at all on a GPX upload.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
+
+
+# Logging
+# https://docs.djangoproject.com/en/6.0/topics/logging/
+
+# Deliberately unconfigured — E-06 owns introducing a LOGGING dict. Recorded here because
+# that dict inherits two obligations it would otherwise have no way to know about:
+#
+#   1. It must include a `velo_log` logger. /healthz/ catches broadly and reports what it
+#      caught only through `logger.exception` (velo_log/urls.py) — the response body
+#      carries no detail for the store-unreachable case on purpose. With no LOGGING dict
+#      those records reach stderr through `logging.lastResort`, so a dict scoped to
+#      `django`/`django.server` alone, or one leaving `disable_existing_loggers` true,
+#      silently removes the only diagnostic channel the probe has.
+#   2. Its formatter must emit the `media_root` extra. A misconfigured media path is
+#      withheld from the anonymous caller and passed as `extra` instead (see
+#      `_media_root_context`), and `lastResort`'s formatter renders the message alone —
+#      so that path is invisible today and stays invisible until a formatter names it.
 
 
 # Authentication

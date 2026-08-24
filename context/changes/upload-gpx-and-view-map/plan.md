@@ -333,6 +333,13 @@ with both round-trips reporting ok. One test asserts that with `DEBUG=False` and
 `MEDIA_ROOT` inside `BASE_DIR`, `/healthz/` returns 500 and names the media root as the
 reason — the guard added in §3, asserted as an outcome rather than a settings read.
 
+**Superseded after implementation (impl review F5)**: the contract above is left as written,
+but the last test no longer matches it. `/healthz/` is unauthenticated, so naming the media
+root disclosed the absolute server path to any anonymous caller. The guard now returns a
+stable code — `"inside_base_dir"` — and the test asserts that, plus that no absolute path
+appears anywhere in the response. The intent is unchanged: still an outcome assertion, not a
+settings read. The path reaches the log instead, and the body only under `DEBUG`.
+
 #### 6. Working-tree ignore
 
 **File**: `.gitignore`
@@ -801,7 +808,7 @@ the restore drill.
 - Uploading a `.txt`, an oversized file, and a corrupted `.gpx` each show a readable inline error and leave the trip unchanged
 - Uploading a second file replaces the first, and the download link returns the newest file
 - The downloaded file opens correctly in another GPX viewer
-- `MEDIA_ROOT=/data/media` is confirmed set in Railway via `railway variables`, and production `/healthz/` reports that media root — **before** this phase is merged
+- `MEDIA_ROOT=/data/media` is confirmed set in Railway via `railway variables`, and production `/healthz/` returns `"media": "ok"` — which is what proves the location guard accepted the root as absolute and outside `BASE_DIR`. The body no longer echoes the path: `/healthz/` is unauthenticated, so the absolute server layout is withheld from anonymous callers and the verdict carries the proof instead — **before** this phase is merged
 - `DEPLOY.md`'s Backup and Restore sections cover `/data/media`
 
 **Implementation Note**: After completing this phase and all automated verification passes,
@@ -1193,32 +1200,32 @@ not a cost that stays invisible forever.
 
 #### Automated
 
-- [ ] 1.1 Lint, format, import order pass
-- [ ] 1.2 Strict typing passes
-- [ ] 1.3 Django check passes
-- [ ] 1.4 Full CI-equivalent suite passes
-- [ ] 1.5 `tests/test_media_storage.py` proves a real `default_storage` round-trip
-- [ ] 1.6 `tests/test_settings_security.py` still passes — settings remain import-safe
-- [ ] 1.7 `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR`
+- [x] 1.1 Lint, format, import order pass — 507ca9a
+- [x] 1.2 Strict typing passes — 507ca9a
+- [x] 1.3 Django check passes — 507ca9a
+- [x] 1.4 Full CI-equivalent suite passes — 507ca9a
+- [x] 1.5 `tests/test_media_storage.py` proves a real `default_storage` round-trip — 507ca9a
+- [x] 1.6 `tests/test_settings_security.py` still passes — settings remain import-safe — 507ca9a
+- [x] 1.7 `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR` — 507ca9a
 
 #### Manual
 
-- [ ] 1.8 No stray files appear under the repo working tree after a full test run
-- [ ] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips
-- [ ] 1.10 A `runserver` write into the default `media/` leaves `git status` clean
+- [x] 1.8 No stray files appear under the repo working tree after a full test run — 507ca9a
+- [x] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips — 507ca9a
+- [x] 1.10 A `runserver` write into the default `media/` leaves `git status` clean — 507ca9a
 
 ### Phase 2: The `gpx` app and the `GpxTrack` model
 
 #### Automated
 
-- [ ] 2.1 Migration guard is clean
-- [ ] 2.2 Coverage guard passes with the new app
-- [ ] 2.3 Lint, format, import order, and strict typing pass on the new package
-- [ ] 2.4 Full CI-equivalent suite passes, coverage at or above `fail_under = 80`
+- [x] 2.1 Migration guard is clean — 54b06a4
+- [x] 2.2 Coverage guard passes with the new app — 54b06a4
+- [x] 2.3 Lint, format, import order, and strict typing pass on the new package — 54b06a4
+- [x] 2.4 Full CI-equivalent suite passes, coverage at or above `fail_under = 80` — 54b06a4
 
 #### Manual
 
-- [ ] 2.5 `GpxTrack` appears in Django admin and a row can be inspected without error
+- [x] 2.5 `GpxTrack` appears in Django admin and a row can be inspected without error — 54b06a4
 
 ### Phase 3: Trip detail view
 
@@ -1250,7 +1257,7 @@ not a cost that stays invisible forever.
 - [ ] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing
 - [ ] 4.9 A second upload replaces the first; the download link returns the newest file
 - [ ] 4.10 The downloaded file opens correctly in another GPX viewer
-- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` reports it — before merge
+- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — before merge
 - [ ] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media`
 
 ### Phase 5: Map rendering and the static pipeline

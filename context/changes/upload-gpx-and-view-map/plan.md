@@ -1193,32 +1193,32 @@ not a cost that stays invisible forever.
 
 #### Automated
 
-- [x] 1.1 Lint, format, import order pass
-- [x] 1.2 Strict typing passes
-- [x] 1.3 Django check passes
-- [x] 1.4 Full CI-equivalent suite passes
-- [x] 1.5 `tests/test_media_storage.py` proves a real `default_storage` round-trip
-- [x] 1.6 `tests/test_settings_security.py` still passes — settings remain import-safe
-- [x] 1.7 `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR`
+- [x] 1.1 Lint, format, import order pass — 507ca9a
+- [x] 1.2 Strict typing passes — 507ca9a
+- [x] 1.3 Django check passes — 507ca9a
+- [x] 1.4 Full CI-equivalent suite passes — 507ca9a
+- [x] 1.5 `tests/test_media_storage.py` proves a real `default_storage` round-trip — 507ca9a
+- [x] 1.6 `tests/test_settings_security.py` still passes — settings remain import-safe — 507ca9a
+- [x] 1.7 `/healthz/` returns 500 at `DEBUG=False` when `MEDIA_ROOT` resolves inside `BASE_DIR` — 507ca9a
 
 #### Manual
 
-- [x] 1.8 No stray files appear under the repo working tree after a full test run
-- [x] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips
-- [x] 1.10 A `runserver` write into the default `media/` leaves `git status` clean
+- [x] 1.8 No stray files appear under the repo working tree after a full test run — 507ca9a
+- [x] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips — 507ca9a
+- [x] 1.10 A `runserver` write into the default `media/` leaves `git status` clean — 507ca9a
 
 ### Phase 2: The `gpx` app and the `GpxTrack` model
 
 #### Automated
 
-- [ ] 2.1 Migration guard is clean
-- [ ] 2.2 Coverage guard passes with the new app
-- [ ] 2.3 Lint, format, import order, and strict typing pass on the new package
-- [ ] 2.4 Full CI-equivalent suite passes, coverage at or above `fail_under = 80`
+- [x] 2.1 Migration guard is clean
+- [x] 2.2 Coverage guard passes with the new app
+- [x] 2.3 Lint, format, import order, and strict typing pass on the new package
+- [x] 2.4 Full CI-equivalent suite passes, coverage at or above `fail_under = 80`
 
 #### Manual
 
-- [ ] 2.5 `GpxTrack` appears in Django admin and a row can be inspected without error
+- [x] 2.5 `GpxTrack` appears in Django admin and a row can be inspected without error
 
 ### Phase 3: Trip detail view
 

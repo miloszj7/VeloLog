@@ -58,7 +58,7 @@ python_files = ["tests.py", "test_*.py"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["accounts", "trips", "velo_log"]
+source = ["accounts", "trips", "gpx", "velo_log"]
 omit = ["velo_log/wsgi.py", "velo_log/asgi.py", "velo_log/settings.py"]
 
 [tool.coverage.report]

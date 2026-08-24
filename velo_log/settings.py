@@ -178,6 +178,24 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
 
 
+# Logging
+# https://docs.djangoproject.com/en/6.0/topics/logging/
+
+# Deliberately unconfigured — E-06 owns introducing a LOGGING dict. Recorded here because
+# that dict inherits two obligations it would otherwise have no way to know about:
+#
+#   1. It must include a `velo_log` logger. /healthz/ catches broadly and reports what it
+#      caught only through `logger.exception` (velo_log/urls.py) — the response body
+#      carries no detail for the store-unreachable case on purpose. With no LOGGING dict
+#      those records reach stderr through `logging.lastResort`, so a dict scoped to
+#      `django`/`django.server` alone, or one leaving `disable_existing_loggers` true,
+#      silently removes the only diagnostic channel the probe has.
+#   2. Its formatter must emit the `media_root` extra. A misconfigured media path is
+#      withheld from the anonymous caller and passed as `extra` instead (see
+#      `_media_root_context`), and `lastResort`'s formatter renders the message alone —
+#      so that path is invisible today and stays invisible until a formatter names it.
+
+
 # Authentication
 # https://docs.djangoproject.com/en/6.0/topics/auth/default/
 

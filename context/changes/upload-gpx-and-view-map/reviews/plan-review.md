@@ -320,8 +320,12 @@ Phase 5: 12, Phase 6: 7).
 Two incidentals surfaced during triage and are **not** fixed, because they fall outside the
 findings triaged here:
 
-- `.gitignore:81` ignores `backup/db/` only. Phase 4 §10 says to "confirm the media pattern
-  is covered" — it is not; a `backup/media/` path would be committable. Worth folding into
-  Phase 4 when it is implemented.
+- ~~`.gitignore:81` ignores `backup/db/` only. Phase 4 §10 says to "confirm the media pattern
+  is covered" — it is not; a `backup/media/` path would be committable.~~ **FIXED**
+  (2026-08-24), outside this branch's nominal scope by explicit decision. Rather than adding
+  `backup/media/`, the pattern was widened to all of `backup/` — nothing under it is tracked
+  and no production dump of any kind should ever be committed, so the narrower fix would only
+  have deferred the same defect to the next runbook addition. Phase 4 §10 now states the
+  pattern is covered instead of asking the implementer to confirm it.
 - ~~The plan cites `prd.md:104-105` for data isolation; the sentence is at `prd.md:105`.~~
   **FIXED** (2026-08-24) — see the incidental-notes entry below for what the fix was.

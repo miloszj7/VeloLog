@@ -779,8 +779,10 @@ collecting have a backup procedure. `DEPLOY.md:33-56` currently backs up
 `railway service files` mechanism and the same `MSYS_NO_PATHCONV=1` caveat already documented
 for Git Bash, and record that a `RAILWAY_RUN_UID` regression makes Volume writes fail
 **silently** (`infrastructure.md:59`) — which the `/healthz/` media round-trip now detects.
-`backup/` is already gitignored; confirm the media pattern is covered. Phase 6 keeps the
-known-good-deployments row and the restore drill.
+`backup/` is gitignored in full (`.gitignore:82`), so the media dump path needs no new
+entry — that was widened from `backup/db/` ahead of this slice precisely so this step could
+not leak a dump of another user's GPX files. Phase 6 keeps the known-good-deployments row and
+the restore drill.
 
 ### Success Criteria:
 

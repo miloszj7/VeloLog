@@ -225,7 +225,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
   the working tree — the Phase 1 autouse fixture only covers the test suite.
 - **Fix**: Note the orphan-file gap in Migration Notes as a handoff to S-04, and add
   `media/` to `.gitignore` in Phase 1.
-- **Decision**: PENDING
+- **Decision**: FIXED. Migration Notes gains an explicit S-04 handoff for orphan files, on the same `on_commit` footing as the Phase 4 replace path. Phase 2 §6 now states that the cascade test deliberately asserts rows only, so nobody "fixes" it into a failing file assertion. New Phase 1 §6 adds `media/` to `.gitignore` with manual check 1.10 (a `runserver` write leaves `git status` clean).
 
 ### F8 — /healthz/ becomes an unauthenticated filesystem write
 

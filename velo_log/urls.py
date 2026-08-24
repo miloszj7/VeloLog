@@ -32,8 +32,10 @@ logger = logging.getLogger(__name__)
 
 # A single fixed key, deliberately not a generated one. /healthz/ is unauthenticated, so
 # every anonymous probe runs this round-trip; with a generated name, a delete that started
-# failing would silently accumulate collision-suffixed files on the very Volume the app
-# depends on. A fixed key bounds that failure mode at one file.
+# failing would silently accumulate files on the very Volume the app depends on. A fixed
+# key bounds that: at most one file survives a probe that died before its cleanup ran, and
+# the next probe reclaims it. The bound holds only because each probe deletes the name its
+# own `save` returned — see `_media_round_trips`.
 HEALTHZ_MEDIA_KEY = "healthz/probe.txt"
 HEALTHZ_MEDIA_PAYLOAD = b"velolog-healthz"
 
@@ -78,23 +80,30 @@ def _media_root_misconfigured() -> str | None:
 def _media_round_trips() -> bool:
     """Write, read back and delete a probe file through `default_storage`.
 
-    Deleting before saving keeps the write off `get_available_name`, so the fixed key is
-    overwritten rather than suffixed. The closing delete sits in `finally` so a failed
+    `Storage.save` always routes through `get_available_name`, so the opening delete only
+    frees the key — it cannot keep the write off the suffix path. A concurrent probe that
+    re-takes the key in that window sends this write to `probe_<suffix>.txt`, so the name
+    `save` *returns* is the only one this call may read back or delete: reading the
+    constant key instead reports on someone else's bytes, and deleting it strands this
+    probe's file on the Volume for good. The delete sits in `finally` so a failed
     read-back still cleans up after itself.
     """
+    saved: str | None = None
     try:
+        # Reclaims a file stranded by a probe that died before its own cleanup ran.
         default_storage.delete(HEALTHZ_MEDIA_KEY)
-        default_storage.save(HEALTHZ_MEDIA_KEY, ContentFile(HEALTHZ_MEDIA_PAYLOAD))
-        with default_storage.open(HEALTHZ_MEDIA_KEY, "rb") as handle:
+        saved = default_storage.save(HEALTHZ_MEDIA_KEY, ContentFile(HEALTHZ_MEDIA_PAYLOAD))
+        with default_storage.open(saved, "rb") as handle:
             return bool(handle.read() == HEALTHZ_MEDIA_PAYLOAD)
     except Exception:
         logger.exception("healthz: media round-trip failed")
         return False
     finally:
-        try:
-            default_storage.delete(HEALTHZ_MEDIA_KEY)
-        except Exception:
-            logger.exception("healthz: could not clean up the media probe file")
+        if saved is not None:
+            try:
+                default_storage.delete(saved)
+            except Exception:
+                logger.exception("healthz: could not clean up the media probe file")
 
 
 def healthz(request: HttpRequest) -> HttpResponse:

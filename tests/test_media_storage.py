@@ -8,6 +8,7 @@ storage. So a settings assertion here would be worthless — it would pass again
 `STORAGES` dict that still cannot resolve. Every test below does the real thing instead.
 """
 
+from io import BytesIO
 from pathlib import Path
 from typing import IO, Any, NoReturn
 
@@ -25,9 +26,9 @@ from velo_log import urls as velo_log_urls
 class _BrokenStorage:
     """Stands in for `default_storage` when the media store is unreachable.
 
-    Every method raises, including `delete`, so the `finally` cleanup path is exercised
-    too — that is the branch which decides whether a failing store produces a diagnosable
-    500 or an opaque stack trace.
+    Every method raises, starting at the opening `delete`, so the probe never writes and
+    has nothing to clean up. `_CleanupFailsStorage` covers the other half — a store that
+    accepts the write and then fails the closing delete.
     """
 
     def delete(self, name: str) -> None:
@@ -38,6 +39,53 @@ class _BrokenStorage:
 
     def open(self, name: str, mode: str) -> IO[bytes]:
         raise OSError("media store unavailable")
+
+
+class _CleanupFailsStorage:
+    """A store that takes the write and the read back, then fails the closing delete.
+
+    That is the branch which decides whether a probe unable to clean up after itself
+    produces a usable verdict or an opaque stack trace escaping `finally`.
+    """
+
+    def __init__(self) -> None:
+        self._deletes = 0
+
+    def delete(self, name: str) -> None:
+        self._deletes += 1
+        if self._deletes > 1:
+            raise OSError("media store went away")
+
+    def save(self, name: str, content: ContentFile[Any]) -> str:
+        return name
+
+    def open(self, name: str, mode: str) -> IO[bytes]:
+        return BytesIO(velo_log_urls.HEALTHZ_MEDIA_PAYLOAD)
+
+
+class _ConcurrentProbeStorage:
+    """`default_storage` with the probe's opening delete lost to a concurrent probe.
+
+    Models the one interleaving that matters: a second probe re-takes the fixed key in
+    the window between this probe's delete and its save. Real threads cannot be asserted
+    on deterministically, so the first `delete` is dropped instead — the key is still
+    occupied when `save` runs, which is exactly the state the race leaves behind.
+    """
+
+    def __init__(self) -> None:
+        self._deletes = 0
+
+    def delete(self, name: str) -> None:
+        self._deletes += 1
+        if self._deletes == 1:
+            return
+        default_storage.delete(name)
+
+    def save(self, name: str, content: ContentFile[Any]) -> str:
+        return default_storage.save(name, content)
+
+    def open(self, name: str, mode: str) -> IO[bytes]:
+        return default_storage.open(name, mode)
 
 
 def test_default_storage_round_trips_real_bytes(settings: Settings) -> None:
@@ -161,3 +209,40 @@ def test_healthz_blames_the_database_alone_when_it_is_unreachable(
     assert body["status"] == "error"
     assert body["database"] == "error"
     assert body["media"] == "ok"
+
+
+def test_healthz_reads_back_and_deletes_the_name_save_returned(
+    client: Client, db: None, settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A probe must report on, and clean up, the file it actually wrote.
+
+    `Storage.save` always routes through `get_available_name`, so when the fixed key is
+    occupied the write lands under a suffix. Held against the constant key instead, the
+    probe reports on the other writer's bytes and leaves its own file behind for good —
+    an orphan any anonymous caller can drive without limit, on the mounted Volume.
+    """
+    concurrent_key = default_storage.save(
+        velo_log_urls.HEALTHZ_MEDIA_KEY, ContentFile(b"another-probes-bytes")
+    )
+    probe_dir = Path(settings.MEDIA_ROOT) / Path(velo_log_urls.HEALTHZ_MEDIA_KEY).parent
+    monkeypatch.setattr(velo_log_urls, "default_storage", _ConcurrentProbeStorage())
+
+    response = client.get(reverse("healthz"))
+
+    assert response.status_code == 200
+    assert response.json()["media"] == "ok"
+    # The other writer's file is not this probe's to remove; anything else left here is a
+    # file this probe wrote and then failed to clean up.
+    assert sorted(path.name for path in probe_dir.iterdir()) == [Path(concurrent_key).name]
+
+
+def test_healthz_survives_a_cleanup_that_cannot_delete(
+    client: Client, db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failing cleanup must not escape `finally` and mask an otherwise passing probe."""
+    monkeypatch.setattr(velo_log_urls, "default_storage", _CleanupFailsStorage())
+
+    response = client.get(reverse("healthz"))
+
+    assert response.status_code == 200
+    assert response.json()["media"] == "ok"

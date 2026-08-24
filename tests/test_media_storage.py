@@ -81,9 +81,16 @@ def test_healthz_fails_when_media_root_is_inside_base_dir_and_debug_is_false(
 
     A writability-only check would return 200 here — the directory is perfectly writable.
     It is just ephemeral, so every upload would be lost on the next redeploy.
+
+    The root is a path guaranteed not to pre-exist rather than the settings default
+    `BASE_DIR / "media"`. Any local `runserver` hit on `/healthz/` leaves that directory
+    behind — `FileSystemStorage.save` creates the probe's parent and only the probe file
+    is deleted — which both fails the last assertion below spuriously *and* hides a real
+    regression, since a guard that stopped short-circuiting would write and then delete
+    its probe file inside an already-existing directory, leaving nothing to detect.
     """
     settings.DEBUG = False
-    in_container_media_root = Path(settings.BASE_DIR) / "media"
+    in_container_media_root = Path(settings.BASE_DIR) / "media-misconfigured-probe"
     settings.MEDIA_ROOT = str(in_container_media_root)
 
     response = client.get(reverse("healthz"))
@@ -94,8 +101,9 @@ def test_healthz_fails_when_media_root_is_inside_base_dir_and_debug_is_false(
     assert body["media"] == "error"
     assert body["media_root"] == str(in_container_media_root)
     assert "MEDIA_ROOT" in body["media_error"]
-    # The probe must not have created the misconfigured directory just to test it.
-    assert not (in_container_media_root / "healthz").exists()
+    # The location check must short-circuit before anything touches the misconfigured
+    # root, so the probe must not have created it just to prove it was writable.
+    assert not in_container_media_root.exists()
 
 
 def test_media_root_location_check_is_skipped_under_debug(settings: Settings) -> None:

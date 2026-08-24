@@ -101,7 +101,12 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
     `lessons.md` #4 exists to warn about.
   - Blind spot: Haven't checked whether any future settings name would be shadowed rather
     than added.
-- **Decision**: PENDING
+- **Decision**: FIXED (Fix A) — `tests/test_settings_security.py` now loads
+  `velo_log/settings.py` via `spec_from_file_location`/`exec_module` into a throwaway
+  module never registered in `sys.modules`, using `monkeypatch.setenv` instead of
+  `mock.patch.dict` + manual reload/`try`/`finally`. Verified: `pytest
+  tests/test_settings_security.py` passes, and `pytest --cov` still passes in full
+  (30 passed, 93.39%). Also resolves F5's `unittest.mock` pattern-consistency note.
 
 ### F2 — The coverage guard defends `source` but not `omit`, and `velo_log/settings.py` is already omitted
 
@@ -212,7 +217,9 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
   into F1's rewrite.
 - **Fix**: Adopt `monkeypatch.setenv` as part of F1 Fix A; leave the `Settings` import unless a
   pin bump breaks it.
-- **Decision**: PENDING
+- **Decision**: FIXED (via F1 Fix A) — `test_settings_security.py` now uses
+  `monkeypatch.setenv` and no longer imports `unittest.mock`. The `pytest_django.fixtures`
+  `Settings` import in `conftest.py:6` is unrelated and left as-is per the note above.
 
 ### F6 — The `deploy` job installs uv and syncs a dependency tree nothing uses
 

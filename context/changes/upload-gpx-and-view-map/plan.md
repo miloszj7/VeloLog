@@ -323,6 +323,17 @@ with both round-trips reporting ok. One test asserts that with `DEBUG=False` and
 `MEDIA_ROOT` inside `BASE_DIR`, `/healthz/` returns 500 and names the media root as the
 reason — the guard added in §3, asserted as an outcome rather than a settings read.
 
+#### 6. Working-tree ignore
+
+**File**: `.gitignore`
+
+**Intent**: The §1 local default is `BASE_DIR / "media"`, inside the repo. The §4 autouse
+fixture redirects `MEDIA_ROOT` for the *test suite* only — a `runserver` upload lands in the
+working tree, where the next `git add` would commit a user's GPX file.
+
+**Contract**: `media/` is added alongside the existing `staticfiles/` and `backup/db/`
+entries, with a comment pointing at the `MEDIA_ROOT` default that produces it.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -339,6 +350,7 @@ reason — the guard added in §3, asserted as an outcome rather than a settings
 
 - No stray files appear under the repo working tree after a full test run
 - `/healthz/` on a local runserver returns 200 and reports both the DB and media round-trips
+- A write into the default local `media/` directory leaves `git status` clean — the autouse fixture covers the suite, `.gitignore` covers `runserver`
 
 **Implementation Note**: After completing this phase and all automated verification passes,
 pause here for manual confirmation before proceeding.
@@ -433,6 +445,13 @@ same commit as the model, and verified with
 **Contract**: A track is reachable from its trip via `related_name`; deleting the trip
 cascades to its tracks; the upload path function produces a path that contains neither the
 user-supplied filename nor any traversal segment; `__str__` returns the original filename.
+
+The cascade test asserts the *rows* go, and deliberately does not assert anything about the
+files: Django has not deleted `FileField` files on model delete since 1.3, and this slice
+does not add that behaviour. Nothing leaks in v1 because no delete path is reachable — there
+is no trip-delete UI until S-04 — so this is handed to S-04 rather than solved here (see
+Migration Notes). Do not "fix" it by asserting the file is gone; that test would fail
+correctly.
 
 ### Success Criteria:
 
@@ -1129,6 +1148,14 @@ read-back → delete round-trip) and an unset or in-container `MEDIA_ROOT` (caug
 location assertion, which only applies at `DEBUG=False`). A writability-only probe would pass
 on the second one, because the in-container default is writable.
 
+**Handoff to S-04 — orphan files on delete.** S-04 adds trip edit and delete. Deleting a
+trip cascades its `GpxTrack` rows away, but Django does not delete the underlying files, so
+every deleted trip will leave its GPX files on the Volume permanently. Nothing leaks in this
+slice because no delete path is reachable, but S-04 must pair its delete with file cleanup —
+whichever mechanism it chooses, on the same `transaction.on_commit` footing as the replace
+path in Phase 4 §5. The Volume is single-region and 3,000 IOPS; an unbounded orphan set is
+not a cost that stays invisible forever.
+
 ## References
 
 - Internal research: `context/changes/upload-gpx-and-view-map/research.md`
@@ -1164,6 +1191,7 @@ on the second one, because the in-container default is writable.
 
 - [ ] 1.8 No stray files appear under the repo working tree after a full test run
 - [ ] 1.9 `/healthz/` returns 200 and reports both the DB and media round-trips
+- [ ] 1.10 A `runserver` write into the default `media/` leaves `git status` clean
 
 ### Phase 2: The `gpx` app and the `GpxTrack` model
 

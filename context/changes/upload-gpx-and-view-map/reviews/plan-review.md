@@ -285,8 +285,13 @@ There is no correctness reason to.
 - `.claude/skills/10x-plan-review/references/progress-format.md`, referenced by the
   skill's mechanical Progress contract, does not exist on disk — only `SKILL.md` is
   present. The Progress block was checked against `SKILL.md`'s inline contract and passes.
-- The plan cites `prd.md:104-105` for the data-isolation requirement; the sentence is at
-  `prd.md:105`. Cosmetic.
+- ~~The plan cites `prd.md:104-105` for the data-isolation requirement; the sentence is at
+  `prd.md:105`.~~ **FIXED** (2026-08-24). The range was not simply off by a line: `:104` and
+  `:105` carry two different requirements that drive two different parts of the download view
+  — owner scoping from `:105`, `LoginRequiredMixin` from `:104` — so each is now cited for
+  what it says, in `plan.md`, `plan-brief.md` and `change.md` (D2). `research.md:470,636`
+  deliberately keeps the range: it quotes both sentences as a pair, so the span is correct
+  there.
 
 ## Triage — 2026-08-24
 
@@ -318,5 +323,5 @@ findings triaged here:
 - `.gitignore:81` ignores `backup/db/` only. Phase 4 §10 says to "confirm the media pattern
   is covered" — it is not; a `backup/media/` path would be committable. Worth folding into
   Phase 4 when it is implemented.
-- The plan cites `prd.md:104-105` for data isolation; the sentence is at `prd.md:105`
-  (already noted as cosmetic below).
+- ~~The plan cites `prd.md:104-105` for data isolation; the sentence is at `prd.md:105`.~~
+  **FIXED** (2026-08-24) — see the incidental-notes entry below for what the fix was.

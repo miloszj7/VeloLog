@@ -208,7 +208,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
   `FILE_UPLOAD_MAX_MEMORY_SIZE` at the 2.5 MB default — so a real tour GPX spools to disk
   rather than RAM — makes the Phase 4 `seek(0)` contract the tested path rather than the
   rare one.
-- **Decision**: PENDING
+- **Decision**: FIXED. Phase 1 §1 now pins both at `2621440` (2.5 MB, the current values), splits what each controls, and states the reason not to raise `FILE_UPLOAD_MAX_MEMORY_SIZE` to the 10 MB cap — doing so would buffer every upload in RAM and make `seek(0)` dead code that only breaks in production. `DATA_UPLOAD_MAX_MEMORY_SIZE` is marked as not applying to file fields, cross-referencing the F5 entry.
 
 ### F7 — Nothing removes files when a GpxTrack row is deleted
 

@@ -81,7 +81,25 @@ plan did not anticipate or did not require proving.
     Django idiom of trusting `save()`'s return value.
   - Blind spot: Whether Railway sets `WEB_CONCURRENCY` in this project's environment has not been
     checked, so "latent today" rests on `railway.json` alone.
-- **Decision**: PENDING
+- **Decision**: FIXED — `_media_round_trips` now captures `save()`'s return value and uses it for
+  both the read-back and the `finally` delete (guarded on `saved is not None`, since a failed save
+  wrote nothing); the fixed key is kept as the opening delete, which reclaims a file stranded by a
+  probe that died before its cleanup. The two false comments (`velo_log/urls.py:33-36`, `:80-82`)
+  were rewritten to describe what the code does.
+
+  One deviation from the Fix as written: the proposed regression test (pre-create a stale
+  `probe.txt`, assert the directory is empty afterwards) **passes today** — the opening delete
+  reclaims the stale file, so that path was never broken. The failing case is the interleaving
+  itself, so `test_healthz_reads_back_and_deletes_the_name_save_returned` drops the probe's *first*
+  `delete` (`_ConcurrentProbeStorage`) to model a second probe re-taking the key in that window.
+  Verified failing against pre-fix `velo_log/urls.py` (500 ≠ 200, plus the orphaned
+  `probe_<suffix>.txt`) and passing after. The `saved is not None` guard means `_BrokenStorage` no
+  longer reaches the `finally` cleanup branch, so `_CleanupFailsStorage` plus
+  `test_healthz_survives_a_cleanup_that_cannot_delete` keeps that branch covered.
+
+  Gates re-run after the fix: ruff / black / isort / `mypy` (41 files) / `manage.py check` /
+  `makemigrations --check` all clean; CI-equivalent `pytest --cov` 46 passed (was 44), TOTAL
+  99.51%, `velo_log/urls.py` still 100%.
 
 ### F2 — A verbatim copy of `.env.example` sends uploads into the repo root, unignored
 

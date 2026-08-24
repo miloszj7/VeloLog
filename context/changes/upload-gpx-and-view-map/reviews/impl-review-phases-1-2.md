@@ -290,11 +290,16 @@ plan did not anticipate or did not require proving.
   disclosing each fail a different test.
   **Two plan statements are now stale, one of them load-bearing.** Phase 1 §5 (`plan.md:333`) says
   the test asserts `/healthz/` "names the media root as the reason"; it now asserts the code. That
-  is wording only — the intent, asserting an outcome rather than a settings read, is intact. But
-  Phase 6's manual criterion (`plan.md:804`) requires that "production `/healthz/` reports that
-  media root" before the phase merges, and production runs `DEBUG=False`, so that check can no
-  longer be performed as written. Phase 6 has not run yet, so this is a live obligation, not a
-  historical note — see the follow-up amendment.
+  is wording only — the intent, asserting an outcome rather than a settings read, is intact,
+  and Phase 1 is complete, so that sentence is left as a recorded note rather than edited
+  retroactively.
+  The second was load-bearing and has been amended. **Phase 4's** manual criterion
+  (`plan.md:804`, mirrored at Progress 4.11) required that "production `/healthz/` reports that
+  media root" before the phase merges; production runs `DEBUG=False`, so that check could no
+  longer be performed as written. Phase 4 has not run yet, so this was a live obligation. It now
+  reads that production `/healthz/` returns `"media": "ok"` — a stronger check than the
+  original, because a passing verdict *proves* the guard accepted the root as absolute and
+  outside `BASE_DIR`, where reading the echoed string only proved it had been printed.
 
 ### F6 — The gates cannot see F1: 100% statement coverage, no branch coverage, no cleanup assertion
 

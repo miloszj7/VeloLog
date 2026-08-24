@@ -801,7 +801,7 @@ the restore drill.
 - Uploading a `.txt`, an oversized file, and a corrupted `.gpx` each show a readable inline error and leave the trip unchanged
 - Uploading a second file replaces the first, and the download link returns the newest file
 - The downloaded file opens correctly in another GPX viewer
-- `MEDIA_ROOT=/data/media` is confirmed set in Railway via `railway variables`, and production `/healthz/` reports that media root — **before** this phase is merged
+- `MEDIA_ROOT=/data/media` is confirmed set in Railway via `railway variables`, and production `/healthz/` returns `"media": "ok"` — which is what proves the location guard accepted the root as absolute and outside `BASE_DIR`. The body no longer echoes the path: `/healthz/` is unauthenticated, so the absolute server layout is withheld from anonymous callers and the verdict carries the proof instead — **before** this phase is merged
 - `DEPLOY.md`'s Backup and Restore sections cover `/data/media`
 
 **Implementation Note**: After completing this phase and all automated verification passes,
@@ -1250,7 +1250,7 @@ not a cost that stays invisible forever.
 - [ ] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing
 - [ ] 4.9 A second upload replaces the first; the download link returns the newest file
 - [ ] 4.10 The downloaded file opens correctly in another GPX viewer
-- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` reports it — before merge
+- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — before merge
 - [ ] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media`
 
 ### Phase 5: Map rendering and the static pipeline

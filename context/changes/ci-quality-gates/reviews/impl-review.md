@@ -205,7 +205,9 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
   `KeyError` rather than passing quietly. Both were checked.
 - **Fix**: Add `assert first_party_apps, "guard found no first-party apps — check REPO_ROOT / INSTALLED_APPS"`
   before the `missing` assertion.
-- **Decision**: PENDING
+- **Decision**: FIXED — assertion added in `tests/test_coverage_scope.py`. Full suite
+  still passes (30 passed, 93.39%). The repo-root exemption caveat is accepted as-is,
+  matching `AGENTS.md`'s "apps belong at repo root" rule.
 
 ### F5 — `unittest.mock` + hand-rolled teardown where `monkeypatch` is the house idiom
 

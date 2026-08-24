@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import Client
 from pytest_django.fixtures import Settings
 
@@ -27,6 +28,17 @@ def _media_root_in_tmp_path(settings: Settings, tmp_path: Path) -> None:
     `setting_changed`, which resets the cached `default_storage` location.
     """
     settings.MEDIA_ROOT = str(tmp_path / "media")
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache() -> None:
+    """Keep `/healthz/`'s cached verdict from leaking between tests.
+
+    The default backend is LocMem and the suite runs in one process, so without this the
+    first test to hit `/healthz/` decides the verdict every later test sees — a broken
+    store would read healthy because a passing test cached `ok` first.
+    """
+    cache.clear()
 
 
 @pytest.fixture

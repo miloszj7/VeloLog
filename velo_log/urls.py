@@ -16,12 +16,14 @@ Including another URLconf
 """
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.sessions.backends.db import SessionStore
+from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -38,6 +40,31 @@ logger = logging.getLogger(__name__)
 # own `save` returned — see `_media_round_trips`.
 HEALTHZ_MEDIA_KEY = "healthz/probe.txt"
 HEALTHZ_MEDIA_PAYLOAD = b"velolog-healthz"
+
+# The probe is expensive on purpose: only a real write proves the Volume is mounted and
+# writable, which is the failure it exists to catch — a read-only check passes on an
+# unmounted Volume. So the work cannot be made cheaper without discarding the point of
+# it, and the only lever left is how often it runs. /healthz/ is unauthenticated, so
+# without this an anonymous caller can drive an unbounded number of session INSERTs
+# against SQLite's single writer lock, serialising real user writes behind them.
+# Staleness costs nothing to either consumer: both restart the process first (DEPLOY.md
+# verifies after a redeploy or a restart) and no CACHES setting is configured, so this is
+# per-process LocMem and a restart clears it.
+HEALTHZ_CACHE_KEY = "healthz:verdict"
+HEALTHZ_CACHE_SECONDS = 30
+
+
+@dataclass(frozen=True)
+class _HealthVerdict:
+    """What the probes found, kept separate from how `/healthz/` renders them.
+
+    The cache holds this rather than the finished response so the body can be reshaped
+    without reshaping what gets cached.
+    """
+
+    database_ok: bool
+    media_ok: bool
+    media_misconfiguration: str | None
 
 
 def _database_round_trips() -> bool:
@@ -106,17 +133,38 @@ def _media_round_trips() -> bool:
                 logger.exception("healthz: could not clean up the media probe file")
 
 
+def _probe_health() -> _HealthVerdict:
+    """Run both round-trips and report what they found.
+
+    The media root is checked for *location* before anything is written to it — a
+    misconfigured root must not be created and written to just to prove it was writable.
+    """
+    misconfigured = media_root_misconfiguration()
+    return _HealthVerdict(
+        database_ok=_database_round_trips(),
+        media_ok=misconfigured is None and _media_round_trips(),
+        media_misconfiguration=misconfigured,
+    )
+
+
 def healthz(request: HttpRequest) -> HttpResponse:
     """Report whether the database and the media store are both reachable and correct.
 
     Each subsystem gets its own verdict rather than collapsing into one boolean, so an
-    operator can tell from the response body alone which half failed. The media root is
-    checked for *location* before anything is written to it — a misconfigured root must
-    not be created and written to just to prove it was writable.
+    operator can tell from the response body alone which half failed. The verdict is
+    cached — see `HEALTHZ_CACHE_SECONDS` for why the probe is rate-limited rather than
+    made cheaper.
     """
-    database_ok = _database_round_trips()
-    misconfigured = media_root_misconfiguration()
-    media_ok = misconfigured is None and _media_round_trips()
+    verdict = cache.get(HEALTHZ_CACHE_KEY)
+    # `isinstance` rather than a `None` check: it covers the miss and anything else that
+    # ever lands under this key, so a foreign value degrades to a fresh probe.
+    if not isinstance(verdict, _HealthVerdict):
+        verdict = _probe_health()
+        cache.set(HEALTHZ_CACHE_KEY, verdict, HEALTHZ_CACHE_SECONDS)
+
+    database_ok = verdict.database_ok
+    media_ok = verdict.media_ok
+    misconfigured = verdict.media_misconfiguration
     ok = database_ok and media_ok
 
     payload = {

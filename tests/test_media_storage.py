@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import IO, Any, NoReturn
 
 import pytest
+from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db.utils import OperationalError
@@ -256,11 +257,35 @@ def test_repeated_probes_leave_no_files_behind(
     `HEALTHZ_MEDIA_KEY`'s comment promises at most one stranded file on the Volume, but
     /healthz/ is unauthenticated — anyone can drive this loop. Several sequential probes
     must leave the directory as empty as they found it, not one file per call.
+
+    The verdict cache is cleared between iterations on purpose. Left in place it would
+    collapse this loop into a single real probe, and the test would still pass against a
+    cleanup that strands a file on every call — which is the defect it exists to catch.
     """
     probe_dir = Path(settings.MEDIA_ROOT) / Path(velo_log_urls.HEALTHZ_MEDIA_KEY).parent
 
     for _ in range(3):
+        cache.clear()
         assert client.get(reverse("healthz")).status_code == 200
 
     assert probe_dir.is_dir(), "the probe should have created its parent directory"
     assert list(probe_dir.iterdir()) == []
+
+
+def test_healthz_serves_a_cached_verdict_instead_of_reprobing(
+    client: Client, db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The probe is rate-limited by caching its verdict, so a burst cannot drive the I/O.
+
+    Asserted by breaking the store *after* a good probe: if the second request still
+    reports healthy, it cannot have touched the store. Clearing the cache then produces
+    the 500, which pins the cache — not some other short-circuit — as the reason. The
+    stale verdict in between is the accepted cost, bounded by `HEALTHZ_CACHE_SECONDS`.
+    """
+    assert client.get(reverse("healthz")).status_code == 200
+
+    monkeypatch.setattr(velo_log_urls, "default_storage", _BrokenStorage())
+    assert client.get(reverse("healthz")).status_code == 200
+
+    cache.clear()
+    assert client.get(reverse("healthz")).status_code == 500

@@ -291,7 +291,17 @@ probe returns 200 while every uploaded file sits on ephemeral disk. The probe mu
 assert *where* it wrote, not only that it could.
 
 **Contract**: `healthz` gains a `default_storage` write → read-back → delete round-trip
-against a throwaway key, mirroring the shape of the existing `SessionStore` round-trip. The
+against a throwaway key, mirroring the shape of the existing `SessionStore` round-trip.
+
+The key is a **single fixed name**, and the write overwrites it rather than saving a new one
+(`storage.delete()` then `save()`, or an equivalent that does not go through
+`get_available_name`). The endpoint is unauthenticated (`velo_log/urls.py:39`), so every
+anonymous probe runs this: with a generated key, a delete that starts failing would
+accumulate collision-suffixed files silently, on the same Volume the app depends on. A fixed
+key makes that failure mode bounded at one file. The delete runs in a `finally` block so a
+failed read-back still cleans up.
+
+The
 response distinguishes which subsystem failed rather than collapsing both into one boolean,
 and still returns 500 when either fails. The response body also reports the resolved
 `MEDIA_ROOT`, and when `DEBUG=False` the check fails (500) unless that path is absolute and

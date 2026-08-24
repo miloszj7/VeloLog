@@ -150,7 +150,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
     adding any.
   - Confidence: MEDIUM — the swap mechanism inside gpxpy is unverified.
   - Blind spot: Interaction with the backend-pinning test is unresolved.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A. `gpx/parsing.py` (Phase 4 §3) now rejects any `<!DOCTYPE` in the decoded text before parsing, raising `GpxParseError`, with a comment recording why the guard sits outside `gpxpy`. The measured stdlib behaviour is in Key Discoveries and the mitigation in Critical Implementation Details, so the brief's "documented XML entity hardening" now has a measure behind it. The single unsatisfiable test is split into two outcome assertions — XXE rejected, nested-entity rejected — the second being what proves the guard exists (Progress 4.5).
 
 ### F4 — File deletion inside atomic() is not transactional
 

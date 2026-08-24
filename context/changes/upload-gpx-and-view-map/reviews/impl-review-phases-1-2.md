@@ -272,7 +272,30 @@ plan did not anticipate or did not require proving.
   This is `lessons.md` #3 recurring on a second slice.
 - **Fix**: Add `branch = true` to `[tool.coverage.run]`, and add a
   `test_healthz_leaves_no_probe_file_behind` assertion alongside the F1 regression test.
-- **Decision**: PENDING
+- **Decision**: FIXED — both halves applied, but **two of this finding's claims did not survive
+  checking** and are corrected here:
+
+  1. **The branch-coverage claim was wrong.** F6 asserted the short-circuit at
+     `velo_log/urls.py:110` "reads as fully covered from a single path". Run with
+     `--cov-branch`, `velo_log/urls.py` reports 8 branches and **0 partial** — both sides are
+     covered, by the misconfigured-root test and the healthy-path test respectively. `branch =
+     true` was still added, but as a forward guard for code not yet written, not because it
+     closed a gap. The comment in `pyproject.toml` says so, rather than implying it caught
+     something.
+  2. **Part of the test half had already landed under F1.** `8dfdee6` added
+     `test_healthz_reads_back_and_deletes_the_name_save_returned`, which covers the "probe
+     deletes what it wrote" contract for the concurrent case.
+
+  What was genuinely still open was F6's *accumulation* contract — nothing asserted that N
+  sequential probes leave the directory empty. `test_repeated_probes_leave_no_files_behind` does
+  that now. Verified in isolation that it bites: with the probe's `finally` cleanup replaced by
+  `pass`, it fails on a leftover `probe.txt`. The remaining sub-claim — "nothing asserts the write
+  overwrites rather than suffixing" — is covered transitively, since a suffixing write whose
+  cleanup targets the wrong name is exactly what leaves files behind.
+
+  Gates: ruff / black / isort / `mypy` (42 files) / `manage.py check` / `makemigrations --check`
+  clean; CI-equivalent `pytest --cov` 53 passed (was 52), TOTAL 99.53% with branch mode now on by
+  default.
 
 ### F7 — `points` and the four bounds are never round-tripped through the database
 

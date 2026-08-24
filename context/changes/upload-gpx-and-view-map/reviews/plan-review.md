@@ -239,7 +239,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
   suffixing means throwaway keys accumulate silently on the same Volume the app depends on.
 - **Fix**: Use a single fixed throwaway key so a failed delete overwrites rather than
   accumulates, and delete in a `finally` block.
-- **Decision**: PENDING
+- **Decision**: FIXED. Phase 1 §3 now pins the probe to a single fixed key that is overwritten rather than saved through `get_available_name`, so a failing delete is bounded at one file instead of accumulating collision-suffixed ones, and the delete runs in a `finally` block.
 
 ## Phase Independence — one branch per phase, merged before the next
 

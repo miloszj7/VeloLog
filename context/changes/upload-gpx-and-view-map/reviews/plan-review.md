@@ -169,7 +169,7 @@ reference in Phase 4 §5 is documented as a decision rather than left implicit.
   inside the atomic block, so it runs only once the new row is durable. Update the
   Critical Implementation Details paragraph to say so — that is the paragraph an
   implementer will follow literally.
-- **Decision**: PENDING
+- **Decision**: FIXED. "Ordering on replace" now splits the two rules — save-before-delete, and delete via `transaction.on_commit(...)` outside the atomic block — and states the rolled-back-row-with-missing-file failure explicitly. Phase 4 §5 matches. Phase 4 §9 adds that `on_commit` callbacks must be captured (`django_capture_on_commit_callbacks`) or the deferred delete is never exercised by the replace test.
 
 ### F5 — The 10 MB cap is a validation rule, not a resource bound
 

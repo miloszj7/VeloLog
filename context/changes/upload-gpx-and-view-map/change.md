@@ -42,9 +42,10 @@ implementation detail.
     existing track, rather than being rejected or creating a second one.
 - **D2 — The GPX file is downloadable from VeloLog.** This requires an
   **ownership-scoped `FileResponse` view behind `LoginRequiredMixin`** — never a bare
-  `MEDIA_URL` path, per `prd.md:104-105` ("no user can access another user's trips under
-  any circumstances"). Needs a cross-user 404 test and an unauthenticated-redirect test,
-  matching the existing authz test conventions.
+  `MEDIA_URL` path, per `prd.md:105` ("no user can access another user's trips under
+  any circumstances") and `prd.md:104` ("unauthenticated users cannot view any trip").
+  Needs a cross-user 404 test and an unauthenticated-redirect test, matching the
+  existing authz test conventions.
 - **D3 — Infrastructure hardening: (a) + (b) as code in S-03, (c) as a deploy-phase step.**
   - In-slice code: the `STORAGES["default"]` fix, env-driven `MEDIA_ROOT`/`MEDIA_URL` on
     the Volume, a `collectstatic --noinput` step in the CI `gates` job, and a media

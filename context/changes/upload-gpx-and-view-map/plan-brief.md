@@ -35,7 +35,7 @@ bad file is rejected inline with a visible message and nothing is written.
 | Decision | Choice | Why (1 sentence) | Source |
 | --- | --- | --- | --- |
 | Data model | Separate `GpxTrack` with FK to `Trip` | v1 stores one track per trip, but the schema supports many so FR-011 never needs a migration rewrite | Frame/change.md (D1) |
-| Raw file access | Ownership-scoped `FileResponse` behind `LoginRequiredMixin` | A bare `MEDIA_URL` path is unauthenticated static serving, which `prd.md:104-105` forbids outright | change.md (D2) |
+| Raw file access | Ownership-scoped `FileResponse` behind `LoginRequiredMixin` | A bare `MEDIA_URL` path is unauthenticated static serving (`prd.md:104`) outside owner scoping (`prd.md:105`) — both forbidden outright | change.md (D2) |
 | Infra hardening | `STORAGES` fix + env-driven media on the Volume + CI `collectstatic` + media round-trip in `/healthz/` | Four of five blockers are first-use or deploy-time failures no current gate can see | change.md (D3) |
 | Map rendering | Core Leaflet **1.9.4** vendored, server-side `gpxpy` parse, points via `json_script` | Leaflet 2.0 is still alpha with no release date; no GPX plugin, no d3, no unverified API surface | change.md (D4) + Research |
 | App boundary | New `gpx/` app at repo root | `AGENTS.md:21` pre-blesses it by name; keeps parsing and vendored assets out of the trip-CRUD app, and S-05 stats land in the same place | Plan |

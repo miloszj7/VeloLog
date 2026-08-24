@@ -683,9 +683,11 @@ bound form so errors appear in place.
 
 The download view resolves the track through the same owner scoping and returns a
 `FileResponse` opened in binary, as an attachment named by `original_filename`. This is
-required by `prd.md:104-105` — a bare `MEDIA_URL` path is unauthenticated static serving, and
-whitenoise sits at `MIDDLEWARE` position 2, before `AuthenticationMiddleware`, so anything it
-serves is outside authorization by construction.
+required by two separate PRD sentences: `prd.md:105` ("no user can access another user's
+trips under any circumstances") drives the owner scoping, and `prd.md:104` ("unauthenticated
+users cannot view any trip") drives the `LoginRequiredMixin`. A bare `MEDIA_URL` path breaks
+both — whitenoise sits at `MIDDLEWARE` position 2, before `AuthenticationMiddleware`, so
+anything it serves is outside authorization by construction.
 
 Both views need the `TYPE_CHECKING` base-alias treatment.
 

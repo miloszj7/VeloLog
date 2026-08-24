@@ -177,7 +177,31 @@ plan did not anticipate or did not require proving.
   generated path: `track.file.save("../../etc/passwd.gpx", ContentFile(b"<gpx/>"), save=True)`,
   then assert `track.file.name.startswith(f"gpx/{trip.owner_id}/{trip.pk}/")`, that `"passwd"` is
   absent from the name, and that the persisted bytes read back.
-- **Decision**: PENDING
+- **Decision**: FIXED in `80af474` —
+  `test_saving_through_the_field_routes_the_name_through_gpx_upload_path` saves real bytes through
+  the descriptor and asserts the stored name, that the row carries it too, and that the bytes read
+  back.
+
+  **The hostile filename the Fix specified is the wrong probe, and the test uses a benign one
+  instead.** With `upload_to` removed, the hostile version does fail — but on
+  `SuspiciousFileOperation` from Django's own `get_valid_name`, which rejects traversal before
+  anything reaches `gpx_upload_path`. That asserts Django's guard, not ours, and would keep
+  passing if `upload_to` were swapped for any other function. `ride.gpx` is a name storage would
+  happily keep verbatim, so the assertions can only pass if `gpx_upload_path` actually replaced
+  it. Verified in both directions: wired, 7 pass; with `upload_to` deleted from the field, it
+  fails on the stored name being `'ride.gpx'`. Hostile-input coverage was already present at
+  `tests/gpx/test_gpx_track_model.py:57` via the direct call, so nothing was lost.
+
+  `FieldFile.name` is `str | None`, so the name is bound and narrowed with an explicit
+  `is not None` before use — required by `mypy --strict`, and a real assertion in its own right
+  since a saved file must have a name.
+
+  Gates: ruff / black / isort / `mypy` (42 files) / `manage.py check` / `makemigrations --check`
+  clean; CI-equivalent `pytest --cov` 51 passed (was 50), TOTAL 99.51%.
+
+  Note this closes only the `upload_to` half of the coverage hole. F7 — `points` and the four
+  bounds never round-tripped through the database — is the same `_make_track` shortcut and remains
+  PENDING.
 
 ### F4 — `/healthz/` performs unthrottled DB and volume I/O for any anonymous caller
 

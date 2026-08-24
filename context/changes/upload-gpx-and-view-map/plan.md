@@ -154,9 +154,18 @@ can act on it.
 only by a test that performs a real `storage.save`. Phase 1 must include that test, not a
 settings assertion.
 
-**Ordering on replace.** When a re-upload supersedes an existing track, save the new row
-and its file *first*, then delete the old file — inside a transaction. The reverse order
-loses both if the new save fails.
+**Ordering on replace.** When a re-upload supersedes an existing track, save the new row and
+its file *first* inside `transaction.atomic()`, and delete the old file **outside** the
+transaction via `transaction.on_commit(...)`. Both halves matter:
+
+- *First save, then delete* — the reverse loses both if the new save fails.
+- *Delete on commit, not inside the block* — storage deletes do not participate in the
+  transaction. A delete performed inside `atomic()` is already gone if the block later raises
+  or the commit fails: the database rolls the old `GpxTrack` row back into existence pointing
+  at a file that no longer exists, so the detail page renders a map while the download view
+  404s. That is exactly the silent-failure state `prd.md`'s NFR forbids, produced by the
+  mitigation meant to prevent it. `on_commit` runs the delete only once the new row is
+  durable.
 
 **`clean_file()` must `seek(0)`.** Validation reads the uploaded file to parse it; without
 rewinding, the subsequent `storage.save` persists an empty or truncated file. This is the
@@ -611,8 +620,11 @@ and serve the original file back under the same authorization as everything else
 The upload view resolves its target trip through an **owner-scoped queryset** so another
 user's trip pk 404s exactly as the detail view does, then on valid input saves the new track
 with its parsed points and bounds and removes the superseded one. Ordering is load-bearing:
-save the new row and file **first**, delete the old file **after**, inside a transaction —
-the reverse loses both if the save fails. On success it redirects to the trip's
+inside `transaction.atomic()`, save the new row and file **first** and delete the superseded
+row; register the old *file's* deletion with `transaction.on_commit(...)` so it happens only
+after the new row is durable. A delete performed inside the block survives a rollback while
+the row it belonged to comes back — see Critical Implementation Details, "Ordering on
+replace". On success it redirects to the trip's
 `get_absolute_url()` with a confirmation message via `SuccessMessageMixin`, matching
 `TripCreateView`'s pattern. On invalid input it re-renders `trips/trip_detail.html` with the
 bound form so errors appear in place.
@@ -688,7 +700,10 @@ was submitted (this is what catches a missing `seek(0)`), and redirects to the d
 an over-cap file is rejected with a visible message and creates nothing; a non-`.gpx`
 extension is rejected; malformed XML is rejected and the **error text is asserted**, not just
 a 200 (`lessons.md` rule #1); a second upload replaces the first, leaving exactly one track
-with the old file gone from storage; uploading to another user's trip returns 404 and creates
+with the old file gone from storage — and, since `on_commit` callbacks do not fire under
+pytest-django's default transactional wrapping, one test asserts the replace path with
+`django_capture_on_commit_callbacks` (or the `transaction=True` equivalent) so the deferred
+delete is actually exercised rather than silently skipped; uploading to another user's trip returns 404 and creates
 nothing; an unauthenticated POST redirects to login and creates nothing.
 
 *Download* — the owner gets 200 with the original bytes and an attachment disposition; a

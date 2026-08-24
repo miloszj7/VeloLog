@@ -294,7 +294,12 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
 - **Fix**: Set `DEBUG: "False"` and `ALLOWED_HOSTS: ""` explicitly in the `gates` job `env:` so
   the workflow literally matches the documented command, and soften the "every variable"
   sentence to name `DB_PATH` as deliberately unset.
-- **Decision**: PENDING
+- **Decision**: FIXED — `.github/workflows/deploy.yml`'s `gates` job now sets `DEBUG: "False"`
+  and `ALLOWED_HOSTS: ""` explicitly alongside `SECRET_KEY`, so the workflow literally matches
+  the documented CI-equivalence command instead of relying on `settings.py` defaults coinciding
+  with it. `AGENTS.md`'s "overrides every variable" sentence now names `DB_PATH` as the
+  deliberate exception (unset because the test suite uses an in-memory SQLite database).
+  Verified: `SECRET_KEY=... DEBUG=False ALLOWED_HOSTS= uv run pytest -q` — 30 passed.
 
 ### F9 — The fixture neutralizes one of five settings that still differ between local and CI
 

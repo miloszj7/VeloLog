@@ -163,7 +163,3 @@ is picked up until its trigger fires.
 
 - **S-01: User can register with an email and password, then log in and log out.** — Archived 2026-08-22 → `context/archive/2026-08-22-user-registration-login/`. Lesson: —.
 - **S-02: User can create a trip with a name, date, and description, and see it appear in a list of their own trips.** — Archived 2026-08-23 → `context/archive/2026-08-23-create-and-list-trips/`. Lesson: —.
-
-## Changelog
-
-- **v1 (2026-08-22)** — Initial roadmap generated from `prd.md` v2. 5 slices (`S-01`…`S-05`), 0 foundations, `main_goal: speed`, `top_blocker: time`.

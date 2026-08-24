@@ -723,13 +723,31 @@ as the risk it guards.
 **Intent**: Pin the stable release and ship it in full. `leaflet@latest` is still 1.9.4;
 Leaflet 2.0 has been alpha since 2025-05 with its release date reset to "unknown".
 
-**Contract**: `leaflet.js`, `leaflet.css`, and the **complete** sibling `images/` directory —
-`layers.png`, `layers-2x.png`, `marker-icon.png`, `marker-icon-2x.png`, `marker-shadow.png`.
-This is not optional tidiness: `leaflet.css` contains `url(images/layers.png)`,
-`url(images/layers-2x.png)` and `url(images/marker-icon.png)`, and
-`CompressedManifestStaticFilesStorage` raises on an unresolvable reference, which given
-`railway.json:4` means the container never starts. The pinned version and its download source
-are recorded in a sibling note file so a future upgrade is traceable.
+**Contract**: `leaflet.js`, `leaflet.js.map`, `leaflet.css`, and the **complete** sibling
+`images/` directory — `layers.png`, `layers-2x.png`, `marker-icon.png`, `marker-icon-2x.png`,
+`marker-shadow.png`.
+
+The rule this list follows, stated once: **every reference a vendored asset makes to a
+sibling file must be vendored alongside it, or the reference removed.**
+`CompressedManifestStaticFilesStorage` rewrites and resolves those references at
+`collectstatic` time and raises `MissingFileError` on any it cannot find — which given
+`railway.json:4` means the container never starts. Two reference kinds apply here, both
+verified to fail when unmet against this repo's actual storage class:
+
+- `leaflet.css` contains `url(images/layers.png)`, `url(images/layers-2x.png)` and
+  `url(images/marker-icon.png)` — hence the `images/` directory.
+- `leaflet.js` ends with `//# sourceMappingURL=leaflet.js.map`, which Django 6.0.5 matches
+  and resolves like any other reference
+  (`django/contrib/staticfiles/storage.py:102`) — hence `leaflet.js.map`. Vendoring the map
+  file is preferred over stripping the comment: it keeps the vendored bytes byte-identical to
+  the upstream release, so a future upgrade is a straight file swap.
+
+If `collectstatic` fails with `MissingFileError`, the fix is always to vendor the missing
+sibling. Relaxing `WHITENOISE_MANIFEST_STRICT` or downgrading the storage class would trade a
+loud build failure for silently broken asset URLs in production.
+
+The pinned version and its download source are recorded in a sibling note file so a future
+upgrade is traceable.
 
 #### 2. Project-level static directory
 

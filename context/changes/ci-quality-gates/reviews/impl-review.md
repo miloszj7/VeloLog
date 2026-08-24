@@ -179,7 +179,10 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
 - **Fix**: Record the table restructure as a plan addendum and claim the tracker-sync backlog
   row (set its `Change ID`, or note that the issue-link column is a partial step) so the
   half-done work is visible in the row that owns it.
-- **Decision**: PENDING
+- **Decision**: FIXED — added a Phase 4 addendum in `plan.md` recording PR #8's table
+  restructure and the `github-issues-migration.md` label addition; noted in the tracker-sync
+  backlog row that the `GitHub Issue` column is a partial step, not the sync-back fix itself.
+  `roadmap.md` frontmatter `updated:` bumped to 2026-08-24.
 
 ### F4 — The coverage guard can pass vacuously, and silently exempts apps outside the repo root
 

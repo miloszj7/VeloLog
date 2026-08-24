@@ -333,6 +333,13 @@ with both round-trips reporting ok. One test asserts that with `DEBUG=False` and
 `MEDIA_ROOT` inside `BASE_DIR`, `/healthz/` returns 500 and names the media root as the
 reason — the guard added in §3, asserted as an outcome rather than a settings read.
 
+**Superseded after implementation (impl review F5)**: the contract above is left as written,
+but the last test no longer matches it. `/healthz/` is unauthenticated, so naming the media
+root disclosed the absolute server path to any anonymous caller. The guard now returns a
+stable code — `"inside_base_dir"` — and the test asserts that, plus that no absolute path
+appears anywhere in the response. The intent is unchanged: still an outcome assertion, not a
+settings read. The path reaches the log instead, and the body only under `DEBUG`.
+
 #### 6. Working-tree ignore
 
 **File**: `.gitignore`

@@ -290,9 +290,10 @@ plan did not anticipate or did not require proving.
   disclosing each fail a different test.
   **Two plan statements are now stale, one of them load-bearing.** Phase 1 §5 (`plan.md:333`) says
   the test asserts `/healthz/` "names the media root as the reason"; it now asserts the code. That
-  is wording only — the intent, asserting an outcome rather than a settings read, is intact,
-  and Phase 1 is complete, so that sentence is left as a recorded note rather than edited
-  retroactively.
+  is wording only — the intent, asserting an outcome rather than a settings read, is intact.
+  The original sentence is left standing rather than rewritten, since Phase 1 is complete and its
+  contract is a record of what was agreed; a "Superseded after implementation" note beneath it
+  states what the test asserts now.
   The second was load-bearing and has been amended. **Phase 4's** manual criterion
   (`plan.md:804`, mirrored at Progress 4.11) required that "production `/healthz/` reports that
   media root" before the phase merges; production runs `DEBUG=False`, so that check could no

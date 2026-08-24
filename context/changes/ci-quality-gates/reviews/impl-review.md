@@ -146,7 +146,10 @@ zero files under `accounts/`, `trips/`, `velo_log/`, or `templates/` were touche
     `fail_under` renegotiation — which the plan explicitly ruled out of scope.
   - Confidence: MEDIUM — haven't measured the resulting percentage.
   - Blind spot: Whether the reloaded-module import pattern in F1 would double-count lines.
-- **Decision**: PENDING
+- **Decision**: FIXED (Fix A) — `test_coverage_scope.py` now also asserts no first-party
+  app package is wholesale-excluded via `[tool.coverage.run] omit` (file-scoped entries
+  like `velo_log/wsgi.py` are left alone). Mutation-verified: adding `"trips/*"` to `omit`
+  fails the guard; reverting passes clean. Full suite still passes (30 passed, 93.39%).
 
 ### F3 — Roadmap backlog table restructured and a second doc touched, beyond the Phase 4 contract
 

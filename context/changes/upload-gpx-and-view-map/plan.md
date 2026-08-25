@@ -1174,8 +1174,9 @@ carries it.
 There is no existing media data to migrate — this slice creates the media directory's first
 contents. `MEDIA_ROOT` must be set to `/data/media` in the Railway environment **before** the
 first upload, or files land on ephemeral container disk and are lost on the next redeploy.
-Setting it is owned by Phase 4 §10, gated by Progress 4.11 — the phase whose merge makes
-uploads live. Two distinct failures are then covered by the Phase 1 `/healthz/` probe: the
+Setting it is owned by Phase 4 §10 and was gated by Progress 4.11; that check has been
+deferred to Progress 6.8, which is now the only thing standing between an unverified
+`MEDIA_ROOT` and live uploads. Two distinct failures are then covered by the Phase 1 `/healthz/` probe: the
 silent-write-failure mode that `infrastructure.md:59` records (caught by the write →
 read-back → delete round-trip) and an unset or in-container `MEDIA_ROOT` (caught by the
 location assertion, which only applies at `DEBUG=False`). A writability-only probe would pass
@@ -1269,7 +1270,7 @@ not a cost that stays invisible forever.
 - [x] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing — 7c11cf7
 - [x] 4.9 A second upload replaces the first; the download link returns the newest file — 7c11cf7
 - [x] 4.10 The downloaded file opens correctly in another GPX viewer — 7c11cf7
-- [x] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — before merge — 7c11cf7
+- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — **deferred to Phase 6** (see 6.8): never actually observed, and the production deploy it checks is not live yet
 - [x] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media` — 7c11cf7
 
 ### Phase 5: Map rendering and the static pipeline
@@ -1306,3 +1307,10 @@ not a cost that stays invisible forever.
 - [ ] 6.5 `DEPLOY.md` backup commands run successfully for both the DB and the media directory
 - [ ] 6.6 The restore drill completes and a previously uploaded track is retrievable afterwards
 - [ ] 6.7 E-05 is marked done in the roadmap with the drill date
+- [ ] 6.8 **Carried over from Phase 4 (4.11), the Volume gate.** `railway variables` shows
+  `MEDIA_ROOT=/data/media` and production `/healthz/` returns `"media": "ok"`; record the date
+  and the observed `/healthz/` body in `DEPLOY.md`'s known-good section. Until this is
+  observed, nothing proves uploads land on the persistent Volume rather than on ephemeral
+  container disk — a redeploy would silently take every uploaded file with it. The Phase 4
+  review found it marked done with no evidence anywhere in the repo; it is unchecked again
+  deliberately.

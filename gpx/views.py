@@ -88,12 +88,22 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         # it there. Ownership is the one thing the form cannot know.
         form.instance.trip = self.trip
 
-        superseded = list(self.trip.tracks.all())
         with transaction.atomic():
+            # Read inside the transaction, and before the insert below so the new row is
+            # not in it. Both halves matter: read outside, and two concurrent uploads to
+            # one trip each see the same predecessor, so the second deletes the first's
+            # row without ever scheduling its file for cleanup — a permanent orphan on
+            # the Volume. Deleting by this explicit pk set rather than by
+            # `exclude(pk=...)` is what makes the rows deleted and the files scheduled
+            # provably the same set. `select_for_update` is a no-op on SQLite, so today
+            # the pk set is the half carrying the fix; it earns its place if the database
+            # ever changes.
+            superseded = list(self.trip.tracks.select_for_update())
+
             # Saves the row and writes the file, adds the success message, and returns
             # the redirect to `get_success_url`.
             response = super().form_valid(form)
-            self.trip.tracks.exclude(pk=form.instance.pk).delete()
+            self.trip.tracks.filter(pk__in=[track.pk for track in superseded]).delete()
             for old in superseded:
                 transaction.on_commit(partial(old.file.delete, save=False))
         return response

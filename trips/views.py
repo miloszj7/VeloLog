@@ -8,6 +8,11 @@ from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView
 
+# `gpx` already imports `trips` (its model points at `Trip`), so this line makes the
+# dependency mutual. Accepted rather than avoided: the trip detail page is where a route
+# is uploaded and viewed, so the two apps describe one page between them. There is no
+# import cycle — `trips.models` imports nothing from `gpx`, and that is the line to keep
+# unbroken; a model-level import in either direction is what would turn this into one.
 from gpx.forms import GpxUploadForm
 from trips.forms import TripForm
 from trips.models import Trip

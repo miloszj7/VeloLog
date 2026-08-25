@@ -26,6 +26,7 @@ MAP_CONFIG_SCRIPT = re.compile(
     r'<script id="map-config" type="application/json">(?P<payload>.*?)</script>', re.DOTALL
 )
 ANY_SCRIPT_TAG = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>", re.DOTALL)
+MAP_CONTAINER = re.compile(r'<div id="map">(?P<inner>.*?)</div>', re.DOTALL)
 
 
 def detail_url(trip: Trip) -> str:
@@ -63,6 +64,28 @@ def test_a_trip_with_a_track_renders_the_map_container_and_its_coordinates(
         [GPX_BOUNDS["min_latitude"], GPX_BOUNDS["min_longitude"]],
         [GPX_BOUNDS["max_latitude"], GPX_BOUNDS["max_longitude"]],
     ]
+
+
+@pytest.mark.django_db
+def test_the_map_container_ships_with_a_fallback_message_inside_it(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """An empty container is not an acceptable failure state, so it never ships empty.
+
+    Nothing the server can check covers a client that fails to draw: JavaScript off, a
+    Leaflet or stylesheet that 404s, stored points the client chokes on. The NFR that
+    forbids a blank page is met by shipping the message *inside* `#map` and having
+    `gpx/map.js` remove it on success, so the default outcome is a sentence rather than an
+    empty 60vh rectangle.
+    """
+    make_gpx_track(trip)
+
+    body = auth_client.get(detail_url(trip)).content.decode()
+
+    container = MAP_CONTAINER.search(body)
+    assert container is not None, "the page emitted no map container"
+    assert "map-fallback" in container.group("inner")
+    assert "The map could not be loaded" in container.group("inner")
 
 
 @pytest.mark.django_db

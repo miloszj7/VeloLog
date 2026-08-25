@@ -15,10 +15,12 @@ VeloLog is a greenfield Django 6 web app — a trip-centric personal diary for m
 - `pyproject.toml` — single source of truth for dependencies and tool config.
 - `context/` — 10x PRD/shaping artifacts. See `@context/foundation/prd.md` for scope and `@context/foundation/tech-stack.md` for stack rationale.
 - `templates/` — project-level shared templates (`base.html` and other cross-cutting chrome that doesn't belong to a single app). `TEMPLATES[0]["DIRS"]` points here; `APP_DIRS` stays `True` so app-namespaced templates still resolve.
+- `static/` — project-level shared static assets. `STATICFILES_DIRS` points here, mirroring the `templates/` convention above exactly; app-owned assets live inside the app (e.g. `gpx/static/gpx/`), resolved by staticfiles' `AppDirectoriesFinder` — the exact analogue of `APP_DIRS` for templates.
 - `accounts/` — registration, login/logout.
 - `trips/` — the second feature app: create and list a user's trips.
+- `gpx/` — the third: upload, parse, store and download a trip's GPX file, and build the map config its detail page renders.
 
-New Django apps belong at the **repo root** alongside `velo_log/` (e.g. `trips/`, `gpx/`), registered in `velo_log/settings.py` under `INSTALLED_APPS`.
+New Django apps belong at the **repo root** alongside `velo_log/` — as `accounts/`, `trips/` and `gpx/` all are — registered in `velo_log/settings.py` under `INSTALLED_APPS`.
 
 ## Development Commands
 
@@ -29,6 +31,7 @@ New Django apps belong at the **repo root** alongside `velo_log/` (e.g. `trips/`
 | `uv run python manage.py makemigrations <app>` | Create migration for an app |
 | `uv add <package>` | Add dependency (updates `pyproject.toml` + `uv.lock`) |
 | `uv sync` | Sync venv to lockfile after pulling |
+| `uv run python manage.py collectstatic --noinput` | Build `staticfiles/` and its hashed manifest. `railway.json` chains this ahead of gunicorn, so an unresolvable static reference is a failed boot rather than a broken site |
 
 ## Coding Style & Naming
 
@@ -38,7 +41,7 @@ Linting is configured in `pyproject.toml`: `ruff`, `black`, `isort`, and `mypy -
 
 ## Testing
 
-`pytest` + `pytest-django` are configured; tests live in `tests/` at the repo root. Coverage runs against `accounts`, `trips`, and `velo_log` with `fail_under = 80` (`[tool.coverage.run]` / `[tool.coverage.report]` in `pyproject.toml`). See `@~/.claude/CLAUDE.md` for fixture patterns and integration-test skip conventions.
+`pytest` + `pytest-django` are configured; tests live in `tests/` at the repo root. Coverage runs against `accounts`, `trips`, `gpx`, and `velo_log` with `fail_under = 80` (`[tool.coverage.run]` / `[tool.coverage.report]` in `pyproject.toml`). See `@~/.claude/CLAUDE.md` for fixture patterns and integration-test skip conventions.
 
 The suite must pass with **no `.env` present** — CI never has one. Reproduce a CI failure locally with the CI-equivalence command, which overrides every `.env` variable except `DB_PATH` (deliberately unset — the test suite uses an in-memory SQLite database, so no DB file path is ever read):
 
@@ -52,4 +55,4 @@ Follow `@~/.claude/rules/git-workflow.md`: Conventional Commits format, feature 
 only (never commit straight to `master`), merge with `--no-ff`, never squash. Use the
 `create-pr` skill to open a GitHub/GitLab PR or MR, or complete a local no-remote merge.
 
-`.github/workflows/deploy.yml`'s `gates` job runs lint (`ruff`), format (`black`), import order (`isort`), strict typing (`mypy`), `manage.py check`, the migration guard (`makemigrations --check --dry-run`), and `pytest --cov` on every pull request to `master` and every push to it. The Railway deploy job runs only if `gates` passes.
+`.github/workflows/deploy.yml`'s `gates` job runs lint (`ruff`), format (`black`), import order (`isort`), strict typing (`mypy`), `manage.py check`, the migration guard (`makemigrations --check --dry-run`), `collectstatic --noinput`, and `pytest --cov` on every pull request to `master` and every push to it. That order is load-bearing: `tests/test_static_references.py` renders a page through the production manifest backend and skips itself when no manifest has been collected, so it only runs because `collectstatic` precedes the test step. The Railway deploy job runs only if `gates` passes.

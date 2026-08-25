@@ -1,7 +1,10 @@
+from datetime import date
+
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 from django.urls import reverse
+from django.utils.formats import date_format
 
 from gpx.models import GpxTrack
 from trips.models import Trip
@@ -10,7 +13,10 @@ from trips.models import Trip
 @pytest.mark.django_db
 def test_owner_sees_own_trip_detail(auth_client: Client, rider: User) -> None:
     trip = Trip.objects.create(
-        name="Alps Loop", date="2026-06-01", description="A week in the mountains.", owner=rider
+        name="Alps Loop",
+        date=date(2026, 6, 1),
+        description="A week in the mountains.",
+        owner=rider,
     )
 
     response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
@@ -19,7 +25,7 @@ def test_owner_sees_own_trip_detail(auth_client: Client, rider: User) -> None:
     assert response.status_code == 200
     assert response.context["trip"] == trip
     assert "Alps Loop" in body
-    assert "June 1, 2026" in body
+    assert date_format(trip.date) in body
     assert "A week in the mountains." in body
 
 

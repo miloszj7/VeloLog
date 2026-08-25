@@ -830,7 +830,7 @@ as the risk it guards.
 
 #### 1. Vendored Leaflet 1.9.4
 
-**Files**: `gpx/static/gpx/vendor/leaflet/` (new)
+**Files**: `gpx/static/gpx/vendor/leaflet/` (new), `.gitattributes` (new)
 
 **Intent**: Pin the stable release and ship it in full. `leaflet@latest` is still 1.9.4;
 Leaflet 2.0 has been alpha since 2025-05 with its release date reset to "unknown".
@@ -860,6 +860,14 @@ loud build failure for silently broken asset URLs in production.
 
 The pinned version and its download source are recorded in a sibling note file so a future
 upgrade is traceable.
+
+**Discovered during implementation**: `.gitattributes`, marking
+`gpx/static/gpx/vendor/leaflet/** -text`. Not in the original contract and load-bearing.
+With `core.autocrlf=true` — the setting on the machine this was built on — git rewrites
+line endings on checkout, which changes the vendored bytes, which changes the content hash
+`CompressedManifestStaticFilesStorage` derives from them. Asset names would then differ
+between a local checkout and CI, and the SHA-256 table in the vendor note would not verify
+against the working tree it describes.
 
 #### 2. Project-level static directory
 
@@ -944,14 +952,29 @@ page, so the branch is deliberate rather than assumed away.
 
 #### 6. Map view context
 
-**File**: `trips/views.py`
+**Files**: `gpx/map_config.py` (new), `trips/views.py`, `gpx/views.py`
 
 **Intent**: Assemble the configuration blob the template serialises.
 
-**Contract**: `get_context_data` builds a dict of points, bounds, and the three
-`static()`-resolved icon URLs. Building it in Python — rather than assembling JSON in the
-template — keeps `json_script` fed with a single structure and keeps URL resolution on the
-server where the staticfiles manifest is authoritative.
+**Contract**: A `build_map_config(track)` helper returns a dict of points, bounds, and the
+three `static()`-resolved icon URLs — or `None` when there is nothing to draw. Building it in
+Python — rather than assembling JSON in the template — keeps `json_script` fed with a single
+structure and keeps URL resolution on the server where the staticfiles manifest is
+authoritative. Both views that render `trips/trip_detail.html` supply it under the same
+context key.
+
+This section originally named `trips/views.py` as its only file and built the dict inline in
+`TripDetailView.get_context_data`. The phase 5 implementation review caught the plan rather
+than the code here: `GpxUploadView` re-renders this same template when an upload fails
+validation (Phase 4 §5), so a helper reachable only from `TripDetailView` would have rendered
+"route could not be displayed" over a perfectly healthy track after every rejected upload — a
+false failure report about an intact file. The helper therefore lives in a module both views
+import, and a test names that failure directly.
+
+It sits in `gpx` rather than `trips` because the track and the vendored Leaflet assets whose
+URLs it resolves are both that app's, and because `trips` already imports from `gpx` —
+building it in `trips` would mean `gpx.views` importing `trips.views` back, a second cross-app
+edge on top of the one this codebase already accepts.
 
 #### 7. CI `collectstatic` gate
 
@@ -968,7 +991,7 @@ the deploy. `staticfiles/` is already gitignored.
 
 #### 8. Map rendering tests
 
-**File**: `tests/trips/test_trip_detail_map.py` (new)
+**Files**: `tests/trips/test_trip_detail_map.py` (new), `tests/conftest.py`
 
 **Intent**: Prove the page renders what the map needs, and that the security posture holds.
 
@@ -977,6 +1000,31 @@ whose payload contains the track's coordinates; the same page contains no `|safe
 interpolation of that payload; a trip without a track renders the empty state and **no** map
 container; the icon URLs in the payload resolve through the staticfiles storage rather than
 being hardcoded.
+
+**Discovered during implementation**: an autouse `_plain_staticfiles_storage` fixture in
+`tests/conftest.py`, swapping the manifest backend for plain `StaticFilesStorage` across
+the suite. This is an unavoidable consequence of §3 that the plan should have anticipated:
+once `base.html` links a stylesheet, *every* page-rendering test resolves through
+staticfiles storage, and the configured backend raises on a manifest no `collectstatic` has
+produced — so `pytest` on a fresh clone would fail on every rendered page. What the swap
+necessarily gives up is covered separately; see the review amendments below.
+
+#### Amendments from the phase 5 implementation review
+
+`reviews/impl-review-phase-5.md` holds the review of this phase in full. Four of its findings
+changed the tree after the phase was implemented, so a reader diffing files against the
+sections above will find them recorded there rather than here:
+
+- `gpx/static/gpx/map.js` — a zoom ceiling passed to `L.map` rather than only to the tile
+  layer, which registers its own too late to bound `fitBounds` (F1); and the body wrapped in
+  `try`/`catch` (F2).
+- `trips/templates/trips/trip_detail.html` — fallback content *inside* `#map`, removed by the
+  script as its last successful step, so any client-side failure leaves a message rather than
+  an empty frame. §5's defensive branch covers only the server-side case (F2).
+- `tests/test_static_references.py` (new) — asserts every `{% static %}` reference resolves.
+  §7's `collectstatic` gate does not: it rewrites references inside collected CSS and JS and
+  never reads a template or a Python module (F3).
+- `AGENTS.md` — four claims this phase invalidated (F4).
 
 ### Success Criteria:
 

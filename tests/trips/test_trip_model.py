@@ -1,6 +1,5 @@
 import pytest
 from django.contrib.auth.models import User
-from django.urls import reverse
 
 from trips.models import Trip
 
@@ -41,6 +40,12 @@ def test_trips_sharing_a_date_come_back_in_deterministic_order(rider: User) -> N
 
 @pytest.mark.django_db
 def test_get_absolute_url_points_at_the_trips_detail_route(rider: User) -> None:
+    """Asserts the URL *shape*, not just its name.
+
+    Comparing against `reverse("trips:detail", ...)` would restate the implementation's
+    own call, so both sides would move together and a route path change that breaks
+    existing bookmarks would pass green.
+    """
     trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
 
-    assert trip.get_absolute_url() == reverse("trips:detail", kwargs={"pk": trip.pk})
+    assert trip.get_absolute_url() == f"/trips/{trip.pk}/"

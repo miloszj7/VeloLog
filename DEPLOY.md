@@ -32,28 +32,61 @@ Then connect with `ssh railway-velolog`.
 
 ## Backup — before running a schema migration in production
 
-The SQLite file lives on the mounted Volume at `/data/db.sqlite3`. Requires an SSH key registered with Railway (`railway ssh keys add`, see the `deploy/phase-2-env-settings` branch history for the one-time setup).
+**Two** things live on the mounted Volume and both have to be captured: the SQLite
+database at `/data/db.sqlite3`, and the uploaded GPX files under `/data/media`. Backing
+up only the database restores a set of trips whose routes 404.
 
-Backups are kept locally in `backup/db/` (gitignored — never commit a production DB dump).
+Requires an SSH key registered with Railway (`railway ssh keys add`, see the
+`deploy/phase-2-env-settings` branch history for the one-time setup).
+
+Backups are kept locally under `backup/` — gitignored in full, not just `backup/db/`.
+Never commit either dump: the database holds password hashes and email addresses, and a
+media dump is a copy of every rider's GPX files, which are the routes to and from their
+homes.
 
 In Git Bash on Windows, MSYS path conversion mangles the leading `/data/...` remote path
 into a Windows path unless disabled with `MSYS_NO_PATHCONV=1`:
 
 ```bash
+# Database
 mkdir -p backup/db
 MSYS_NO_PATHCONV=1 railway service files download /data/db.sqlite3 ./backup/db/backup-$(date +%Y%m%d-%H%M%S).sqlite3
+
+# Uploaded GPX files (a directory — `railway service files download` takes either)
+mkdir -p backup/media
+MSYS_NO_PATHCONV=1 railway service files download /data/media ./backup/media/media-$(date +%Y%m%d-%H%M%S)
 ```
 
-Run this immediately before any deploy that includes a migration, and keep the backup file until the deploy is confirmed healthy via `/healthz/`.
+Run both immediately before any deploy that includes a migration, and keep them until
+the deploy is confirmed healthy via `/healthz/`.
+
+**Take the media backup seriously even when nothing looks wrong.** Writes to the Volume
+depend on the `RAILWAY_RUN_UID=0` workaround; if that regresses, a non-root container's
+writes silently do not persist rather than erroring
+(`context/foundation/infrastructure.md:59`). Uploads then appear to succeed and vanish on
+the next redeploy. `/healthz/` now performs a real media write/read/delete round-trip and
+returns `"media": "error"` when that happens, so check it after every deploy — it is the
+only signal that failure mode gives.
 
 ## Restore — Volume or host incident
 
+Restore both halves, from the same point in time. A database restored ahead of the media
+directory leaves `GpxTrack` rows pointing at files that are not there — the trip detail
+page renders a route while its download 404s, which is exactly the silent-failure state
+the app is built to avoid.
+
 1. Confirm the app is stopped or accepting no writes (avoid clobbering concurrent writes during restore).
-2. Upload the last good backup over the live file:
+2. Upload the last good database backup over the live file:
    ```bash
-   railway service files upload ./backup-<timestamp>.sqlite3 /data/db.sqlite3
+   MSYS_NO_PATHCONV=1 railway service files upload ./backup/db/backup-<timestamp>.sqlite3 /data/db.sqlite3
    ```
-3. Redeploy (or restart) the service so gunicorn picks up the restored file, then verify via `/healthz/`.
+3. Upload the matching media backup over the live directory:
+   ```bash
+   MSYS_NO_PATHCONV=1 railway service files upload ./backup/media/media-<timestamp> /data/media
+   ```
+4. Redeploy (or restart) the service so gunicorn picks up the restored files, then verify
+   via `/healthz/` — a `200` with both `"database": "ok"` and `"media": "ok"` is the
+   check. Then open a trip that had a route and confirm its download returns the file.
 
 ## Production superuser (one-time)
 

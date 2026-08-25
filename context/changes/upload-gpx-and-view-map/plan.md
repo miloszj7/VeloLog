@@ -123,9 +123,10 @@ exits 0; the flow above completes end to end against a real browser on a deploye
 - **No trip stats** — distance/duration is S-05. This plan persists the parsed track in a
   shape S-05 can build on, and adds no second dependency for it.
 - **No trip edit/delete** — that is S-04.
-- **No point-count cap or downsampling.** Considered and declined. The 10 MB size cap is the
-  only limit on point count in v1 — see Performance Considerations for what that does and
-  does not bound. Recorded as an open risk in the brief.
+- **No downsampling.** A point-count *cap* was declined here originally and has since been
+  reinstated — see Performance Considerations for the measurement that reversed it. Reducing
+  a track that fits under the cap is still out of scope; the parse-on-upload design means
+  downsampling can be added later without touching the render path.
 - **No request-body size limit.** The 10 MB cap is a validation rule, not a resource bound:
   `clean_file()` runs only after Django has already received the whole request body and
   spooled it to a `TemporaryUploadedFile`. Nothing upstream caps body size — gunicorn has no
@@ -1133,11 +1134,22 @@ proven by CI and requires a live Railway session.
 
 Parsing happens once, at upload, not per page view — so the detail view does no XML work and
 cannot degrade as a track grows. The remaining cost is the coordinate array embedded in the
-page: a 10 MB GPX can carry a very large number of points, and the size cap is the only limit
-on it. That is an accepted v1 risk; a point cap or downsampling was considered and declined.
-If the detail page ever feels slow, point count is the first thing to measure, and the
-parse-on-upload design means downsampling can be added later without touching the render
-path.
+page.
+
+This paragraph originally accepted that array as unbounded, on the reasoning that the 10 MB
+size cap was limit enough and that point count was "the first thing to measure" if the page
+ever felt slow. The Phase 4 review measured it: a 10.00 MB GPX of minimal `<trkpt>` elements,
+accepted by every rule in `clean_file`, parses to **262,141 points in 6.6 s of blocking CPU
+with a 251 MB peak**, and stores a **6.00 MB JSON payload** that the detail page then inlines
+on every render. That is an upload which succeeds and only afterwards makes its own trip page
+unrenderable — the exact failure mode parse-at-upload exists to prevent — so the decision was
+reversed while the render path was still unwritten.
+
+`MAX_GPX_POINTS` (`gpx/constants.py`) is now enforced in `parse_gpx` beside the zero-point
+rejection, and the refusal names the limit the way the size refusal does. The value, 100,000,
+bounds the stored payload at roughly 2.4 MB at the ~24 bytes per point measured above; it is
+calibrated against the synthetic worst case only, and the first real multi-day tour export to
+hit it is the signal to re-calibrate rather than to raise it blindly.
 
 What the cap does **not** bound is upload-time resource use. It rejects an oversized file; it
 does not prevent one being uploaded. `clean_file()` runs after the entire request body has
@@ -1162,8 +1174,9 @@ carries it.
 There is no existing media data to migrate — this slice creates the media directory's first
 contents. `MEDIA_ROOT` must be set to `/data/media` in the Railway environment **before** the
 first upload, or files land on ephemeral container disk and are lost on the next redeploy.
-Setting it is owned by Phase 4 §10, gated by Progress 4.11 — the phase whose merge makes
-uploads live. Two distinct failures are then covered by the Phase 1 `/healthz/` probe: the
+Setting it is owned by Phase 4 §10 and was gated by Progress 4.11; that check has been
+deferred to Progress 6.8, which is now the only thing standing between an unverified
+`MEDIA_ROOT` and live uploads. Two distinct failures are then covered by the Phase 1 `/healthz/` probe: the
 silent-write-failure mode that `infrastructure.md:59` records (caught by the write →
 read-back → delete round-trip) and an unset or in-container `MEDIA_ROOT` (caught by the
 location assertion, which only applies at `DEBUG=False`). A writability-only probe would pass
@@ -1242,23 +1255,29 @@ not a cost that stays invisible forever.
 
 ### Phase 4: Upload, validation, and download
 
+Each row below names the commit that actually landed its evidence, not the commit that
+closed the phase. The phase originally stamped all twelve rows `7c11cf7`, the `DEPLOY.md`
+commit, which only 4.12 was true of; the Phase 4 implementation review corrected it. A row
+whose evidence arrived in two commits names the later one, since that is where the criterion
+first held.
+
 #### Automated
 
-- [ ] 4.1 All gates pass: ruff, black, isort, mypy strict, `manage.py check`, migration guard
-- [ ] 4.2 `uv sync --locked` succeeds — `uv.lock` committed with `pyproject.toml`
-- [ ] 4.3 Full CI-equivalent suite passes with coverage at or above `fail_under = 80`
-- [ ] 4.4 An upload test asserts persisted file content, not only a status code
-- [ ] 4.5 XXE and nested-entity payloads are each asserted rejected; a test pins the stdlib parser backend
-- [ ] 4.6 Cross-user upload and cross-user download both asserted to return 404
+- [x] 4.1 All gates pass: ruff, black, isort, mypy strict, `manage.py check`, migration guard — 21a2f92
+- [x] 4.2 `uv sync --locked` succeeds — `uv.lock` committed with `pyproject.toml` — 2956494
+- [x] 4.3 Full CI-equivalent suite passes with coverage at or above `fail_under = 80` — 21a2f92
+- [x] 4.4 An upload test asserts persisted file content, not only a status code — 45aca7a
+- [x] 4.5 XXE and nested-entity payloads are each asserted rejected; a test pins the stdlib parser backend — 96b7480
+- [x] 4.6 Cross-user upload and cross-user download both asserted to return 404 — 21a2f92
 
 #### Manual
 
-- [ ] 4.7 Uploading a real GPX attaches it and returns to the detail page with a confirmation
-- [ ] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing
-- [ ] 4.9 A second upload replaces the first; the download link returns the newest file
-- [ ] 4.10 The downloaded file opens correctly in another GPX viewer
-- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — before merge
-- [ ] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media`
+- [x] 4.7 Uploading a real GPX attaches it and returns to the detail page with a confirmation — 45aca7a
+- [x] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing — 45aca7a
+- [x] 4.9 A second upload replaces the first; the download link returns the newest file — 21a2f92
+- [x] 4.10 The downloaded file opens correctly in another GPX viewer — 21a2f92
+- [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — **deferred to Phase 6** (see 6.8): never actually observed, and the production deploy it checks is not live yet
+- [x] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media` — 7c11cf7
 
 ### Phase 5: Map rendering and the static pipeline
 
@@ -1294,3 +1313,10 @@ not a cost that stays invisible forever.
 - [ ] 6.5 `DEPLOY.md` backup commands run successfully for both the DB and the media directory
 - [ ] 6.6 The restore drill completes and a previously uploaded track is retrievable afterwards
 - [ ] 6.7 E-05 is marked done in the roadmap with the drill date
+- [ ] 6.8 **Carried over from Phase 4 (4.11), the Volume gate.** `railway variables` shows
+  `MEDIA_ROOT=/data/media` and production `/healthz/` returns `"media": "ok"`; record the date
+  and the observed `/healthz/` body in `DEPLOY.md`'s known-good section. Until this is
+  observed, nothing proves uploads land on the persistent Volume rather than on ephemeral
+  container disk — a redeploy would silently take every uploaded file with it. The Phase 4
+  review found it marked done with no evidence anywhere in the repo; it is unchecked again
+  deliberately.

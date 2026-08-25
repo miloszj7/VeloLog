@@ -8,6 +8,12 @@ from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DetailView, ListView
 
+# `gpx` already imports `trips` (its model points at `Trip`), so this line makes the
+# dependency mutual. Accepted rather than avoided: the trip detail page is where a route
+# is uploaded and viewed, so the two apps describe one page between them. There is no
+# import cycle — `trips.models` imports nothing from `gpx`, and that is the line to keep
+# unbroken; a model-level import in either direction is what would turn this into one.
+from gpx.forms import GpxUploadForm
 from trips.forms import TripForm
 from trips.models import Trip
 
@@ -59,7 +65,13 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         return Trip.objects.filter(owner=cast(User, self.request.user))
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        """Expose the trip's current track, or `None` when nothing has been uploaded."""
+        """Expose the trip's current track, or `None` when nothing has been uploaded.
+
+        The unbound upload form is supplied here too. The page hosts a form it does not
+        own, so this GET path and `GpxUploadView`'s re-render path have to present the
+        same template with the same context keys — one of them bound, one of them not.
+        """
         context = super().get_context_data(**kwargs)
         context["track"] = self.object.tracks.first()
+        context["form"] = GpxUploadForm()
         return context

@@ -123,9 +123,10 @@ exits 0; the flow above completes end to end against a real browser on a deploye
 - **No trip stats** — distance/duration is S-05. This plan persists the parsed track in a
   shape S-05 can build on, and adds no second dependency for it.
 - **No trip edit/delete** — that is S-04.
-- **No point-count cap or downsampling.** Considered and declined. The 10 MB size cap is the
-  only limit on point count in v1 — see Performance Considerations for what that does and
-  does not bound. Recorded as an open risk in the brief.
+- **No downsampling.** A point-count *cap* was declined here originally and has since been
+  reinstated — see Performance Considerations for the measurement that reversed it. Reducing
+  a track that fits under the cap is still out of scope; the parse-on-upload design means
+  downsampling can be added later without touching the render path.
 - **No request-body size limit.** The 10 MB cap is a validation rule, not a resource bound:
   `clean_file()` runs only after Django has already received the whole request body and
   spooled it to a `TemporaryUploadedFile`. Nothing upstream caps body size — gunicorn has no
@@ -1133,11 +1134,22 @@ proven by CI and requires a live Railway session.
 
 Parsing happens once, at upload, not per page view — so the detail view does no XML work and
 cannot degrade as a track grows. The remaining cost is the coordinate array embedded in the
-page: a 10 MB GPX can carry a very large number of points, and the size cap is the only limit
-on it. That is an accepted v1 risk; a point cap or downsampling was considered and declined.
-If the detail page ever feels slow, point count is the first thing to measure, and the
-parse-on-upload design means downsampling can be added later without touching the render
-path.
+page.
+
+This paragraph originally accepted that array as unbounded, on the reasoning that the 10 MB
+size cap was limit enough and that point count was "the first thing to measure" if the page
+ever felt slow. The Phase 4 review measured it: a 10.00 MB GPX of minimal `<trkpt>` elements,
+accepted by every rule in `clean_file`, parses to **262,141 points in 6.6 s of blocking CPU
+with a 251 MB peak**, and stores a **6.00 MB JSON payload** that the detail page then inlines
+on every render. That is an upload which succeeds and only afterwards makes its own trip page
+unrenderable — the exact failure mode parse-at-upload exists to prevent — so the decision was
+reversed while the render path was still unwritten.
+
+`MAX_GPX_POINTS` (`gpx/constants.py`) is now enforced in `parse_gpx` beside the zero-point
+rejection, and the refusal names the limit the way the size refusal does. The value, 100,000,
+bounds the stored payload at roughly 2.4 MB at the ~24 bytes per point measured above; it is
+calibrated against the synthetic worst case only, and the first real multi-day tour export to
+hit it is the signal to re-calibrate rather than to raise it blindly.
 
 What the cap does **not** bound is upload-time resource use. It rejects an oversized file; it
 does not prevent one being uploaded. `clean_file()` runs after the entire request body has

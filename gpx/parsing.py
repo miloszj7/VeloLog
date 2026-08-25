@@ -10,7 +10,12 @@ from dataclasses import dataclass
 import gpxpy
 from gpxpy.gpx import GPXException, GPXXMLSyntaxException
 
-from gpx.exceptions import GpxContentError, GpxSyntaxError
+from gpx.constants import MAX_GPX_POINTS
+from gpx.exceptions import (
+    GpxContentError,
+    GpxSyntaxError,
+    GpxTooManyPointsError,
+)
 
 # A document type declaration anywhere in the text is disqualifying — see `parse_gpx`.
 DOCTYPE_PATTERN = re.compile(r"<!DOCTYPE", re.IGNORECASE)
@@ -56,6 +61,7 @@ def parse_gpx_bytes(raw: bytes) -> ParsedTrack:
         GpxSyntaxError: The bytes are not UTF-8 text, are not well-formed XML, or carry
             a document type declaration.
         GpxContentError: The XML is well-formed but is not a usable GPX track.
+        GpxTooManyPointsError: The track carries more than `MAX_GPX_POINTS` points.
     """
     try:
         text = raw.decode(UPLOAD_ENCODING)
@@ -77,6 +83,7 @@ def parse_gpx(text: str) -> ParsedTrack:
         GpxSyntaxError: The text is not well-formed XML, or carries a document type
             declaration.
         GpxContentError: The XML is well-formed but is not a usable GPX track.
+        GpxTooManyPointsError: The track carries more than `MAX_GPX_POINTS` points.
     """
     # Deliberate text-level pre-check, and NOT redundant with gpxpy: the pinned stdlib
     # ElementTree backend rejects *external* entity references on its own but happily
@@ -112,6 +119,13 @@ def parse_gpx(text: str) -> ParsedTrack:
     # track yields degenerate bounds and an unrenderable map.
     if not points:
         raise GpxContentError("The file contains no track points.")
+
+    # The upper bound of the same boundary rule: an empty track cannot be drawn, and one
+    # this large cannot be drawn either — the detail page inlines every point stored here.
+    # Refused at upload so the user learns of it while they can still act on it, rather
+    # than on a page view of a trip that already accepted the file.
+    if len(points) > MAX_GPX_POINTS:
+        raise GpxTooManyPointsError(f"The file has more than {MAX_GPX_POINTS} track points.")
 
     # Derived from the points that were actually kept, rather than from
     # `gpx.get_bounds()`, so the box provably contains the polyline the map draws — and

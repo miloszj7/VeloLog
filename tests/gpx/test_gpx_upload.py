@@ -177,6 +177,31 @@ def test_a_valid_xml_file_that_is_not_a_track_is_rejected_with_its_own_message(
 
 
 @pytest.mark.django_db
+def test_a_track_over_the_point_cap_is_rejected_with_the_limit_named(
+    auth_client: Client,
+    trip: Trip,
+    gpx_bytes: GpxBytesReader,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The rejection has to name the limit, the way the size rejection does.
+
+    Without its own `except` branch ahead of `GpxContentError` this file would be
+    refused as "not a usable GPX track", which tells the user nothing they can act on.
+    """
+    monkeypatch.setattr("gpx.parsing.MAX_GPX_POINTS", 2)
+
+    response = auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("dense.gpx", gpx_bytes("valid-track.gpx"))},
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "more than 100,000 track points" in body
+    assert GpxTrack.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_a_rejected_upload_leaves_an_existing_track_untouched(
     auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
 ) -> None:

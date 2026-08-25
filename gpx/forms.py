@@ -4,8 +4,13 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 
-from gpx.constants import ALLOWED_GPX_EXTENSIONS, MAX_GPX_FILE_BYTES, MAX_GPX_FILE_MEGABYTES
-from gpx.exceptions import GpxContentError, GpxSyntaxError
+from gpx.constants import (
+    ALLOWED_GPX_EXTENSIONS,
+    MAX_GPX_FILE_BYTES,
+    MAX_GPX_FILE_MEGABYTES,
+    MAX_GPX_POINTS,
+)
+from gpx.exceptions import GpxContentError, GpxSyntaxError, GpxTooManyPointsError
 from gpx.models import GpxTrack
 from gpx.parsing import parse_gpx_bytes
 
@@ -36,7 +41,8 @@ class GpxUploadForm(_GpxUploadFormBase):
             The uploaded file, rewound so the storage write persists all of it.
 
         Raises:
-            ValidationError: The file is too large, is not a `.gpx`, or does not parse.
+            ValidationError: The file is too large, is not a `.gpx`, carries more than
+                `MAX_GPX_POINTS` points, or does not parse.
         """
         uploaded: UploadedFile[Any] = self.cleaned_data["file"]
         if uploaded.size is None or uploaded.size > MAX_GPX_FILE_BYTES:
@@ -51,6 +57,12 @@ class GpxUploadForm(_GpxUploadFormBase):
             # A file rejected for carrying a DOCTYPE lands here too. The message stays
             # about the file being unusable and does not explain the mitigation.
             raise ValidationError("That file could not be read as XML.") from e
+        except GpxTooManyPointsError as e:
+            # Ordered before its own base class: this one names the limit the user has to
+            # act on, the way the size rejection above does.
+            raise ValidationError(
+                f"That file has more than {MAX_GPX_POINTS:,} track points."
+            ) from e
         except GpxContentError as e:
             raise ValidationError("That file is not a usable GPX track.") from e
         finally:

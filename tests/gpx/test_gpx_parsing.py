@@ -1,7 +1,12 @@
 import gpxpy.parser
 import pytest
 
-from gpx.exceptions import GpxContentError, GpxParseError, GpxSyntaxError
+from gpx.exceptions import (
+    GpxContentError,
+    GpxParseError,
+    GpxSyntaxError,
+    GpxTooManyPointsError,
+)
 from gpx.parsing import parse_gpx, parse_gpx_bytes
 from tests.gpx.conftest import GpxBytesReader
 
@@ -72,6 +77,22 @@ def test_a_track_with_no_points_is_rejected(gpx_bytes: GpxBytesReader) -> None:
     """
     with pytest.raises(GpxContentError):
         parse_gpx_bytes(gpx_bytes("empty-track.gpx"))
+
+
+def test_a_track_with_too_many_points_is_rejected(
+    gpx_bytes: GpxBytesReader, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The upper bound of the rule the empty-track test above pins the lower bound of.
+
+    The cap is patched rather than met with a real payload: a genuine 100,001-point
+    fixture costs seconds of parse time on every run to prove one comparison. What the
+    cap is worth is measured elsewhere — 262,000 points is a 6 MB payload inlined into
+    the detail page.
+    """
+    monkeypatch.setattr("gpx.parsing.MAX_GPX_POINTS", 2)
+
+    with pytest.raises(GpxTooManyPointsError):
+        parse_gpx_bytes(gpx_bytes("valid-track.gpx"))
 
 
 def test_an_external_entity_payload_is_rejected(gpx_bytes: GpxBytesReader) -> None:

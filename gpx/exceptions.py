@@ -19,3 +19,7 @@ class GpxSyntaxError(GpxParseError):
 
 class GpxContentError(GpxParseError):
     """The document is well-formed XML but is not a usable GPX track."""
+
+
+class GpxTooManyPointsError(GpxContentError):
+    """The document is a usable track but carries more points than the render path allows."""

@@ -1231,14 +1231,14 @@ not a cost that stays invisible forever.
 
 #### Automated
 
-- [ ] 3.1 All gates pass: ruff, black, isort, mypy, `manage.py check`, migration guard
-- [ ] 3.2 Full CI-equivalent suite passes with coverage at or above `fail_under = 80`
-- [ ] 3.3 Cross-user access asserted 404, unauthenticated access asserted redirect
+- [x] 3.1 All gates pass: ruff, black, isort, mypy, `manage.py check`, migration guard
+- [x] 3.2 Full CI-equivalent suite passes with coverage at or above `fail_under = 80`
+- [x] 3.3 Cross-user access asserted 404, unauthenticated access asserted redirect
 
 #### Manual
 
-- [ ] 3.4 Clicking a trip in the list opens its detail page showing the trip's own fields
-- [ ] 3.5 The empty state reads as a deliberate message, not a missing element
+- [x] 3.4 Clicking a trip in the list opens its detail page showing the trip's own fields
+- [x] 3.5 The empty state reads as a deliberate message, not a missing element
 
 ### Phase 4: Upload, validation, and download
 

@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
+from django.urls import reverse
 
 from trips.models import Trip
 
@@ -36,3 +37,10 @@ def test_trips_sharing_a_date_come_back_in_deterministic_order(rider: User) -> N
     trips = list(Trip.objects.all())
 
     assert trips == [second, first]
+
+
+@pytest.mark.django_db
+def test_get_absolute_url_points_at_the_trips_detail_route(rider: User) -> None:
+    trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
+
+    assert trip.get_absolute_url() == reverse("trips:detail", kwargs={"pk": trip.pk})

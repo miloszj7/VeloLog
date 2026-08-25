@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trip.name }} — VeloLog{% endblock %}
+
+{% block content %}
+    <p><a href="{% url 'trips:list' %}">Back to your trips</a></p>
+
+    <h1>{{ trip.name }}</h1>
+    <p>{{ trip.date }}</p>
+    {% if trip.description %}
+        <p>{{ trip.description }}</p>
+    {% endif %}
+
+    <h2>Route</h2>
+    {% if track %}
+        {# Phase 5 replaces this branch with the Leaflet map container. #}
+        <p>Track: {{ track.original_filename }}</p>
+    {% else %}
+        <p>No route yet — this trip has no GPX file uploaded, so there is nothing to map.</p>
+    {% endif %}
+{% endblock %}

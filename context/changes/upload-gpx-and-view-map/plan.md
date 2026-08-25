@@ -1255,21 +1255,27 @@ not a cost that stays invisible forever.
 
 ### Phase 4: Upload, validation, and download
 
+Each row below names the commit that actually landed its evidence, not the commit that
+closed the phase. The phase originally stamped all twelve rows `7c11cf7`, the `DEPLOY.md`
+commit, which only 4.12 was true of; the Phase 4 implementation review corrected it. A row
+whose evidence arrived in two commits names the later one, since that is where the criterion
+first held.
+
 #### Automated
 
-- [x] 4.1 All gates pass: ruff, black, isort, mypy strict, `manage.py check`, migration guard — 7c11cf7
-- [x] 4.2 `uv sync --locked` succeeds — `uv.lock` committed with `pyproject.toml` — 7c11cf7
-- [x] 4.3 Full CI-equivalent suite passes with coverage at or above `fail_under = 80` — 7c11cf7
-- [x] 4.4 An upload test asserts persisted file content, not only a status code — 7c11cf7
-- [x] 4.5 XXE and nested-entity payloads are each asserted rejected; a test pins the stdlib parser backend — 7c11cf7
-- [x] 4.6 Cross-user upload and cross-user download both asserted to return 404 — 7c11cf7
+- [x] 4.1 All gates pass: ruff, black, isort, mypy strict, `manage.py check`, migration guard — 21a2f92
+- [x] 4.2 `uv sync --locked` succeeds — `uv.lock` committed with `pyproject.toml` — 2956494
+- [x] 4.3 Full CI-equivalent suite passes with coverage at or above `fail_under = 80` — 21a2f92
+- [x] 4.4 An upload test asserts persisted file content, not only a status code — 45aca7a
+- [x] 4.5 XXE and nested-entity payloads are each asserted rejected; a test pins the stdlib parser backend — 96b7480
+- [x] 4.6 Cross-user upload and cross-user download both asserted to return 404 — 21a2f92
 
 #### Manual
 
-- [x] 4.7 Uploading a real GPX attaches it and returns to the detail page with a confirmation — 7c11cf7
-- [x] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing — 7c11cf7
-- [x] 4.9 A second upload replaces the first; the download link returns the newest file — 7c11cf7
-- [x] 4.10 The downloaded file opens correctly in another GPX viewer — 7c11cf7
+- [x] 4.7 Uploading a real GPX attaches it and returns to the detail page with a confirmation — 45aca7a
+- [x] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing — 45aca7a
+- [x] 4.9 A second upload replaces the first; the download link returns the newest file — 21a2f92
+- [x] 4.10 The downloaded file opens correctly in another GPX viewer — 21a2f92
 - [ ] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — **deferred to Phase 6** (see 6.8): never actually observed, and the production deploy it checks is not live yet
 - [x] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media` — 7c11cf7
 

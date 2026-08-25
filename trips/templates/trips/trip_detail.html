@@ -15,6 +15,9 @@
     {% if track %}
         {# Phase 5 replaces this branch with the Leaflet map container. #}
         <p>Track: {{ track.original_filename }}</p>
+        <p>
+            <a href="{% url 'gpx:download' pk=track.pk %}">Download {{ track.original_filename }}</a>
+        </p>
     {% else %}
         <p>No route yet — this trip has no GPX file uploaded, so there is nothing to map.</p>
     {% endif %}

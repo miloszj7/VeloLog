@@ -93,6 +93,10 @@ def test_a_valid_upload_returns_to_the_detail_page_with_a_confirmation(
     assert "Route uploaded." in body
     assert "alps-day-1.gpx" in body
     assert "No route yet" not in body
+    # The download link is the only route back to the original file — a `MEDIA_URL` path
+    # would serve it outside authorization, so the page has to point at the scoped view.
+    track = GpxTrack.objects.get()
+    assert reverse("gpx:download", kwargs={"pk": track.pk}) in body
 
 
 @pytest.mark.django_db

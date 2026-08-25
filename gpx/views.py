@@ -5,9 +5,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse
+from django.http import FileResponse, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
-from django.views.generic import CreateView
+from django.views.generic import CreateView, View
 
 from gpx.forms import GpxUploadForm
 from gpx.models import GpxTrack
@@ -97,3 +97,28 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
             for old in superseded:
                 transaction.on_commit(partial(old.file.delete, save=False))
         return response
+
+
+class GpxDownloadView(LoginRequiredMixin, View):
+    """Serves a track's original file back to its owner, and to nobody else.
+
+    Two separate PRD sentences require this view to exist at all rather than a
+    `MEDIA_URL` path: "no user can access another user's trips under any circumstances"
+    drives the owner scoping, and "unauthenticated users cannot view any trip" drives
+    `LoginRequiredMixin`. A bare media URL breaks both — whitenoise sits ahead of
+    `AuthenticationMiddleware` in `MIDDLEWARE`, so anything it serves is outside
+    authorization by construction.
+
+    A plain `View` rather than a generic one: there is no form and no object-to-context
+    step to inherit, so the `TYPE_CHECKING` base-alias idiom has nothing to work around.
+    """
+
+    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> FileResponse:
+        track = get_object_or_404(
+            GpxTrack.objects.filter(trip__owner=cast(User, request.user)), pk=self.kwargs["pk"]
+        )
+        return FileResponse(
+            track.file.open("rb"),
+            as_attachment=True,
+            filename=track.original_filename,
+        )

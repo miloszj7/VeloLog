@@ -52,15 +52,45 @@ def test_the_download_is_an_attachment_named_by_the_users_own_filename(
 
 
 @pytest.mark.django_db
+def test_a_hostile_original_filename_cannot_break_out_of_the_header(
+    auth_client: Client, trip: Trip, make_stored_track: StoredTrackFactory
+) -> None:
+    """The one place a user-supplied string is written into a response header.
+
+    The guarantee is Django's, not this app's: content_disposition_header escapes
+    quotes and falls back to RFC 5987 encoding for anything outside quotable ASCII.
+    Pinning it here means a future hand-rolled header, or a Django change, fails a
+    test rather than shipping a header-injection hole.
+    """
+    hostile = chr(34) + "; evil=1" + chr(13) + chr(10) + "X-Injected: yes"
+    track = make_stored_track(trip, TRACK_BYTES, hostile + ".gpx")
+
+    response = auth_client.get(download_url(track))
+    disposition = response.headers["Content-Disposition"]
+
+    assert response.status_code == 200
+    assert "X-Injected" not in response.headers
+    assert chr(13) not in disposition
+    assert chr(10) not in disposition
+
+
+@pytest.mark.django_db
 def test_another_users_track_returns_404_not_403(
     auth_client: Client, other_rider: User, make_stored_track: StoredTrackFactory
 ) -> None:
+    """404 rather than 403, and none of the other rider's bytes in the answer.
+
+    The status code alone would still pass if the view rendered the foreign file into
+    an error page, which is the failure this pair of assertions exists to catch.
+    """
     other_trip = Trip.objects.create(name="Other Rider Trip", date="2026-06-01", owner=other_rider)
     other_track = make_stored_track(other_trip, b"someone-elses-ride")
 
     response = auth_client.get(download_url(other_track))
 
     assert response.status_code == 404
+    assert b"someone-elses-ride" not in response.content
+    assert other_track.original_filename not in response.content.decode()
 
 
 @pytest.mark.django_db

@@ -232,6 +232,23 @@ def test_an_undecodable_file_is_rejected_for_its_encoding_not_its_xml(
 
 
 @pytest.mark.django_db
+def test_a_post_with_no_file_is_rejected_without_reaching_the_parser(
+    auth_client: Client, trip: Trip
+) -> None:
+    """clean_file never runs when the field is empty, so the required-field message
+    is the whole answer here. Worth pinning: the view resolves the trip before the
+    form is touched, so an empty POST must still land on the trip's own page rather
+    than anywhere else.
+    """
+    response = auth_client.post(upload_url(trip), {})
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "This field is required." in body
+    assert GpxTrack.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_a_rejected_upload_leaves_an_existing_track_untouched(
     auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
 ) -> None:

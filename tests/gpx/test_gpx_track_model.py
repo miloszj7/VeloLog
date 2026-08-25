@@ -1,15 +1,9 @@
 import pytest
-from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 
 from gpx.models import GpxTrack, gpx_upload_path
 from tests.conftest import GPX_POINTS, TrackFactory
 from trips.models import Trip
-
-
-@pytest.fixture
-def trip(rider: User) -> Trip:
-    return Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
 
 
 @pytest.mark.django_db

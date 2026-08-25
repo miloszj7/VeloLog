@@ -1,8 +1,17 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    {# The PRD scopes VeloLog to a responsive web app. Without this, a mobile browser
+       renders the page at a ~980px virtual width and scales it down, which shrinks the
+       map to an unreadable postage stamp on the one device a rider actually has with
+       them. #}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}VeloLog{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {# Per-page stylesheets and any other head content. Declared after the project
+       stylesheet so a page can override it rather than be overridden by it. #}
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     {% if user.is_authenticated %}
@@ -21,5 +30,8 @@
         </ul>
     {% endif %}
     {% block content %}{% endblock %}
+    {# Scripts load last so they never block the page, and so a script can rely on the
+       elements it operates on already existing. #}
+    {% block scripts %}{% endblock %}
 </body>
 </html>

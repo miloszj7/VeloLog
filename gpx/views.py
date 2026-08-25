@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, View
 
 from gpx.forms import GpxUploadForm
+from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
 from trips.models import Trip
 
@@ -86,10 +87,17 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         )
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        """Supply what `trips/trip_detail.html` needs when re-rendering with errors."""
+        """Supply what `trips/trip_detail.html` needs when re-rendering with errors.
+
+        Including the map blob: this path renders the same page as `TripDetailView`, so a
+        rider whose upload was rejected must still see the route they already had, not the
+        template's no-route-to-draw branch.
+        """
         context = super().get_context_data(**kwargs)
+        track = self.trip.tracks.first()
         context["trip"] = self.trip
-        context["track"] = self.trip.tracks.first()
+        context["track"] = track
+        context["map_config"] = build_map_config(track)
         return context
 
     def get_success_url(self) -> str:

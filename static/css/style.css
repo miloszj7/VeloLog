@@ -1,0 +1,21 @@
+/* Project-level stylesheet, loaded by templates/base.html.
+ *
+ * This is the repo's first CSS, and it stays deliberately small: the two archived
+ * slices recorded a standing "no CSS, no stylesheet, no static asset" decision, and
+ * this slice reverses it only as far as the map requires. Anything that is not needed
+ * to render a route belongs to a later slice.
+ */
+
+/* Leaflet computes its layout from the container's own box, so a map in a container
+ * with no height collapses to zero pixels and renders as a blank gap — not an error,
+ * just nothing. The height must therefore be set here, and in relative units: the PRD
+ * scopes VeloLog to a responsive web app, so this has to hold on a phone as well as on
+ * a desktop. `vh` tracks the viewport, `min-height` keeps the map usable in a short
+ * landscape window, and `max-height` stops it swallowing a tall desktop screen.
+ */
+#map {
+    width: 100%;
+    height: 60vh;
+    min-height: 18rem;
+    max-height: 40rem;
+}

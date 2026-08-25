@@ -1283,21 +1283,21 @@ first held.
 
 #### Automated
 
-- [ ] 5.1 `collectstatic --noinput` exits 0 with the manifest storage active
+- [x] 5.1 `collectstatic --noinput` exits 0 with the manifest storage active
 - [ ] 5.2 The new `collectstatic` step is present in the `gates` job and passes in CI
-- [ ] 5.3 All gates pass: ruff, black, isort, mypy strict, `manage.py check`, migration guard
-- [ ] 5.4 Full CI-equivalent suite passes with coverage at or above `fail_under = 80`
-- [ ] 5.5 A test asserts the coordinate payload is delivered via `json_script`
-- [ ] 5.6 A test asserts a trackless trip renders no map container
+- [x] 5.3 All gates pass: ruff, black, isort, mypy strict, `manage.py check`, migration guard
+- [x] 5.4 Full CI-equivalent suite passes with coverage at or above `fail_under = 80`
+- [x] 5.5 A test asserts the coordinate payload is delivered via `json_script`
+- [x] 5.6 A test asserts a trackless trip renders no map container
 
 #### Manual
 
-- [ ] 5.7 The route renders fitted to the track with visible margin
-- [ ] 5.8 The map does not pan, scroll-zoom, double-click-zoom, or respond to arrow keys; no zoom control
-- [ ] 5.9 OpenStreetMap attribution is visible
-- [ ] 5.10 Start and end markers render correctly — no broken images, no console 404s
-- [ ] 5.11 The page is usable at a mobile viewport width
-- [ ] 5.12 After `collectstatic`, all assets load from hashed URLs with no console 404s
+- [x] 5.7 The route renders fitted to the track with visible margin
+- [x] 5.8 The map does not pan, scroll-zoom, double-click-zoom, or respond to arrow keys; no zoom control
+- [x] 5.9 OpenStreetMap attribution is visible
+- [x] 5.10 Start and end markers render correctly — no broken images, no console 404s
+- [x] 5.11 The page is usable at a mobile viewport width
+- [ ] 5.12 After `collectstatic`, all assets load from hashed URLs with no console 404s — **deferred to Phase 6** (see 6.9): the hashed-URL path is whitenoise serving `STATIC_ROOT` at `DEBUG=False`, which only the deployed instance exercises for real
 
 ### Phase 6: Documentation and deploy hardening
 
@@ -1320,3 +1320,12 @@ first held.
   container disk — a redeploy would silently take every uploaded file with it. The Phase 4
   review found it marked done with no evidence anywhere in the repo; it is unchecked again
   deliberately.
+- [ ] 6.9 **Carried over from Phase 5 (5.12), the hashed-asset gate.** On the deployed
+  instance, open a trip with a track and confirm from the browser console that the stylesheet,
+  `leaflet.js`, `map.js`, the OSM tiles, the marker images and the layers icon all load with no
+  404s, from the content-hashed names `collectstatic` produced. Verified locally as far as it
+  can be — `collectstatic` exits 0 and a render under the real manifest storage resolves every
+  asset to a hashed name present in `staticfiles.json` (Progress 5.1) — but the last link,
+  whitenoise actually serving those names out of `STATIC_ROOT` at `DEBUG=False`, exists only in
+  production. That link is the one whose failure mode is silent: a 404 on a marker image is a
+  missing pin, not an error page.

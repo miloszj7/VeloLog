@@ -139,6 +139,12 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Mirrors the TEMPLATES["DIRS"] convention above exactly: project-level, cross-cutting
+# assets live at the repo root, app-namespaced assets inside the app that owns them.
+# Without this entry the directory is invisible to collectstatic and to the static tag,
+# so base.html's stylesheet would 404 in production while resolving fine in DEBUG.
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
 
 # Media files (user uploads)
 # https://docs.djangoproject.com/en/6.0/topics/files/

@@ -45,6 +45,31 @@ def _media_root_in_tmp_path(settings: Settings, tmp_path: Path) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _plain_staticfiles_storage(settings: Settings) -> None:
+    """Resolve `{% static %}` without requiring a collected manifest.
+
+    `base.html` loads a stylesheet, so every page in the suite now goes through the
+    staticfiles storage. The configured one is
+    `CompressedManifestStaticFilesStorage`, which resolves names against
+    `staticfiles.json` and raises `ValueError: Missing staticfiles manifest entry` when
+    that file has not been produced — so without this the whole suite would depend on a
+    `collectstatic` having been run first, and `pytest` on a fresh clone would fail on
+    every rendered page.
+
+    Swapping the backend does not leave the manifest untested: the `gates` job runs
+    `collectstatic --noinput` as its own step, which is what proves every reference
+    resolves. That check belongs in the build, not in a page-rendering test.
+
+    Spread rather than replaced — `STORAGES` is not merged by Django, and dropping the
+    `"default"` alias here would break every upload test.
+    """
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
+
+@pytest.fixture(autouse=True)
 def _clear_cache() -> None:
     """Keep `/healthz/`'s cached verdict from leaking between tests.
 

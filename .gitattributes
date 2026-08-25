@@ -1,0 +1,7 @@
+# Vendored third-party assets are checked out exactly as they were published. This
+# machine has core.autocrlf=true, which would otherwise rewrite leaflet.js and
+# leaflet.css to CRLF on checkout: the bytes would stop matching the upstream release
+# an upgrade is supposed to be a straight swap for, and the same file would hash
+# differently on a Windows checkout than in CI or production, so the same commit would
+# produce two different sets of content-hashed asset names.
+gpx/static/gpx/vendor/** -text

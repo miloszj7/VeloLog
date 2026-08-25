@@ -4,7 +4,7 @@
 - **Plan**: `context/changes/upload-gpx-and-view-map/plan.md`
 - **Scope**: Phase 3 of 6 — Trip detail view (commit `2110c32`)
 - **Date**: 2026-08-25
-- **Verdict**: NEEDS ATTENTION
+- **Verdict**: NEEDS ATTENTION → all findings triaged 2026-08-25 (8 fixed, 1 accepted)
 - **Findings**: 0 critical, 3 warnings, 6 observations
 
 ## Verdicts
@@ -62,7 +62,7 @@ pass green, and Phase 4 builds directly on this page.
   - Confidence: HIGH — the plan's stated intent for §3 is verbatim "Give the redirect targets in
     Phase 4 one place to resolve".
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A (`76aebe1`) — `trip_list.html` now resolves the link through `get_absolute_url`, giving the method a production caller and making its docstring true.
 
 ### F2 — Track test cannot distinguish per-trip scoping from a global query
 
@@ -77,7 +77,7 @@ pass green, and Phase 4 builds directly on this page.
   to handle is never exercised — the same class of gap as `lessons.md` rules #1 and #3.
 - **Fix**: Create a second trip for the same rider with its own track; assert the detail page shows
   only its own track's `original_filename` and that the other's is absent.
-- **Decision**: PENDING
+- **Decision**: FIXED (`72bdbe3`) — a second trip with its own newer track now discriminates the two implementations. Verified by mutation: swapping the view to an unscoped `GpxTrack.objects.first()` fails this test and only this test.
 
 ### F3 — Locale-dependent date assertion
 
@@ -94,7 +94,7 @@ pass green, and Phase 4 builds directly on this page.
 - **Fix**: Compute the expected string with `django.utils.formats.date_format(trip.date)`, or pin
   the locale for this test via the `settings` fixture, so the assertion states intent rather than a
   locale accident.
-- **Decision**: PENDING
+- **Decision**: FIXED (`55be08e`) — the expected string is derived with `django.utils.formats.date_format`. Constructing the trip with a real `date` object was required for that. Verified by mutation: removing `{{ trip.date }}` from the template fails the assertion.
 
 ### F4 — List-page test placed in the detail module, and its name implies plurality it does not test
 
@@ -107,7 +107,7 @@ pass green, and Phase 4 builds directly on this page.
   `tests/trips/test_trip_list.py`. Separately, the name says "each trip" while the test creates one,
   so it cannot catch a template that links every row to the same pk.
 - **Fix**: Move it to `tests/trips/test_trip_list.py` and create two trips, asserting both hrefs.
-- **Decision**: PENDING
+- **Decision**: FIXED (`9607156`) — moved to `tests/trips/test_trip_list.py`, renamed, and given two trips so both hrefs are asserted.
 
 ### F5 — Two tests skip the status-code opener their siblings all use
 
@@ -119,7 +119,7 @@ pass green, and Phase 4 builds directly on this page.
   `assert response.status_code == 200`. Without it, a regression that 404s the page surfaces as a
   `KeyError` on `response.context["track"]` rather than a legible status failure.
 - **Fix**: Add `assert response.status_code == 200` as the first assertion in both.
-- **Decision**: PENDING
+- **Decision**: FIXED — the track-test location was resolved by the F2 rewrite (`72bdbe3`) and the list-test location by the F4 move (`9607156`). Both now open with the status-code assertion their siblings use.
 
 ### F6 — `GpxTrack` construction duplicated across two test packages
 
@@ -131,7 +131,7 @@ pass green, and Phase 4 builds directly on this page.
   `_make_track` helper at `tests/gpx/test_gpx_track_model.py:11-21`. Two packages now build tracks,
   and `tests/conftest.py` is the project's established single home for shared fixtures.
 - **Fix**: Promote a `gpx_track` factory fixture to `tests/conftest.py` and use it from both.
-- **Decision**: PENDING
+- **Decision**: FIXED (`c10815c`) — a `make_gpx_track` factory fixture plus the shared `GPX_POINTS` / `GPX_BOUNDS` constants now live in `tests/conftest.py`; both packages build tracks through it and assert against the same values.
 
 ### F7 — Adding `get_absolute_url` silently turned on the admin's "View on site" link
 
@@ -145,7 +145,7 @@ pass green, and Phase 4 builds directly on this page.
   project's 404-not-403 stance, but an undocumented side effect of this commit.
 - **Fix**: Set `view_on_site = False` on `TripAdmin` if the admin repair path is meant to stay
   usable; otherwise record the behaviour deliberately.
-- **Decision**: PENDING
+- **Decision**: FIXED (`e7b72ea`) — `view_on_site = False` on `TripAdmin`, with a comment recording why the owner-scoped route makes the default link a 404 trap for staff.
 
 ### F8 — `get_absolute_url` test is tautological
 
@@ -158,7 +158,7 @@ pass green, and Phase 4 builds directly on this page.
   URL *shape* — a route path change that breaks existing bookmarks passes green.
 - **Fix**: Assert the literal `f"/trips/{trip.pk}/"`, matching the concreteness of the ordering
   assertions elsewhere in the same file.
-- **Decision**: PENDING
+- **Decision**: FIXED (`9306651`) — asserts the literal `/trips/<pk>/`. Verified by mutation: changing the route path now fails the test, where previously it passed green.
 
 ### F9 — `.first()` is newest-wins, and nothing yet enforces the one-track invariant
 
@@ -175,4 +175,4 @@ pass green, and Phase 4 builds directly on this page.
 - **Fix**: No change in Phase 3. The plan already commits to replace-on-upload (change.md D1;
   plan.md "Ordering on replace" under Critical Implementation Details). Verify at Phase 4 that the
   invariant is enforced at the boundary that creates tracks, not left to `.first()` alone.
-- **Decision**: PENDING
+- **Decision**: ACCEPTED — no Phase 3 change, as the finding itself recommends. The plan already commits to replace-on-upload (change.md D1, plan.md "Ordering on replace"), so the invariant belongs at the boundary that creates tracks. Queued for the Phase 4 review in `follow-ups/review-fixes.md`. The F2 fix incidentally pins the newest-wins ordering with a test and documents it in that test's docstring.

@@ -10,6 +10,19 @@ from gpx.models import GpxTrack
 from trips.models import Trip
 
 
+def _make_track(trip: Trip, original_filename: str) -> GpxTrack:
+    return GpxTrack.objects.create(
+        trip=trip,
+        file="gpx/placeholder.gpx",
+        points=[[46.0, 7.0], [46.1, 7.1]],
+        min_latitude=46.0,
+        min_longitude=7.0,
+        max_latitude=46.1,
+        max_longitude=7.1,
+        original_filename=original_filename,
+    )
+
+
 @pytest.mark.django_db
 def test_owner_sees_own_trip_detail(auth_client: Client, rider: User) -> None:
     trip = Trip.objects.create(
@@ -64,26 +77,25 @@ def test_trip_with_no_track_renders_the_empty_state_copy(auth_client: Client, ri
 
 
 @pytest.mark.django_db
-def test_trip_with_a_track_renders_the_track_branch_instead_of_the_empty_state(
-    auth_client: Client, rider: User
-) -> None:
-    trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
-    track = GpxTrack.objects.create(
-        trip=trip,
-        file="gpx/placeholder.gpx",
-        points=[[46.0, 7.0], [46.1, 7.1]],
-        min_latitude=46.0,
-        min_longitude=7.0,
-        max_latitude=46.1,
-        max_longitude=7.1,
-        original_filename="alps-loop.gpx",
-    )
+def test_trip_with_a_track_renders_only_its_own_track(auth_client: Client, rider: User) -> None:
+    """A second, newer track on another of the rider's trips must not leak onto this page.
+
+    `GpxTrack.Meta.ordering` is newest-first, so an unscoped `GpxTrack.objects.first()`
+    would return the Pyrenees track here — that is the wrong implementation this test
+    exists to reject.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
+    track = _make_track(trip, "alps-loop.gpx")
+    other_trip = Trip.objects.create(name="Pyrenees Loop", date=date(2026, 7, 1), owner=rider)
+    _make_track(other_trip, "pyrenees-loop.gpx")
 
     response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
     body = response.content.decode()
 
+    assert response.status_code == 200
     assert response.context["track"] == track
     assert "alps-loop.gpx" in body
+    assert "pyrenees-loop.gpx" not in body
     assert "No route yet" not in body
 
 

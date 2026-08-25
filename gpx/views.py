@@ -24,6 +24,28 @@ else:
     _SuccessMessageMixinBase = SuccessMessageMixin
 
 
+def discard_superseded_file(track: GpxTrack) -> None:
+    """Delete a retired track's file, never letting the attempt fail the request.
+
+    This runs from `on_commit`, which fires synchronously as the outermost `atomic()`
+    exits — inside the request, after the upload has already committed. An exception
+    escaping here would give the user a 500 for an upload the database has accepted,
+    which is the one response that cannot be true. `FileSystemStorage.delete` absorbs a
+    missing file on its own but nothing else, so an unmounted Volume or a permission
+    change on the media directory would do exactly that.
+
+    Swallowing it silently would leave orphan files accumulating with nothing to show
+    for them, so the failure is logged rather than dropped.
+    """
+    try:
+        track.file.delete(save=False)
+    except OSError:
+        logger.exception(
+            "Could not delete superseded track file",
+            extra={"track_id": track.pk, "storage_key": track.file.name},
+        )
+
+
 class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadViewBase):
     """Attaches a GPX track to one of the requesting user's own trips, replacing any existing one.
 
@@ -108,7 +130,7 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
             response = super().form_valid(form)
             self.trip.tracks.filter(pk__in=[track.pk for track in superseded]).delete()
             for old in superseded:
-                transaction.on_commit(partial(old.file.delete, save=False))
+                transaction.on_commit(partial(discard_superseded_file, old))
         return response
 
 

@@ -259,6 +259,47 @@ def test_a_second_upload_replaces_the_first_and_removes_its_file(
 
 
 @pytest.mark.django_db
+def test_a_cleanup_failure_does_not_fail_an_upload_that_already_committed(
+    auth_client: Client,
+    trip: Trip,
+    gpx_bytes: GpxBytesReader,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unmounted volume must not turn a stored upload into a 500.
+
+    The deferred delete runs inside the request, after the commit. Left unguarded, a
+    storage error there gives the user a failure for an upload the database has already
+    accepted — a response that contradicts the state of the system. The orphaned file is
+    the cost; the wrong answer is not.
+    """
+
+    def refuse_delete(self: object, name: str) -> None:
+        raise PermissionError(name)
+
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("first.gpx", gpx_bytes("valid-track.gpx"))},
+    )
+    first = GpxTrack.objects.get()
+    first_file_name = stored_name(first)
+    monkeypatch.setattr(
+        "django.core.files.storage.FileSystemStorage.delete", refuse_delete, raising=True
+    )
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = auth_client.post(
+            upload_url(trip),
+            {"file": SimpleUploadedFile("second.gpx", gpx_bytes("second-track.gpx"))},
+        )
+
+    assert response.status_code == 302
+    assert GpxTrack.objects.get().original_filename == "second.gpx"
+    # The row is retired either way; only the file survives the refusal.
+    assert default_storage.exists(first_file_name)
+
+
+@pytest.mark.django_db
 def test_a_second_upload_leaves_another_trips_track_alone(
     auth_client: Client,
     rider: User,

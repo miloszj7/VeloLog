@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
@@ -6,17 +6,19 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, ListView
+from django.views.generic import CreateView, DetailView, ListView
 
 from trips.forms import TripForm
 from trips.models import Trip
 
 if TYPE_CHECKING:
     _TripListViewBase = ListView[Trip]
+    _TripDetailViewBase = DetailView[Trip]
     _TripCreateViewBase = CreateView[Trip, TripForm]
     _SuccessMessageMixinBase = SuccessMessageMixin[TripForm]
 else:
     _TripListViewBase = ListView
+    _TripDetailViewBase = DetailView
     _TripCreateViewBase = CreateView
     _SuccessMessageMixinBase = SuccessMessageMixin
 
@@ -41,3 +43,23 @@ class TripCreateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripCreateVi
         """Assign the requesting user as owner before saving the trip."""
         form.instance.owner = cast(User, self.request.user)
         return super().form_valid(form)
+
+
+class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
+    """Shows one of the requesting user's own trips, with its track if one exists."""
+
+    def get_queryset(self) -> QuerySet[Trip]:
+        """Restrict the lookup to trips owned by the requesting user.
+
+        Scoping here — rather than checking ownership after fetching — is what makes
+        another user's trip 404 instead of 403, so a pk that exists is indistinguishable
+        from one that does not. The owner-scoped queryset is the project's entire
+        authorization story; `TripListView.get_queryset` above does the same.
+        """
+        return Trip.objects.filter(owner=cast(User, self.request.user))
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Expose the trip's current track, or `None` when nothing has been uploaded."""
+        context = super().get_context_data(**kwargs)
+        context["track"] = self.object.tracks.first()
+        return context

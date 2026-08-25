@@ -16,3 +16,7 @@ class TripAdmin(_TripAdminBase):
 
     list_display = ("name", "date", "owner")
     list_select_related = ("owner",)
+    # `Trip.get_absolute_url` would otherwise light up ModelAdmin's default
+    # "View on site" link, which resolves to the owner-scoped detail route — so a
+    # staff user inspecting another rider's trip lands on a 404 from their own admin.
+    view_on_site = False

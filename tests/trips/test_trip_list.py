@@ -56,3 +56,16 @@ def test_success_message_renders_on_list_page_after_create(auth_client: Client) 
     response = auth_client.get(reverse("trips:list"))
 
     assert "Trip saved." in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_list_links_each_trip_to_its_own_detail_page(auth_client: Client, rider: User) -> None:
+    first = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
+    second = Trip.objects.create(name="Pyrenees Loop", date="2026-07-01", owner=rider)
+
+    response = auth_client.get(reverse("trips:list"))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert f'href="{reverse("trips:detail", kwargs={"pk": first.pk})}"' in body
+    assert f'href="{reverse("trips:detail", kwargs={"pk": second.pk})}"' in body

@@ -3,22 +3,8 @@ from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
 
 from gpx.models import GpxTrack, gpx_upload_path
+from tests.conftest import GPX_POINTS, TrackFactory
 from trips.models import Trip
-
-POINTS = [[50.06, 19.94], [50.07, 19.95]]
-
-
-def _make_track(trip: Trip, original_filename: str = "alps-day-1.gpx") -> GpxTrack:
-    return GpxTrack.objects.create(
-        trip=trip,
-        file="gpx/1/1/deadbeef.gpx",
-        points=POINTS,
-        min_latitude=50.06,
-        min_longitude=19.94,
-        max_latitude=50.07,
-        max_longitude=19.95,
-        original_filename=original_filename,
-    )
 
 
 @pytest.fixture
@@ -27,15 +13,17 @@ def trip(rider: User) -> Trip:
 
 
 @pytest.mark.django_db
-def test_track_is_reachable_from_its_trip_via_reverse_accessor(trip: Trip) -> None:
-    track = _make_track(trip)
+def test_track_is_reachable_from_its_trip_via_reverse_accessor(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    track = make_gpx_track(trip)
 
     assert track in trip.tracks.all()
 
 
 @pytest.mark.django_db
-def test_deleting_a_trip_cascades_its_tracks(trip: Trip) -> None:
-    _make_track(trip)
+def test_deleting_a_trip_cascades_its_tracks(trip: Trip, make_gpx_track: TrackFactory) -> None:
+    make_gpx_track(trip)
 
     trip.delete()
 
@@ -45,15 +33,17 @@ def test_deleting_a_trip_cascades_its_tracks(trip: Trip) -> None:
 
 
 @pytest.mark.django_db
-def test_track_str_is_the_original_filename(trip: Trip) -> None:
-    track = _make_track(trip, original_filename="pyrenees-stage-3.gpx")
+def test_track_str_is_the_original_filename(trip: Trip, make_gpx_track: TrackFactory) -> None:
+    track = make_gpx_track(trip, original_filename="pyrenees-stage-3.gpx")
 
     assert str(track) == "pyrenees-stage-3.gpx"
 
 
 @pytest.mark.django_db
-def test_upload_path_keeps_the_user_supplied_filename_off_disk(trip: Trip) -> None:
-    track = _make_track(trip)
+def test_upload_path_keeps_the_user_supplied_filename_off_disk(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    track = make_gpx_track(trip)
 
     path = gpx_upload_path(track, "../../../etc/passwd; rm -rf.gpx")
 
@@ -65,8 +55,10 @@ def test_upload_path_keeps_the_user_supplied_filename_off_disk(trip: Trip) -> No
 
 
 @pytest.mark.django_db
-def test_upload_path_is_unique_per_call_for_the_same_filename(trip: Trip) -> None:
-    track = _make_track(trip)
+def test_upload_path_is_unique_per_call_for_the_same_filename(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    track = make_gpx_track(trip)
 
     first = gpx_upload_path(track, "ride.gpx")
     second = gpx_upload_path(track, "ride.gpx")
@@ -75,15 +67,17 @@ def test_upload_path_is_unique_per_call_for_the_same_filename(trip: Trip) -> Non
 
 
 @pytest.mark.django_db
-def test_tracks_come_back_newest_first(trip: Trip) -> None:
-    older = _make_track(trip, original_filename="older.gpx")
-    newer = _make_track(trip, original_filename="newer.gpx")
+def test_tracks_come_back_newest_first(trip: Trip, make_gpx_track: TrackFactory) -> None:
+    older = make_gpx_track(trip, original_filename="older.gpx")
+    newer = make_gpx_track(trip, original_filename="newer.gpx")
 
     assert list(GpxTrack.objects.all()) == [newer, older]
 
 
 @pytest.mark.django_db
-def test_saving_through_the_field_routes_the_name_through_gpx_upload_path(trip: Trip) -> None:
+def test_saving_through_the_field_routes_the_name_through_gpx_upload_path(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
     """`upload_to` must be wired to the field, not merely correct when called directly.
 
     Every other test here calls `gpx_upload_path` by hand, so dropping `upload_to=` from
@@ -96,7 +90,7 @@ def test_saving_through_the_field_routes_the_name_through_gpx_upload_path(trip: 
     guard rather than ours. `ride.gpx` is a name storage would happily keep, so the
     assertions below can only pass if `gpx_upload_path` replaced it.
     """
-    track = _make_track(trip)
+    track = make_gpx_track(trip)
 
     track.file.save("ride.gpx", ContentFile(b"<gpx/>"), save=True)
 
@@ -112,20 +106,22 @@ def test_saving_through_the_field_routes_the_name_through_gpx_upload_path(trip: 
 
 
 @pytest.mark.django_db
-def test_points_and_bounds_survive_a_round_trip_through_the_database(trip: Trip) -> None:
+def test_points_and_bounds_survive_a_round_trip_through_the_database(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
     """Phase 5 renders the map straight from these columns, so their shape has to hold.
 
-    `_make_track` assigns them in memory, where a `points` column that came back as a
+    The factory assigns them in memory, where a `points` column that came back as a
     JSON *string* would still satisfy every other test in this file. Only a re-read from
     a fresh query can tell the difference. The bounds are four explicit `FloatField`s
     rather than a nested blob precisely so their types are unambiguous — asserted here
     rather than assumed.
     """
-    track = _make_track(trip)
+    track = make_gpx_track(trip)
 
     reloaded = GpxTrack.objects.get(pk=track.pk)
 
-    assert reloaded.points == POINTS
+    assert reloaded.points == GPX_POINTS
     assert all(isinstance(value, float) for point in reloaded.points for value in point)
     assert (reloaded.min_latitude, reloaded.min_longitude) == (50.06, 19.94)
     assert (reloaded.max_latitude, reloaded.max_longitude) == (50.07, 19.95)

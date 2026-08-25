@@ -6,21 +6,8 @@ from django.test import Client
 from django.urls import reverse
 from django.utils.formats import date_format
 
-from gpx.models import GpxTrack
+from tests.conftest import TrackFactory
 from trips.models import Trip
-
-
-def _make_track(trip: Trip, original_filename: str) -> GpxTrack:
-    return GpxTrack.objects.create(
-        trip=trip,
-        file="gpx/placeholder.gpx",
-        points=[[46.0, 7.0], [46.1, 7.1]],
-        min_latitude=46.0,
-        min_longitude=7.0,
-        max_latitude=46.1,
-        max_longitude=7.1,
-        original_filename=original_filename,
-    )
 
 
 @pytest.mark.django_db
@@ -77,7 +64,9 @@ def test_trip_with_no_track_renders_the_empty_state_copy(auth_client: Client, ri
 
 
 @pytest.mark.django_db
-def test_trip_with_a_track_renders_only_its_own_track(auth_client: Client, rider: User) -> None:
+def test_trip_with_a_track_renders_only_its_own_track(
+    auth_client: Client, rider: User, make_gpx_track: TrackFactory
+) -> None:
     """A second, newer track on another of the rider's trips must not leak onto this page.
 
     `GpxTrack.Meta.ordering` is newest-first, so an unscoped `GpxTrack.objects.first()`
@@ -85,9 +74,9 @@ def test_trip_with_a_track_renders_only_its_own_track(auth_client: Client, rider
     exists to reject.
     """
     trip = Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
-    track = _make_track(trip, "alps-loop.gpx")
+    track = make_gpx_track(trip, "alps-loop.gpx")
     other_trip = Trip.objects.create(name="Pyrenees Loop", date=date(2026, 7, 1), owner=rider)
-    _make_track(other_trip, "pyrenees-loop.gpx")
+    make_gpx_track(other_trip, "pyrenees-loop.gpx")
 
     response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
     body = response.content.decode()

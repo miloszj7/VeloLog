@@ -1,5 +1,6 @@
 """Shared pytest-django fixtures for the VeloLog test suite."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,19 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import Client
 from pytest_django.fixtures import Settings
+
+from gpx.models import GpxTrack
+from trips.models import Trip
+
+GPX_POINTS = [[50.06, 19.94], [50.07, 19.95]]
+GPX_BOUNDS = {
+    "min_latitude": 50.06,
+    "min_longitude": 19.94,
+    "max_latitude": 50.07,
+    "max_longitude": 19.95,
+}
+
+TrackFactory = Callable[..., GpxTrack]
 
 
 @pytest.fixture(autouse=True)
@@ -55,3 +69,24 @@ def other_rider(db: None) -> User:
 def auth_client(client: Client, rider: User) -> Client:
     assert client.login(username="rider", password="correct-horse-battery-staple")
     return client
+
+
+@pytest.fixture
+def make_gpx_track() -> TrackFactory:
+    """Return a factory that persists a `GpxTrack` against a given trip.
+
+    Both the `trips` and `gpx` test packages build tracks, and the columns Phase 5
+    renders the map from (`points` plus the four bounds) have to stay identical
+    across them — so the defaults live here rather than in a per-package helper.
+    """
+
+    def _make(trip: Trip, original_filename: str = "alps-day-1.gpx") -> GpxTrack:
+        return GpxTrack.objects.create(
+            trip=trip,
+            file="gpx/1/1/deadbeef.gpx",
+            points=GPX_POINTS,
+            original_filename=original_filename,
+            **GPX_BOUNDS,
+        )
+
+    return _make

@@ -137,9 +137,12 @@ def test_the_marker_icon_urls_come_from_the_staticfiles_storage(
 ) -> None:
     """Hardcoded `/static/...` strings would 404 under the hashed manifest in production.
 
-    Moving `STATIC_URL` and requiring the payload to follow is what distinguishes a URL
-    that was resolved from one that was written out — a literal path passes any
-    assertion that only checks the filename.
+    Moving `STATIC_URL` and requiring the payload to follow is what catches a literal path
+    written out in `map_config.py`, which any assertion checking only the filename would
+    accept. It proves the prefix was applied and no more: the autouse
+    `_plain_staticfiles_storage` fixture builds these URLs by concatenation, so nothing
+    here exercises the hashed names production actually serves. That is asserted under the
+    real backend in `tests/test_static_references.py`.
     """
     settings.STATIC_URL = "/assets-under-test/"
     make_gpx_track(trip)

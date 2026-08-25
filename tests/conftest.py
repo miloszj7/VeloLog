@@ -56,9 +56,12 @@ def _plain_staticfiles_storage(settings: Settings) -> None:
     `collectstatic` having been run first, and `pytest` on a fresh clone would fail on
     every rendered page.
 
-    Swapping the backend does not leave the manifest untested: the `gates` job runs
-    `collectstatic --noinput` as its own step, which is what proves every reference
-    resolves. That check belongs in the build, not in a page-rendering test.
+    What replaces the check is `tests/test_static_references.py`, not `collectstatic`:
+    that command post-processes references found *inside* collected CSS and JS and never
+    reads a template or a Python module, so it cannot tell whether `{% static %}` was
+    handed a name that exists. Under this fixture nothing can — plain storage builds a URL
+    for any name at all by concatenation. The references are therefore asserted directly
+    there, once, rather than depended upon implicitly by every page-rendering test here.
 
     Spread rather than replaced — `STORAGES` is not merged by Django, and dropping the
     `"default"` alias here would break every upload test.

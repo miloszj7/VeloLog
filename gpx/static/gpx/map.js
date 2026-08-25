@@ -26,7 +26,18 @@
 
     var config = JSON.parse(configElement.textContent);
 
+    // The deepest zoom OpenStreetMap serves tiles for. It has to reach `L.map` as well as
+    // the tile layer below: a layer registers its own zoom limit from `GridLayer.onAdd`,
+    // which Leaflet defers to the `load` event while the map still has no view — and the
+    // only call that gives it one is `fitBounds` at the end of this file. The map's
+    // `getMaxZoom()` is therefore still `Infinity` at that point, so a track too small to
+    // fill the frame gets fitted past the last zoom with tiles (route over blank tiles),
+    // and a single-point track — zero-size bounds, which `parse_gpx` accepts — fits to
+    // `Infinity`, which makes the projection non-finite and draws nothing at all.
+    var MAX_ZOOM = 19;
+
     var map = L.map("map", {
+        maxZoom: MAX_ZOOM,
         // FR-015 (an interactive map) is parked for v2. Until then the map is a picture
         // of the route: every interaction handler is off, and the zoom control is hidden
         // rather than left visible and inert.
@@ -41,7 +52,7 @@
     });
 
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
+        maxZoom: MAX_ZOOM,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 

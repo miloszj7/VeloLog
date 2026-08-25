@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from django.contrib.auth.models import User
 from django.http import FileResponse
@@ -57,6 +59,26 @@ def test_another_users_track_returns_404_not_403(
     other_track = make_stored_track(other_trip, b"someone-elses-ride")
 
     response = auth_client.get(download_url(other_track))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_row_whose_file_is_gone_returns_404_not_500(
+    auth_client: Client, trip: Trip, make_stored_track: StoredTrackFactory
+) -> None:
+    """The state `DEPLOY.md` warns about: a database restored ahead of its media.
+
+    An unhandled `FileNotFoundError` here is a 500 with nothing in the log to say which
+    track was involved. 404 is the same answer this view already gives for a track that
+    does not exist, which is what the requester can act on; the operator gets the log
+    line instead.
+    """
+    track = make_stored_track(trip, TRACK_BYTES)
+    assert track.file.name is not None
+    Path(track.file.path).unlink()
+
+    response = auth_client.get(download_url(track))
 
     assert response.status_code == 404
 

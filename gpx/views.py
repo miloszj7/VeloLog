@@ -1,3 +1,4 @@
+import logging
 from functools import partial
 from typing import TYPE_CHECKING, Any, cast
 
@@ -5,13 +6,15 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db import transaction
-from django.http import FileResponse, HttpRequest, HttpResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, View
 
 from gpx.forms import GpxUploadForm
 from gpx.models import GpxTrack
 from trips.models import Trip
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     _GpxUploadViewBase = CreateView[GpxTrack, GpxUploadForm]
@@ -127,8 +130,22 @@ class GpxDownloadView(LoginRequiredMixin, View):
         track = get_object_or_404(
             GpxTrack.objects.filter(trip__owner=cast(User, request.user)), pk=self.kwargs["pk"]
         )
+        try:
+            stream = track.file.open("rb")
+        except OSError:
+            # A row whose file is gone is an operational fault, not a bad request, and
+            # `DEPLOY.md` already names the ways to get here: a database restored ahead
+            # of its media directory, or a deploy that wrote uploads to a directory the
+            # next container could not read. Answering 404 matches what this view says
+            # about a track that does not exist; the log line is what makes the
+            # difference between the two visible to an operator.
+            logger.exception(
+                "Track file missing from storage",
+                extra={"track_id": track.pk, "storage_key": track.file.name},
+            )
+            raise Http404("The file for this track is not available.") from None
         return FileResponse(
-            track.file.open("rb"),
+            stream,
             as_attachment=True,
             filename=track.original_filename,
         )

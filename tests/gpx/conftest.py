@@ -4,6 +4,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from django.contrib.auth.models import User
+
+from trips.models import Trip
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -22,3 +25,8 @@ def gpx_bytes() -> GpxBytesReader:
         return (FIXTURE_DIR / name).read_bytes()
 
     return _read
+
+
+@pytest.fixture
+def trip(rider: User) -> Trip:
+    return Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)

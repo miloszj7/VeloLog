@@ -212,4 +212,5 @@ urlpatterns = [
     ),
     path("accounts/logout/", LogoutView.as_view(), name="logout"),
     path("trips/", include("trips.urls")),
+    path("gpx/", include("gpx.urls")),
 ]

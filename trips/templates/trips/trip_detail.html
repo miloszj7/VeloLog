@@ -18,4 +18,20 @@
     {% else %}
         <p>No route yet — this trip has no GPX file uploaded, so there is nothing to map.</p>
     {% endif %}
+
+    <h3>{% if track %}Replace the route{% else %}Add a route{% endif %}</h3>
+    {# `enctype` is not optional: without it the browser posts filenames only, the form
+       sees an empty `request.FILES`, and the upload fails as "this field is required". #}
+    <form method="post" action="{% url 'gpx:upload' pk=trip.pk %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <p>
+                {{ field.label_tag }}
+                {{ field }}
+                {{ field.errors }}
+            </p>
+        {% endfor %}
+        <button type="submit">{% if track %}Replace GPX file{% else %}Upload GPX file{% endif %}</button>
+    </form>
 {% endblock %}

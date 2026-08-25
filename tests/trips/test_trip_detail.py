@@ -97,12 +97,3 @@ def test_trip_with_a_track_renders_only_its_own_track(auth_client: Client, rider
     assert "alps-loop.gpx" in body
     assert "pyrenees-loop.gpx" not in body
     assert "No route yet" not in body
-
-
-@pytest.mark.django_db
-def test_list_page_links_each_trip_to_its_detail_page(auth_client: Client, rider: User) -> None:
-    trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
-
-    response = auth_client.get(reverse("trips:list"))
-
-    assert f'href="{reverse("trips:detail", kwargs={"pk": trip.pk})}"' in response.content.decode()

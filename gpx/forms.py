@@ -10,7 +10,12 @@ from gpx.constants import (
     MAX_GPX_FILE_MEGABYTES,
     MAX_GPX_POINTS,
 )
-from gpx.exceptions import GpxContentError, GpxSyntaxError, GpxTooManyPointsError
+from gpx.exceptions import (
+    GpxContentError,
+    GpxEncodingError,
+    GpxSyntaxError,
+    GpxTooManyPointsError,
+)
 from gpx.models import GpxTrack
 from gpx.parsing import parse_gpx_bytes
 
@@ -53,6 +58,11 @@ class GpxUploadForm(_GpxUploadFormBase):
 
         try:
             parsed = parse_gpx_bytes(uploaded.read())
+        except GpxEncodingError as e:
+            # Ordered before its own base class. Saying "could not be read as XML" about
+            # a file that is perfectly good XML in an encoding this app would not decode
+            # sends the rider looking for a fault that is not in their file.
+            raise ValidationError("That file's text encoding could not be read.") from e
         except GpxSyntaxError as e:
             # A file rejected for carrying a DOCTYPE lands here too. The message stays
             # about the file being unusable and does not explain the mitigation.

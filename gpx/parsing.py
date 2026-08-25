@@ -13,6 +13,7 @@ from gpxpy.gpx import GPXException, GPXXMLSyntaxException
 from gpx.constants import MAX_GPX_POINTS
 from gpx.exceptions import (
     GpxContentError,
+    GpxEncodingError,
     GpxSyntaxError,
     GpxTooManyPointsError,
 )
@@ -21,6 +22,18 @@ from gpx.exceptions import (
 DOCTYPE_PATTERN = re.compile(r"<!DOCTYPE", re.IGNORECASE)
 
 UPLOAD_ENCODING = "utf-8"
+
+# An XML document may name its own encoding, and plenty of GPS units and desktop exporters
+# still emit latin-1 or windows-1252. Read only from the head of the file: a declaration is
+# only valid there, and the bytes are untrusted. The character class is deliberately narrow —
+# the captured name goes straight to `bytes.decode`, so it may contain nothing that is not a
+# codec name. (Python refuses non-text codecs such as `bz2_codec` in `decode` on its own, and
+# an unknown name raises `LookupError`, which is handled at the call site.)
+XML_DECLARATION_PATTERN = re.compile(
+    rb"""<\?xml[^>]{0,200}?encoding\s*=\s*["']([A-Za-z][A-Za-z0-9._-]{0,40})["']""",
+    re.IGNORECASE,
+)
+DECLARATION_SNIFF_BYTES = 256
 
 
 @dataclass(frozen=True)
@@ -58,16 +71,46 @@ def parse_gpx_bytes(raw: bytes) -> ParsedTrack:
         The route and its bounds.
 
     Raises:
-        GpxSyntaxError: The bytes are not UTF-8 text, are not well-formed XML, or carry
-            a document type declaration.
+        GpxEncodingError: The bytes are not UTF-8 and declare no encoding that decodes
+            them.
+        GpxSyntaxError: The text is not well-formed XML, or carries a document type
+            declaration.
         GpxContentError: The XML is well-formed but is not a usable GPX track.
         GpxTooManyPointsError: The track carries more than `MAX_GPX_POINTS` points.
     """
     try:
         text = raw.decode(UPLOAD_ENCODING)
     except UnicodeDecodeError as e:
-        raise GpxSyntaxError("The file is not UTF-8 text.") from e
+        # UTF-8 is the XML default and covers essentially every modern export, so it is
+        # tried first and unconditionally. Only once it has failed is the document's own
+        # declaration worth consulting — and only a declaration, never a guess: latin-1
+        # decodes any byte sequence whatsoever, so falling back to it blindly would
+        # replace an honest rejection with silent mojibake in every track name.
+        declared = declared_encoding(raw)
+        if declared is None:
+            raise GpxEncodingError("The file is not UTF-8 and declares no encoding.") from e
+        try:
+            text = raw.decode(declared)
+        except (UnicodeDecodeError, LookupError) as inner:
+            raise GpxEncodingError(
+                f"The file does not decode as the {declared} it declares."
+            ) from inner
     return parse_gpx(text)
+
+
+def declared_encoding(raw: bytes) -> str | None:
+    """Return the encoding named in the document's XML declaration, if it names one.
+
+    Args:
+        raw: The exact bytes the user uploaded. Untrusted.
+
+    Returns:
+        The declared codec name, or `None` if the head of the file declares none.
+    """
+    match = XML_DECLARATION_PATTERN.search(raw[:DECLARATION_SNIFF_BYTES])
+    if match is None:
+        return None
+    return match.group(1).decode("ascii")
 
 
 def parse_gpx(text: str) -> ParsedTrack:

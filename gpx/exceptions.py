@@ -17,6 +17,10 @@ class GpxSyntaxError(GpxParseError):
     """The document is not well-formed XML, or is not safe to hand to a parser at all."""
 
 
+class GpxEncodingError(GpxSyntaxError):
+    """The document's bytes could not be decoded into text at all."""
+
+
 class GpxContentError(GpxParseError):
     """The document is well-formed XML but is not a usable GPX track."""
 

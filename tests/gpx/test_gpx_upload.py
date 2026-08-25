@@ -202,6 +202,36 @@ def test_a_track_over_the_point_cap_is_rejected_with_the_limit_named(
 
 
 @pytest.mark.django_db
+def test_a_latin1_declared_file_uploads_like_any_other(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """The end of the path that used to tell the rider their valid file was not XML."""
+    response = auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("cote.gpx", gpx_bytes("latin1-declared.gpx"))},
+    )
+
+    assert response.status_code == 302
+    assert GpxTrack.objects.get().points == [[43.55, 7.02], [43.56, 7.03]]
+
+
+@pytest.mark.django_db
+def test_an_undecodable_file_is_rejected_for_its_encoding_not_its_xml(
+    auth_client: Client, trip: Trip
+) -> None:
+    """A file nothing can decode gets a message about encoding, not about XML."""
+    response = auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("mystery.gpx", bytes([0xFF, 0xFE]) + b"<gpx/>")},
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "text encoding could not be read" in body
+    assert GpxTrack.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_a_rejected_upload_leaves_an_existing_track_untouched(
     auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
 ) -> None:

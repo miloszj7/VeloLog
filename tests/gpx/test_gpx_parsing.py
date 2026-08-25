@@ -3,12 +3,17 @@ import pytest
 
 from gpx.exceptions import (
     GpxContentError,
+    GpxEncodingError,
     GpxParseError,
     GpxSyntaxError,
     GpxTooManyPointsError,
 )
 from gpx.parsing import parse_gpx, parse_gpx_bytes
 from tests.gpx.conftest import GpxBytesReader
+
+# Two bytes that are a valid UTF-16 BOM and never a valid UTF-8 sequence, kept as a
+# named constant so the encoding tests below read as intent rather than as an escape.
+UNDECODABLE = bytes([0xFF, 0xFE])
 
 
 def test_gpxpy_parses_with_the_stdlib_backend() -> None:
@@ -127,6 +132,32 @@ def test_a_doctype_is_rejected_before_the_parser_sees_it() -> None:
         parse_gpx('<?xml version="1.0"?><!doctype gpx><gpx></gpx>')
 
 
-def test_bytes_that_are_not_utf8_are_rejected() -> None:
-    with pytest.raises(GpxSyntaxError):
-        parse_gpx_bytes(b"\xff\xfe<gpx></gpx>")
+def test_bytes_that_are_not_utf8_and_declare_nothing_are_rejected() -> None:
+    with pytest.raises(GpxEncodingError):
+        parse_gpx_bytes(UNDECODABLE + b"<gpx></gpx>")
+
+
+def test_a_track_declaring_latin1_is_parsed_as_latin1(gpx_bytes: GpxBytesReader) -> None:
+    """A valid GPX in a declared non-UTF-8 encoding is a real file, not a broken one.
+
+    Older GPS units and several desktop exporters still emit latin-1. Decoding as UTF-8
+    unconditionally refused these with a message about XML, which is untrue of the file
+    and sends the rider looking for a fault that is not there. The accented character in
+    the fixture's track name is what makes the bytes undecodable as UTF-8 at all.
+    """
+    parsed = parse_gpx_bytes(gpx_bytes("latin1-declared.gpx"))
+
+    assert parsed.points == ((43.55, 7.02), (43.56, 7.03))
+
+
+def test_a_file_that_does_not_decode_as_the_encoding_it_declares_is_rejected() -> None:
+    """Declaring an encoding is not the same as being in it, and neither is a real codec.
+
+    The declared name reaches `bytes.decode` directly, so an unknown one has to come
+    back as a rejection rather than as an unhandled `LookupError`.
+    """
+    with pytest.raises(GpxEncodingError):
+        parse_gpx_bytes(b'<?xml version="1.0" encoding="utf-8"?><gpx>' + UNDECODABLE)
+
+    with pytest.raises(GpxEncodingError):
+        parse_gpx_bytes(b'<?xml version="1.0" encoding="not-a-codec"?><gpx>' + UNDECODABLE)

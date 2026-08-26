@@ -82,3 +82,12 @@ def test_unauthenticated_get_redirects_to_login(client: Client) -> None:
 
     assert response.status_code == 302
     assert response.headers["Location"].startswith(reverse("login"))
+
+
+@pytest.mark.django_db
+def test_form_renders_cancel_link_to_trip_list(auth_client: Client) -> None:
+    response = auth_client.get(reverse("trips:create"))
+
+    assert response.status_code == 200
+    expected_link = f'<a href="{reverse("trips:list")}">Cancel</a>'
+    assert expected_link in response.content.decode()

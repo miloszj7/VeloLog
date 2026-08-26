@@ -21,6 +21,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The vendored Leaflet bytes are the one part of the tree nothing else verifies:
+      # `collectstatic` hashes whatever it finds, so a tampered or half-written asset
+      # deploys under a perfectly valid content-hashed name. This turns the SHA-256 table
+      # in gpx/static/gpx/vendor/README.md from a record of what was downloaded into a
+      # check on what is checked out. Runs before the venv exists because it needs nothing
+      # from it, and a bad asset should fail before six minutes of gates do.
+      - name: Vendored asset integrity
+        working-directory: gpx/static/gpx/vendor
+        run: sha256sum -c SHA256SUMS
+
       - name: Install uv
         uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3.2.4
 

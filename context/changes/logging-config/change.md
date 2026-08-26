@@ -1,7 +1,7 @@
 ---
 change_id: logging-config
 title: Configure structured logging
-status: implementing
+status: implemented
 created: 2026-08-26
 updated: 2026-08-26
 archived_at: null

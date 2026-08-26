@@ -110,6 +110,28 @@ A $5 Hobby-plan usage alert was set in Railway account billing settings during P
 
 **Open item (2026-08-21):** not re-verified as part of Phase 7 — check Railway dashboard → account → billing next time this file is touched.
 
+## Static assets — a manifest failure is a site-wide outage
+
+`railway.json` `&&`-chains `collectstatic` ahead of `migrate` and gunicorn, so the app only
+ever boots after the manifest exists. Keep it that way: since the map slice,
+`templates/base.html` links the stylesheet unconditionally, so **every** page resolves
+through staticfiles storage — before it, none did.
+
+Under `CompressedManifestStaticFilesStorage` an absent or incomplete `staticfiles.json`
+raises on any reference it cannot resolve, which is a 500 on every route, not a broken map
+on one. The boot-time chain is the whole mitigation: it converts that into a deploy that
+fails loudly and leaves the previous instance serving, rather than a live site quietly
+500ing. Recover it like any failed deploy — **Rollback** above.
+
+The CI `gates` job runs the same `collectstatic` before the test step, so an unresolvable
+reference fails the pull request first. `tests/test_static_references.py` renders a page
+through the production storage backend and *skips itself* when no manifest has been
+collected, which is why that step order is load-bearing rather than cosmetic.
+
+If a boot ever fails here, the fix is to vendor or correct the missing reference — never to
+relax `WHITENOISE_MANIFEST_STRICT` or downgrade the storage class, which would trade this
+loud failure for silently broken asset URLs in production.
+
 ## Third-party runtime dependency — OpenStreetMap tiles
 
 Every trip page that has a route loads raster tiles from `https://tile.openstreetmap.org`

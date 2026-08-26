@@ -1,7 +1,7 @@
 ---
 change_id: discard-new-trip-form
 title: Add discard/cancel button to new trip creation form
-status: plan_reviewed
+status: implementing
 created: 2026-08-26
 updated: 2026-08-26
 archived_at: null

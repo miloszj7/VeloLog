@@ -110,13 +110,13 @@ Not applicable — no data model or URL changes.
 
 #### Automated
 
-- [ ] 1.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_creation.py`
-- [ ] 1.2 Full test suite passes: `uv run pytest`
-- [ ] 1.3 Linting passes: `uv run ruff check .`
-- [ ] 1.4 Type checking passes: `uv run mypy .`
+- [x] 1.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_creation.py`
+- [x] 1.2 Full test suite passes: `uv run pytest`
+- [x] 1.3 Linting passes: `uv run ruff check .`
+- [x] 1.4 Type checking passes: `uv run mypy .`
 
 #### Manual
 
-- [ ] 1.5 Cancel link visible next to Save trip on `/trips/new/`
-- [ ] 1.6 Clicking Cancel navigates to trip list without creating a trip
-- [ ] 1.7 Typing into fields then clicking Cancel creates no trip and shows no confirmation dialog
+- [x] 1.5 Cancel link visible next to Save trip on `/trips/new/`
+- [x] 1.6 Clicking Cancel navigates to trip list without creating a trip
+- [x] 1.7 Typing into fields then clicking Cancel creates no trip and shows no confirmation dialog

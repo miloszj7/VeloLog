@@ -21,27 +21,33 @@
     <h2>Route</h2>
     {% if track %}
         {% if map_config %}
-            {# The paragraph inside the container is not decoration. `gpx/map.js` removes
-               it as its last successful step, so it is what a reader is left with on every
-               path that never reaches that step: JavaScript off, a Leaflet or stylesheet
-               that failed to load, or stored points the client cannot draw. Being *inside*
-               `#map` is what makes it survive the stylesheet's absence — the one failure
-               `static/css/style.css` documents in prose and cannot itself guard, since a
-               container with no height collapses to an invisible gap. Worded differently
-               from the server-side branch below so a report tells the two apart. #}
+            {% comment %}
+            The paragraph inside the container is not decoration. `gpx/map.js` removes
+            it as its last successful step, so it is what a reader is left with on every
+            path that never reaches that step: JavaScript off, a Leaflet or stylesheet
+            that failed to load, or stored points the client cannot draw. Being *inside*
+            `#map` is what makes it survive the stylesheet's absence — the one failure
+            `static/css/style.css` documents in prose and cannot itself guard, since a
+            container with no height collapses to an invisible gap. Worded differently
+            from the server-side branch below so a report tells the two apart.
+            {% endcomment %}
             <div id="map">
                 <p class="map-fallback">The map could not be loaded. The file is still attached and can be downloaded below.</p>
             </div>
-            {# `json_script` and nothing else. The coordinates are parsed out of a file a
-               user uploaded, and this tag escapes them into a data element the script
-               reads with `JSON.parse` — `|safe` or `mark_safe` here would put untrusted
-               content back into an executable position. The repo has zero occurrences of
-               either, and this slice does not break that. #}
+            {% comment %}
+            `json_script` and nothing else. The coordinates are parsed out of a file a
+            user uploaded, and this tag escapes them into a data element the script
+            reads with `JSON.parse` — `|safe` or `mark_safe` here would put untrusted
+            content back into an executable position. The repo has zero occurrences of
+            either, and this slice does not break that.
+            {% endcomment %}
             {{ map_config|json_script:"map-config" }}
         {% else %}
-            {# Unreachable through upload — `parse_gpx` rejects a track with no points —
-               but the PRD's one NFR forbids a blank page, so a stored track that somehow
-               has nothing to draw gets a deliberate message rather than an empty frame. #}
+            {% comment %}
+            Unreachable through upload — `parse_gpx` rejects a track with no points —
+            but the PRD's one NFR forbids a blank page, so a stored track that somehow
+            has nothing to draw gets a deliberate message rather than an empty frame.
+            {% endcomment %}
             <p>This route could not be displayed. The file is still attached and can be downloaded below.</p>
         {% endif %}
         <p>Track: {{ track.original_filename }}</p>
@@ -53,8 +59,10 @@
     {% endif %}
 
     <h3>{% if track %}Replace the route{% else %}Add a route{% endif %}</h3>
-    {# `enctype` is not optional: without it the browser posts filenames only, the form
-       sees an empty `request.FILES`, and the upload fails as "this field is required". #}
+    {% comment %}
+    `enctype` is not optional: without it the browser posts filenames only, the form
+    sees an empty `request.FILES`, and the upload fails as "this field is required".
+    {% endcomment %}
     <form method="post" action="{% url 'gpx:upload' pk=trip.pk %}" enctype="multipart/form-data">
         {% csrf_token %}
         {{ form.non_field_errors }}

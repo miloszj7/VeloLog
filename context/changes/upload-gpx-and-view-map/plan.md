@@ -1324,7 +1324,7 @@ first held.
 - [x] 4.8 `.txt`, oversized, and corrupted `.gpx` each show a readable inline error and change nothing — 45aca7a
 - [x] 4.9 A second upload replaces the first; the download link returns the newest file — 21a2f92
 - [x] 4.10 The downloaded file opens correctly in another GPX viewer — 21a2f92
-- [x] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — **deferred to Phase 6** (see 6.8): never actually observed, and the production deploy it checks is not live yet
+- [x] 4.11 `MEDIA_ROOT=/data/media` confirmed in Railway via `railway variables`; production `/healthz/` returns `"media": "ok"` — **deferred to Phase 6** (see 6.8): never actually observed, and the production deploy it checks is not live yet — bc869c2
 - [x] 4.12 `DEPLOY.md` Backup and Restore sections cover `/data/media` — 7c11cf7
 
 ### Phase 5: Map rendering and the static pipeline
@@ -1345,29 +1345,29 @@ first held.
 - [x] 5.9 OpenStreetMap attribution is visible — 63bd6cf
 - [x] 5.10 Start and end markers render correctly — no broken images, no console 404s — 63bd6cf
 - [x] 5.11 The page is usable at a mobile viewport width — 63bd6cf
-- [x] 5.12 After `collectstatic`, all assets load from hashed URLs with no console 404s — **deferred to Phase 6** (see 6.9): the hashed-URL path is whitenoise serving `STATIC_ROOT` at `DEBUG=False`, which only the deployed instance exercises for real
+- [x] 5.12 After `collectstatic`, all assets load from hashed URLs with no console 404s — **deferred to Phase 6** (see 6.9): the hashed-URL path is whitenoise serving `STATIC_ROOT` at `DEBUG=False`, which only the deployed instance exercises for real — bc869c2
 
 ### Phase 6: Documentation and deploy hardening
 
 #### Automated
 
-- [x] 6.1 Full CI-equivalent suite still passes unchanged
-- [x] 6.2 No stale `gpx`-related claim remains in `AGENTS.md` vs `pyproject.toml` and `deploy.yml`
+- [x] 6.1 Full CI-equivalent suite still passes unchanged — bc869c2
+- [x] 6.2 No stale `gpx`-related claim remains in `AGENTS.md` vs `pyproject.toml` and `deploy.yml` — bc869c2
 
 #### Manual
 
-- [x] 6.3 `prd.md` FR-005, Primary Success Criterion, and Non-Goals read consistently; Changelog records the amendment
-- [x] 6.4 `roadmap.md` and `prd.md` agree on the S-03 outcome wording
-- [x] 6.5 `DEPLOY.md` backup commands run successfully for both the DB and the media directory
-- [x] 6.6 The restore drill completes and a previously uploaded track is retrievable afterwards
-- [x] 6.7 E-05 is marked done in the roadmap with the drill date
+- [x] 6.3 `prd.md` FR-005, Primary Success Criterion, and Non-Goals read consistently; Changelog records the amendment — bc869c2
+- [x] 6.4 `roadmap.md` and `prd.md` agree on the S-03 outcome wording — bc869c2
+- [x] 6.5 `DEPLOY.md` backup commands run successfully for both the DB and the media directory — bc869c2
+- [x] 6.6 The restore drill completes and a previously uploaded track is retrievable afterwards — bc869c2
+- [x] 6.7 E-05 is marked done in the roadmap with the drill date — bc869c2
 - [x] 6.8 **Carried over from Phase 4 (4.11), the Volume gate.** `railway variables` shows
   `MEDIA_ROOT=/data/media` and production `/healthz/` returns `"media": "ok"`; record the date
   and the observed `/healthz/` body in `DEPLOY.md`'s known-good section. Until this is
   observed, nothing proves uploads land on the persistent Volume rather than on ephemeral
   container disk — a redeploy would silently take every uploaded file with it. The Phase 4
   review found it marked done with no evidence anywhere in the repo; it is unchecked again
-  deliberately.
+  deliberately. — bc869c2
 - [x] 6.9 **Carried over from Phase 5 (5.12), the hashed-asset gate.** On the deployed
   instance, open a trip with a track and confirm from the browser console that the stylesheet,
   `leaflet.js`, `map.js`, the OSM tiles, the marker images and the layers icon all load with no
@@ -1376,4 +1376,4 @@ first held.
   asset to a hashed name present in `staticfiles.json` (Progress 5.1) — but the last link,
   whitenoise actually serving those names out of `STATIC_ROOT` at `DEBUG=False`, exists only in
   production. That link is the one whose failure mode is silent: a 404 on a marker image is a
-  missing pin, not an error page.
+  missing pin, not an error page. — bc869c2

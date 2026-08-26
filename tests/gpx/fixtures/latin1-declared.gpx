@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<gpx version="1.1" creator="VeloLog test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Côte d'Azur</name>
+    <trkseg>
+      <trkpt lat="43.55" lon="7.02"/>
+      <trkpt lat="43.56" lon="7.03"/>
+    </trkseg>
+  </trk>
+</gpx>

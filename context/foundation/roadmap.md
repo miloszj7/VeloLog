@@ -29,7 +29,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ---- | ----------------------------- | ----------------------------------------------------------------------------- | -------------- | --------------------- | -------- |
 | S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | done |
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | done |
-| S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route as a static map (or empty state)| S-02           | FR-004, FR-005, US-01 | proposed |
+| S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route as a static map (or empty state)| S-02           | FR-004, FR-005, US-01 | in-progress |
 | S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
 | S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
 
@@ -85,7 +85,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** The "data never lost" guardrail means uploaded files must land on the already-provisioned persistent Railway Volume (see `## Baseline` → Deploy/infra), not ephemeral local disk — a `/10x-plan`-level implementation detail, not a roadmap-level blocker, since the Volume already exists and is documented in `DEPLOY.md`. Silent map-render failures are explicitly disallowed by the PRD's NFR; the empty/error state must be deliberate, not a byproduct.
-- **Status:** proposed
+- **Status:** in-progress
 
 ### S-04: User can edit and delete a trip
 
@@ -154,7 +154,7 @@ is picked up until its trigger fires.
 | E-03 | Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration | — (partial: `ci-quality-gates` PR #8 added the `GitHub Issue` column read by this row, but the gap it describes — no sync *back* from GitHub — is untouched) | open | — |
 | E-04 | `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline | — | open | — |
 | E-05 | The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists | — | open | — |
-| E-06 | No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs` | When the first production incident is diagnosed by guesswork | — | open | — |
+| E-06 | No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs`. The dict must include a `velo_log` logger and a formatter that emits the `media_root` extra — `/healthz/` reports failures through logging alone, and its misconfigured-path detail is passed via `extra`, which `logging.lastResort` drops. See the Logging note in `velo_log/settings.py` | When the first production incident is diagnosed by guesswork | — | open | — |
 | E-07 | The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open | — | open | — |
 | E-08 | `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | — | open | — |
 | E-09 | `.github/workflows/deploy.yml` pins `actions/checkout@v4` and `astral-sh/setup-uv@v3.2.4`, both of which target the deprecated Node 20 runtime — CI already logs a deprecation warning since GitHub forces them onto Node 24 anyway | Bump `actions/checkout` to `v5+` and `astral-sh/setup-uv` to a Node-24-runtime major (`v10` confirmed Node 24; exact cutover unverified), re-pinning both to commit SHAs with trailing version comments per the existing convention | Before GitHub removes the forced Node 24 fallback and these actions stop running altogether | `ci-quality-gates` (found post-merge, F11) | open | — |

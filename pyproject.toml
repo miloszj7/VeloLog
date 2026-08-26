@@ -7,6 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "django>=6.0.5",
     "django-environ>=0.14.0",
+    "gpxpy>=1.6.2",
     "gunicorn>=26.1.0",
     "whitenoise>=6.12.0",
 ]
@@ -58,8 +59,12 @@ python_files = ["tests.py", "test_*.py"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["accounts", "trips", "velo_log"]
+source = ["accounts", "trips", "gpx", "velo_log"]
 omit = ["velo_log/wsgi.py", "velo_log/asgi.py", "velo_log/settings.py"]
+# Statement coverage read 100% on velo_log/urls.py while a defect sat in the line its
+# own comment was defending. Branch coverage is clean today; it is on so a future
+# half-covered conditional shows up as a gap instead of a full green column.
+branch = true
 
 [tool.coverage.report]
 fail_under = 80

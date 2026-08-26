@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.urls import reverse
 
 
 class Trip(models.Model):
@@ -19,3 +20,11 @@ class Trip(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    def get_absolute_url(self) -> str:
+        """Return this trip's canonical detail URL.
+
+        Every redirect that lands a user back on a trip resolves the route here, so
+        the URL name lives in one place rather than being repeated across views.
+        """
+        return reverse("trips:detail", kwargs={"pk": self.pk})

@@ -8,7 +8,7 @@
     <ul>
         {% for trip in object_list %}
             <li>
-                <strong>{{ trip.name }}</strong> — {{ trip.date }}
+                <strong><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a></strong> — {{ trip.date }}
                 <p>{{ trip.description }}</p>
             </li>
         {% empty %}

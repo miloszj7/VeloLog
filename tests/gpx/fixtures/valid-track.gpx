@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="VeloLog test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Kraków shakedown</name>
+    <trkseg>
+      <trkpt lat="50.06" lon="19.94"><ele>219.0</ele></trkpt>
+      <trkpt lat="50.07" lon="19.95"><ele>223.5</ele></trkpt>
+      <trkpt lat="50.05" lon="19.96"><ele>217.25</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

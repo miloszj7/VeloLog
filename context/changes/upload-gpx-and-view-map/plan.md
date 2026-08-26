@@ -1332,7 +1332,7 @@ first held.
 #### Automated
 
 - [x] 5.1 `collectstatic --noinput` exits 0 with the manifest storage active — 63bd6cf
-- [ ] 5.2 The new `collectstatic` step is present in the `gates` job and passes in CI
+- [x] 5.2 The new `collectstatic` step is present in the `gates` job and passes in CI — PR #10, run 32943292302
 - [x] 5.3 All gates pass: ruff, black, isort, mypy strict, `manage.py check`, migration guard — 63bd6cf
 - [x] 5.4 Full CI-equivalent suite passes with coverage at or above `fail_under = 80` — 63bd6cf
 - [x] 5.5 A test asserts the coordinate payload is delivered via `json_script` — 63bd6cf

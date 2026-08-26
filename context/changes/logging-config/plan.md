@@ -267,14 +267,14 @@ Not applicable — no data model or schema change.
 
 #### Automated
 
-- [ ] 1.1 `manage.py check` passes
-- [ ] 1.2 Full quality gates pass
-- [ ] 1.3 Existing test suite passes unaffected
+- [x] 1.1 `manage.py check` passes
+- [x] 1.2 Full quality gates pass
+- [x] 1.3 Existing test suite passes unaffected
 
 #### Manual
 
-- [ ] 1.4 Misconfigured `MEDIA_ROOT` produces fully formatted console output with `media_root` visible
-- [ ] 1.5 Healthy `/healthz/` call produces no spurious error-level output
-- [ ] 1.6 No duplicate log lines from root/`velo_log` propagation
-- [ ] 1.7 `gpx/views.py` log call surfaces correctly via root propagation
-- [ ] 1.8 Django framework log line's duplication is limited to the documented known case
+- [x] 1.4 Misconfigured `MEDIA_ROOT` produces fully formatted console output with `media_root` visible
+- [x] 1.5 Healthy `/healthz/` call produces no spurious error-level output
+- [x] 1.6 No duplicate log lines from root/`velo_log` propagation
+- [x] 1.7 `gpx/views.py` log call surfaces correctly via root propagation
+- [x] 1.8 Django framework log line's duplication is limited to the documented known case

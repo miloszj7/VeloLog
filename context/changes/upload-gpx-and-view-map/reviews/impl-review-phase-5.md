@@ -4,19 +4,32 @@
 - **Plan**: `context/changes/upload-gpx-and-view-map/plan.md`
 - **Scope**: Phase 5 of 6 — Map rendering and the static pipeline (commits `a48a5d6`, `63bd6cf`, `2ae03d1`)
 - **Date**: 2026-08-25
-- **Verdict**: REJECTED — one critical finding, fixable in one line
+- **Verdict**: REJECTED at review (2026-08-25) — one critical finding, fixable in one
+  line. **Cleared 2026-08-26**: all ten findings triaged and fixed, one commit each.
+- **Triage**: complete. F1–F5 FIXED (2026-08-25), one commit each: `e10b40e`, `6b6e588`,
+  `7fa4696`, `e74acf4`, `87920e3`. F6–F10 FIXED (2026-08-26), one commit each: `961f122`,
+  `810df68`, `0a57d62`, `286d9b3`, `5ae53c0`. Every dimension verdict is now cleared —
+  Safety & Quality by F1, F2 and F8, Success Criteria by F3, Plan Adherence by F5, Pattern
+  Consistency by F4 and F9, Architecture's two documentary gaps by F7 and F10. Full gate
+  list re-run after each fix: 119 tests pass (the new one pins F6's rounding), coverage
+  99.78%, `collectstatic` included.
+- **Carried forward**: two things that need the deployed instance, neither a finding left
+  unfixed. Whether Railway's edge gzips dynamic responses decides the second half of F6 and
+  is queued in `follow-ups/review-fixes.md`. Progress rows 5.2 (the `gates` job observed
+  passing on a real pull request) and 5.12 (deferred to 6.9) stay open for the same reason —
+  no PR run has exercised the pipeline yet.
 - **Findings**: 1 critical, 5 warnings, 4 observations
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| Plan Adherence | WARNING |
-| Scope Discipline | PASS |
-| Safety & Quality | FAIL |
-| Architecture | PASS |
-| Pattern Consistency | WARNING |
-| Success Criteria | WARNING |
+| Dimension | At review | After triage |
+|-----------|-----------|--------------|
+| Plan Adherence | WARNING | PASS (F5) |
+| Scope Discipline | PASS | PASS |
+| Safety & Quality | FAIL | PASS (F1, F2, F8; F6 in part) |
+| Architecture | PASS | PASS (F7, F10 documented) |
+| Pattern Consistency | WARNING | PASS (F4, F9) |
+| Success Criteria | WARNING | PASS for 5.1, 5.3–5.6 (F3); 5.2 and 5.12 still open |
 
 Scope Discipline is PASS rather than WARNING despite four unplanned files
 (`gpx/map_config.py`, `gpx/views.py`, `.gitattributes`, the `tests/conftest.py` fixture):
@@ -119,7 +132,7 @@ thing in the slice.
     this review. A companion single-point rejection in `parse_gpx` would also close case 1
     but would leave case 2 open, so it is not a substitute; it is worth considering
     separately as a product question (is a one-point ride a trip at all?).
-- **Decision**: PENDING
+- **Decision**: FIXED — `maxZoom` now reaches `L.map` via a shared `MAX_ZOOM` constant in `map.js`, used by both the map options and the tile layer, with the deferred-`_addZoomLimit` mechanism recorded in a comment so the duplication is not removed by a later reader.
 
 ### F2 — The map container has no fallback, so every client-side failure renders a blank box
 
@@ -154,7 +167,7 @@ thing in the slice.
   - Blind spot: Whether the fallback should offer the download link inline (the file is
     still attached, and `trip_detail.html:39` already links it a few lines below) is a copy
     decision, not verified with the user.
-- **Decision**: PENDING
+- **Decision**: FIXED — `#map` now ships with a `.map-fallback` paragraph inside it, and `map.js` wraps its whole body in `try/catch` and removes that paragraph only after `fitBounds` returns, logging to the console on the failure path. Distinct wording from the server-side no-points branch, so `test_a_rejected_upload_re_renders_the_route_the_trip_already_had`'s assertion that that copy is absent on the map path stays meaningful and the two failure modes are told apart in a report. Pinned by a new test, `test_the_map_container_ships_with_a_fallback_message_inside_it`, which asserts the paragraph is *inside* the container — the placement is what makes it survive the stylesheet's absence. The inline-download-link question in the blind spot was left as is: the fallback text points at the existing link a few lines below.
 
 ### F3 — Nothing verifies that a static reference resolves, and the fixture that removed the check says otherwise
 
@@ -203,7 +216,8 @@ thing in the slice.
   - Blind spot: A detail-page render under the real manifest storage, `skipif`
     `staticfiles.json` is absent, would go further and *would* run in CI, since the `gates`
     job now collects before it tests. Not evaluated for flakiness here.
-- **Decision**: PENDING
+- **Decision**: FIXED (fix as stated, plus the blind spot) — new `tests/test_static_references.py` carries two layers. A parametrised `finders.find` check over the three `MARKER_*` constants (imported, so that half cannot drift) and the four template-written names; and a trip-detail render under `PRODUCTION_STORAGES`, `skipif` no `staticfiles.json`, which covers the templates as actually written and asserts a content-hashed stylesheet URL so a `STORAGES` override that failed to take effect cannot leave the test green. The `gates` job collects before it tests (`deploy.yml:51-55`), so the second layer does run in CI.
+  Four negative probes were run before committing: a bogus name fails layer 1; renaming `base.html`'s stylesheet reference fails layer 2 with the exact production error (`ValueError: Missing staticfiles manifest entry for 'css/style-renamed.css'`) while layer 1 still passes — confirming the two layers are complementary rather than redundant; removing the `STORAGES` override fails the hash guard; and with the manifest absent layer 2 skips rather than failing. Both overreaching docstrings corrected: the fixture no longer credits `collectstatic`, and `test_the_marker_icon_urls_come_from_the_staticfiles_storage` no longer claims to tell a resolved URL from a written-out one.
 
 ### F4 — `AGENTS.md` is stale in four places this slice invalidated
 
@@ -231,7 +245,15 @@ thing in the slice.
   already owns doc reconciliation and Progress 6.2 already asserts no stale `gpx` claim
   remains — so the cleanest resolution is to fold these four into that row rather than open
   new work.
-- **Decision**: PENDING
+- **Decision**: FIXED in this slice rather than folded into Progress 6.2 — all four corrected in `AGENTS.md` (`e74acf4`): `static/` and `STATICFILES_DIRS` added beside their
+  `templates/` twin, `gpx/` promoted from parenthetical hypothetical to a listed app, the
+  coverage scope corrected to four packages, and `collectstatic` added to both the gates-job
+  list and the Development Commands table. The gates list now also records why its *order*
+  matters, which F3's new test made load-bearing. Progress 6.2 is deliberately left
+  unchecked: it is a Phase 6 row and Phase 6 has not run, so it will verify this and find it
+  already true rather than being marked done out of phase. One wording slip in the first
+  draft — calling static app-directory discovery `APP_DIRS`-style — was corrected to name
+  `AppDirectoriesFinder` before the commit.
 
 ### F5 — Plan §6 was never amended, so four shipped files appear nowhere in the plan
 
@@ -270,7 +292,16 @@ thing in the slice.
     convention here (Performance Considerations records a reversed decision the same way).
   - Confidence: HIGH — the addendum pattern is used twice already in this plan.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED (`87920e3`) — Phase 5 §6 now names `gpx/map_config.py`, `trips/views.py`
+  and `gpx/views.py`, states the two-render-paths reason and the `gpx`-not-`trips` placement,
+  and says plainly that the plan was what was wrong — written in the same voice Performance
+  Considerations already uses for its reversed point-cap decision. `.gitattributes` joins §1
+  and the `_plain_staticfiles_storage` fixture joins §8, both marked **Discovered during
+  implementation**. All four previously-unlisted files now resolve in a search of the plan.
+  Beyond the stated fix: a closing "Amendments from the phase 5 implementation review"
+  block records what F1–F4 changed after the phase shipped, so the same diff-against-the-plan
+  reading that produced this finding does not turn up `tests/test_static_references.py` and
+  the `map.js`/template edits as a fresh set of unexplained files.
 
 ### F6 — The coordinate payload ships uncompressed at full float precision
 
@@ -314,7 +345,14 @@ thing in the slice.
     the unverified part.
   - Blind spot: Neither option is measured against a real multi-day tour export — the only
     payload figure on record is the synthetic worst case from the Phase 4 review.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A (2026-08-26) — coordinates are rounded to
+  `COORDINATE_DECIMAL_PLACES = 5` at the parse boundary in `gpx/parsing.py`, pinned by
+  `tests/gpx/test_gpx_parsing.py::test_coordinates_are_rounded_to_the_stored_precision`,
+  which asserts the bounds are rounded too since they derive from the kept points.
+  The compression half is deferred: whether Railway's edge already gzips dynamic
+  responses cannot be observed from here, and adding `GZipMiddleware` blind risks
+  double compression. Queued as `follow-ups/review-fixes.md` § "Phase 6 — check
+  whether Railway's edge gzips dynamic responses".
 
 ### F7 — The OSM tile dependency is recorded only in an artifact bound for the archive
 
@@ -339,7 +377,12 @@ thing in the slice.
   because this page carries zero inline script, a `script-src 'self'` /
   `img-src 'self' https://tile.openstreetmap.org` / `style-src 'self'` policy would work
   today. Worth writing down before someone adds an inline handler and closes that door.
-- **Decision**: PENDING
+- **Decision**: FIXED (2026-08-26) — `DEPLOY.md` gains a "Third-party runtime
+  dependency — OpenStreetMap tiles" section naming the tile host, the usage policy and
+  the switching cost, the `SECURE_REFERRER_POLICY` default as the thing that keeps trip
+  URLs off the wire, and the concrete CSP that would pass today. The `data:` in the
+  proposed `img-src` was verified against the vendored bytes rather than assumed —
+  `leaflet.js` embeds a base64 GIF as its empty-tile placeholder.
 
 ### F8 — The vendored SHA-256 table is documentation, not a control
 
@@ -357,7 +400,16 @@ thing in the slice.
   beside the README and a `shasum -c` step in the `gates` job. If the intent is only
   traceability for a future upgrade, say so in the README so the table is not mistaken for
   a control.
-- **Decision**: PENDING
+- **Decision**: FIXED (2026-08-26) — made a control rather than downgraded to a note.
+  `gpx/static/gpx/vendor/SHA256SUMS` now holds the eight digests in `sha256sum -c`
+  format, and `.github/workflows/deploy.yml` runs `sha256sum -c SHA256SUMS` as the
+  first `gates` step — before `uv sync`, since it needs nothing from the venv and a bad
+  asset should fail fast. The README's block was regenerated so it is byte-identical to
+  `SHA256SUMS` (verified, not assumed) rather than a paraphrase that can drift, and the
+  *Upgrading* section now carries the regenerate command with the warning that it is the
+  last step of an upgrade — a blind regenerate turns the gate back into a record of
+  whatever is on disk. All eight digests already in the README matched the working tree,
+  so nothing had drifted.
 
 ### F9 — Marker path constants sit outside `gpx/constants.py`
 
@@ -378,7 +430,13 @@ thing in the slice.
 - **Fix**: Either move the three to `gpx/constants.py` and widen its docstring to cover the
   render boundary, or add one line to `map_config.py` saying why render-side paths stay with
   their only consumer — so it reads as a decision rather than a drift.
-- **Decision**: PENDING
+- **Decision**: FIXED (2026-08-26) — the three moved to `gpx/constants.py`, whose
+  docstring now reads "the GPX upload and render boundaries": the docstring was the
+  only thing that had scoped the module to upload, so widening it removes the reason
+  for the split rather than working around it. The rationale moved with them and picked
+  up the half that had lived only in the vendor note — Leaflet builds its *default*
+  icon URLs at runtime, where the hashed manifest never rewrites them.
+  `tests/test_static_references.py` imports from the new home.
 
 ### F10 — Static-asset blast radius widened from one page to every page
 
@@ -397,7 +455,15 @@ thing in the slice.
 - **Fix**: Add a line to `DEPLOY.md` beside the collectstatic note: a manifest failure is
   now site-wide, not map-only, and the boot-time chain is what converts it into a failed
   deploy rather than a broken site.
-- **Decision**: PENDING
+- **Decision**: FIXED (2026-08-26) — `DEPLOY.md` gains a "Static assets — a manifest
+  failure is a site-wide outage" section: what changed (every page now resolves through
+  staticfiles storage, none did before), why the `railway.json` boot chain is the whole
+  mitigation and must stay, that recovery is the existing Rollback procedure, and that
+  the fix for a failure is to correct the missing reference rather than relax
+  `WHITENOISE_MANIFEST_STRICT`. It also records why the `gates` step order is
+  load-bearing — `tests/test_static_references.py` skips itself without a collected
+  manifest. Both claims were re-verified against `templates/base.html:11` and the test's
+  `skipif` rather than taken from the review text.
 
 ## Checked and clean
 

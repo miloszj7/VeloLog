@@ -7,6 +7,7 @@ VeloLog is a greenfield Django 6 web app — a trip-centric personal diary for m
 - **Never write to `context/archive/`** — content there is immutable; open a new change with `/10x-new` instead.
 - **Use `uv add <pkg>` to install packages**, not `pip install`. Direct pip calls bypass the lockfile (`uv.lock`).
 - The Django settings module is `velo_log.settings`. Do not create a parallel settings file without updating `manage.py` and `velo_log/wsgi.py`.
+- **`MEDIA_ROOT` must be set in every deployed environment**, to the mounted volume (`/data/media` on Railway). Unset, it falls back to `BASE_DIR / "media"` inside the container and every uploaded file is lost on the next redeploy. `/healthz/` refuses to return 200 when it resolves inside `BASE_DIR` at `DEBUG=False` — that probe is the only thing that reports this. See `DEPLOY.md`, which also documents the Git Bash `MSYS_NO_PATHCONV` trap that silently mangles the value.
 
 ## Project Structure
 
@@ -55,4 +56,4 @@ Follow `@~/.claude/rules/git-workflow.md`: Conventional Commits format, feature 
 only (never commit straight to `master`), merge with `--no-ff`, never squash. Use the
 `create-pr` skill to open a GitHub/GitLab PR or MR, or complete a local no-remote merge.
 
-`.github/workflows/deploy.yml`'s `gates` job runs lint (`ruff`), format (`black`), import order (`isort`), strict typing (`mypy`), `manage.py check`, the migration guard (`makemigrations --check --dry-run`), `collectstatic --noinput`, and `pytest --cov` on every pull request to `master` and every push to it. That order is load-bearing: `tests/test_static_references.py` renders a page through the production manifest backend and skips itself when no manifest has been collected, so it only runs because `collectstatic` precedes the test step. The Railway deploy job runs only if `gates` passes.
+`.github/workflows/deploy.yml`'s `gates` job runs the vendored-asset integrity check (`sha256sum -c gpx/static/gpx/vendor/SHA256SUMS`), lint (`ruff`), format (`black`), import order (`isort`), strict typing (`mypy`), `manage.py check`, the migration guard (`makemigrations --check --dry-run`), `collectstatic --noinput`, and `pytest --cov` on every pull request to `master` and every push to it. That order is load-bearing: `tests/test_static_references.py` renders a page through the production manifest backend and skips itself when no manifest has been collected, so it only runs because `collectstatic` precedes the test step. The integrity check runs first, before `uv sync`, because it needs nothing from the venv and a tampered asset should fail in seconds. The Railway deploy job runs only if `gates` passes.

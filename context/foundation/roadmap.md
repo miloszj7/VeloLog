@@ -3,8 +3,8 @@ project: VeloLog
 version: 1
 status: draft
 created: 2026-08-22
-updated: 2026-08-24
-prd_version: 2
+updated: 2026-08-26
+prd_version: 3
 main_goal: speed
 top_blocker: time
 ---
@@ -21,7 +21,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 
 ## North star
 
-**S-03: User can upload a GPX track file and see the route rendered as a static map** — this is the smallest end-to-end slice that proves the core product hypothesis (the "north star": the minimal capability whose successful delivery validates that the trip-centric idea works in practice, placed as early as its prerequisites allow because everything else only matters once this works). It maps directly to the PRD's Primary Success Criterion: *"register → log in → create a trip → upload one GPX file → see the route rendered as a static map image."*
+**S-03: User can upload a GPX track file and see the route drawn on a non-interactive map** — this is the smallest end-to-end slice that proves the core product hypothesis (the "north star": the minimal capability whose successful delivery validates that the trip-centric idea works in practice, placed as early as its prerequisites allow because everything else only matters once this works). It maps directly to the PRD's Primary Success Criterion: *"register → log in → create a trip → upload one GPX file → see the route drawn on a non-interactive map."* (PRD v3 reworded this from "a static map image"; the outcome is unchanged — see the PRD Changelog.)
 
 ## At a glance
 
@@ -29,7 +29,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ---- | ----------------------------- | ----------------------------------------------------------------------------- | -------------- | --------------------- | -------- |
 | S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | done |
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | done |
-| S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route as a static map (or empty state)| S-02           | FR-004, FR-005, US-01 | in-progress |
+| S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route on a non-interactive map (or empty state)| S-02           | FR-004, FR-005, US-01 | in-progress |
 | S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
 | S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
 
@@ -75,9 +75,9 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Risk:** A trip with no uploaded file must be a valid empty draft (per PRD Business Logic) — the list and creation flow need to tolerate that state cleanly before S-03 builds the upload/map path on top of it.
 - **Status:** done
 
-### S-03: User can upload a GPX file and see the route as a static map
+### S-03: User can upload a GPX file and see the route on a non-interactive map
 
-- **Outcome:** User can upload a GPX file to a trip and open the trip detail view to see the route rendered as a static map image, with a clear empty state if no file is uploaded yet.
+- **Outcome:** User can upload a GPX file to a trip and open the trip detail view to see the route drawn on a non-interactive map, with a clear empty state if no file is uploaded yet.
 - **Change ID:** `upload-gpx-and-view-map`
 - **PRD refs:** FR-004, FR-005, US-01 (this is the north star — see `## North star`)
 - **Prerequisites:** S-02
@@ -153,7 +153,7 @@ is picked up until its trigger fires.
 | E-02 | `gates` is not a required check — a merge can still be forced past a red run | Enable branch protection on `master` requiring the `gates` check | Immediately after `ci-quality-gates` merges | — | open | — |
 | E-03 | Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back | Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot | Before the next roadmap regeneration | — (partial: `ci-quality-gates` PR #8 added the `GitHub Issue` column read by this row, but the gap it describes — no sync *back* from GitHub — is untouched) | open | — |
 | E-04 | `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01 | Convert the start command to the TypeScript config format | By 2026-11-01, after the 2026-09-10 product deadline | — | open | — |
-| E-05 | The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists | — | open | — |
+| E-05 | The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists | — | done (2026-08-26) | Drilled against production rather than a scratch environment — production held only test data, the cheapest this would ever be. Found **three** runbook defects, all corrected in `DEPLOY.md` → *Restore drill*: the documented DB restore was refused outright without `--overwrite`, and the documented media restore reported success while nesting the backup and recovering nothing. The scratch-target path still does not exist and is now the open remainder — see the note at the end of that section. |
 | E-06 | No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs`. The dict must include a `velo_log` logger and a formatter that emits the `media_root` extra — `/healthz/` reports failures through logging alone, and its misconfigured-path detail is passed via `extra`, which `logging.lastResort` drops. See the Logging note in `velo_log/settings.py` | When the first production incident is diagnosed by guesswork | — | open | — |
 | E-07 | The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open | — | open | — |
 | E-08 | `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | — | open | — |

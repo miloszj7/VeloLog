@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import gpxpy
 from gpxpy.gpx import GPXException, GPXXMLSyntaxException
 
-from gpx.constants import MAX_GPX_POINTS
+from gpx.constants import COORDINATE_DECIMAL_PLACES, MAX_GPX_POINTS
 from gpx.exceptions import (
     GpxContentError,
     GpxEncodingError,
@@ -152,7 +152,10 @@ def parse_gpx(text: str) -> ParsedTrack:
     # `lat`/`lon` with a `GPXException` of its own, caught above, and types both
     # attributes as plain floats. A local check here would be an unreachable branch.
     points = [
-        (point.latitude, point.longitude)
+        (
+            round(point.latitude, COORDINATE_DECIMAL_PLACES),
+            round(point.longitude, COORDINATE_DECIMAL_PLACES),
+        )
         for track in gpx.tracks
         for segment in track.segments
         for point in segment.points

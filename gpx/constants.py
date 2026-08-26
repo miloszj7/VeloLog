@@ -20,3 +20,10 @@ ALLOWED_GPX_EXTENSIONS = (".gpx",)
 # against that synthetic worst case (~24 bytes of JSON per point, so this caps the payload
 # at ~2.4 MB), not yet against a real multi-day tour export.
 MAX_GPX_POINTS = 100_000
+
+# Decimal places kept for each stored coordinate. Five is roughly a metre — finer than a
+# z19 tile can render — while gpxpy hands back full float precision, so a coordinate
+# serialises as `50.061234567890123` and costs about twice the JSON bytes on a page that
+# inlines every point. Rounded at the parse boundary so the stored column, the payload and
+# every future consumer read the same value rather than re-deriving it.
+COORDINATE_DECIMAL_PLACES = 5

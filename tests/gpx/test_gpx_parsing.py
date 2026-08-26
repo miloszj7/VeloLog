@@ -47,6 +47,23 @@ def test_bounds_are_the_box_containing_every_point(gpx_bytes: GpxBytesReader) ->
     assert (parsed.min_longitude, parsed.max_longitude) == (19.94, 19.96)
 
 
+def test_coordinates_are_rounded_to_the_stored_precision() -> None:
+    """gpxpy hands back full float precision; what is stored keeps metre resolution.
+
+    The bounds are asserted too: they are derived from the points that were kept, so the
+    rounding must reach them as well or the box stops provably containing the polyline.
+    """
+    parsed = parse_gpx(
+        '<?xml version="1.0"?><gpx version="1.1" creator="test"><trk><trkseg>'
+        '<trkpt lat="50.061234567890123" lon="19.947654321098765"/>'
+        "</trkseg></trk></gpx>"
+    )
+
+    assert parsed.points == ((50.06123, 19.94765),)
+    assert parsed.min_latitude == 50.06123
+    assert parsed.max_longitude == 19.94765
+
+
 def test_json_points_are_lists_the_json_field_can_store(gpx_bytes: GpxBytesReader) -> None:
     parsed = parse_gpx_bytes(gpx_bytes("valid-track.gpx"))
 

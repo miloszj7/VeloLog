@@ -15,14 +15,8 @@ from typing import Any
 
 from django.templatetags.static import static
 
+from gpx.constants import MARKER_ICON, MARKER_ICON_RETINA, MARKER_SHADOW
 from gpx.models import GpxTrack
-
-# Resolved through `static()` — never written out as literal paths — because
-# `CompressedManifestStaticFilesStorage` serves these under content-hashed names. A
-# hardcoded URL 404s in production while resolving fine under DEBUG.
-MARKER_ICON = "gpx/vendor/leaflet/images/marker-icon.png"
-MARKER_ICON_RETINA = "gpx/vendor/leaflet/images/marker-icon-2x.png"
-MARKER_SHADOW = "gpx/vendor/leaflet/images/marker-shadow.png"
 
 
 def build_map_config(track: GpxTrack | None) -> dict[str, Any] | None:

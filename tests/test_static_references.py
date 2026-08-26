@@ -32,7 +32,7 @@ from django.test import Client
 from django.urls import reverse
 from pytest_django.fixtures import Settings
 
-from gpx.map_config import MARKER_ICON, MARKER_ICON_RETINA, MARKER_SHADOW
+from gpx.constants import MARKER_ICON, MARKER_ICON_RETINA, MARKER_SHADOW
 from tests.conftest import TrackFactory
 from trips.models import Trip
 from velo_log.settings import STATIC_ROOT

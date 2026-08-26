@@ -1,4 +1,4 @@
-"""Named values for the GPX upload boundary."""
+"""Named values for the GPX upload and render boundaries."""
 
 # The upload ceiling enforced by `GpxUploadForm.clean_file`. It is a *validation* rule,
 # not a resource bound: Django has already received the whole request body and spooled it
@@ -27,3 +27,13 @@ MAX_GPX_POINTS = 100_000
 # inlines every point. Rounded at the parse boundary so the stored column, the payload and
 # every future consumer read the same value rather than re-deriving it.
 COORDINATE_DECIMAL_PLACES = 5
+
+# Paths of the Leaflet marker images `gpx/map_config.py` hands to the template, relative to
+# a static root. Resolved through `static()` at render — never written out as literal URLs —
+# because `CompressedManifestStaticFilesStorage` serves these under content-hashed names, so
+# a hardcoded URL 404s in production while resolving fine under DEBUG. Leaflet's *default*
+# icon builds these URLs at runtime, which the hashed manifest never rewrites; naming them
+# here and passing them through the config is what keeps them off that path.
+MARKER_ICON = "gpx/vendor/leaflet/images/marker-icon.png"
+MARKER_ICON_RETINA = "gpx/vendor/leaflet/images/marker-icon-2x.png"
+MARKER_SHADOW = "gpx/vendor/leaflet/images/marker-shadow.png"

@@ -29,7 +29,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ---- | ----------------------------- | ----------------------------------------------------------------------------- | -------------- | --------------------- | -------- |
 | S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | done |
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | done |
-| S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route on a non-interactive map (or empty state)| S-02           | FR-004, FR-005, US-01 | in-progress |
+| S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route on a non-interactive map (or empty state)| S-02           | FR-004, FR-005, US-01 | done |
 | S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
 | S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
 
@@ -85,7 +85,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** The "data never lost" guardrail means uploaded files must land on the already-provisioned persistent Railway Volume (see `## Baseline` → Deploy/infra), not ephemeral local disk — a `/10x-plan`-level implementation detail, not a roadmap-level blocker, since the Volume already exists and is documented in `DEPLOY.md`. Silent map-render failures are explicitly disallowed by the PRD's NFR; the empty/error state must be deliberate, not a byproduct.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-04: User can edit and delete a trip
 
@@ -163,3 +163,4 @@ is picked up until its trigger fires.
 
 - **S-01: User can register with an email and password, then log in and log out.** — Archived 2026-08-22 → `context/archive/2026-08-22-user-registration-login/`. Lesson: —.
 - **S-02: User can create a trip with a name, date, and description, and see it appear in a list of their own trips.** — Archived 2026-08-23 → `context/archive/2026-08-23-create-and-list-trips/`. Lesson: —.
+- **S-03: User can upload a GPX file to a trip and open the trip detail view to see the route drawn on a non-interactive map, with a clear empty state if no file is uploaded yet.** — Archived 2026-08-26 → `context/archive/2026-08-23-upload-gpx-and-view-map/`. Lesson: —.

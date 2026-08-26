@@ -109,3 +109,30 @@ pre-superuser backup, or a fresh Volume).
 A $5 Hobby-plan usage alert was set in Railway account billing settings during Phase 0.2 — confirm it's still active after any billing-related change.
 
 **Open item (2026-08-21):** not re-verified as part of Phase 7 — check Railway dashboard → account → billing next time this file is touched.
+
+## Third-party runtime dependency — OpenStreetMap tiles
+
+Every trip page that has a route loads raster tiles from `https://tile.openstreetmap.org`
+(`gpx/static/gpx/map.js`). Leaflet itself is vendored, so this is the only remote host the
+app talks to at runtime, and it is browser-side only — there is no server-side call, so an
+OSM outage draws the route over blank tiles rather than failing the page or the deploy.
+
+Three things that follow, none of which the code can tell you:
+
+- **The OSM Tile Usage Policy applies to this app.** It is a free community service, not a
+  CDN with an SLA, and it asks that applications be identifiable and not bulk-download.
+  Single-user personal traffic is comfortably inside it; if usage ever grows past that,
+  the policy — not an error message — is what changes first. Switching to a paid tile host
+  is a one-line change to the tile URL and its `attribution` in `map.js`.
+- **Each map view sends a viewer's IP and the tile coordinates of a private route to a
+  third party.** The trip URL itself is not sent: Django's `SECURE_REFERRER_POLICY` default
+  of `same-origin` is what stops it. That default is load-bearing here — relaxing it leaks
+  trip URLs to the tile host.
+- **A CSP would work today and is worth adding before it stops being free.** The map page
+  carries zero inline script (the config arrives via `json_script`, and
+  `tests/trips/test_trip_detail_map.py` pins that as a structural invariant), so
+  `script-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'`
+  would pass as the app stands — the `data:` is not optional, Leaflet uses an inline
+  base64 GIF as its empty-tile placeholder. There is no CSP in `velo_log/settings.py`
+  yet. Add one while the no-inline-script property still holds — the first inline handler
+  anyone adds closes that door quietly.

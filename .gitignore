@@ -6,6 +6,7 @@ claude.md
 .agents/**/10x-*
 
 .claude/prompts/*.md
+.claude/settings.local.json
 
 
 

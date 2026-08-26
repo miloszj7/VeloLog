@@ -9,6 +9,43 @@ Update this table after every production deploy.
 | 2026-08-21 | `fe1df79b-aa06-49b2-8965-15f16992cfe4` | First production deploy (Phase 5). `collectstatic` + `migrate` + gunicorn all succeeded; `/healthz/` returns 200 with a real DB write/read round-trip on the mounted Volume. |
 | 2026-08-22 | `365f39af-95a3-403a-8f78-14fb4aa162c1` | Ships S-01 (`user-registration-login`) — register/log in/log out. Verified via `railway status` (service Online) and `/healthz/` returning `{"status": "ok"}`. |
 | 2026-08-23 | `f2197620-9267-4a92-b9e2-40abbf84b9fa` | Ships S-02 (`create-and-list-trips`) — create/list trips. Verified via `railway status` (deployment status `SUCCESS`, instance `RUNNING`). |
+| 2026-08-26 | `39c7fb0c-9db8-4a3f-bc5b-03318dcfaed1` | Ships S-03 phases 1–5 (`upload-gpx-and-view-map`, commit `b2fa74b`) — GPX upload, download, and the route map. First deploy carrying user files. `/healthz/` returns `{"status": "ok", "database": "ok", "media": "ok"}`; all ten collected static assets fetch 200 under their content-hashed names. Note this is the *redeploy* triggered by setting `MEDIA_ROOT` — the deploy of `b2fa74b` immediately before it booted with media misconfigured (see below). |
+| 2026-08-26 | `9c1e188b` (same commit `b2fa74b`) | Redeploy closing the restore drill below. Uploaded GPX files survived it on the Volume — the persistence proof this slice was gated on. `/healthz/` 200 with database and media both `ok`. |
+
+## MEDIA_ROOT — required, and easy to set wrongly from Git Bash
+
+**Set `MEDIA_ROOT=/data/media` before the first upload in any new environment.** Unset, it
+falls back to `BASE_DIR / "media"` (`velo_log/settings.py:168`) — inside the container, not
+on the Volume — and every uploaded file is destroyed by the next redeploy, silently.
+
+This was caught in production on 2026-08-26, by the Phase 1 `/healthz/` probe rather than by
+a lost file: the variable had never been set, so the deploy that first shipped the upload
+feature booted with `{"media": "error", "media_error": "inside_base_dir"}` and a 500 on
+`/healthz/`. No files were lost, because uploads had been reachable for only a few minutes.
+`railway.json` sets no `healthcheckPath`, so the deploy itself still reported success — the
+probe is the only thing that reports this, and only if someone looks.
+
+**The Git Bash trap.** Setting it from Git Bash on Windows silently produces a broken value:
+
+```bash
+railway variables --set "MEDIA_ROOT=/data/media"      # WRONG from Git Bash
+# stores: MEDIA_ROOT=C:/Program Files/Git/data/media
+
+MSYS_NO_PATHCONV=1 railway variables --set "MEDIA_ROOT=/data/media"   # correct
+```
+
+MSYS rewrites anything that looks like a Unix absolute path before the CLI sees it. The
+stored value is then absolute on Windows but not on Linux, so `/healthz/` moves from
+`inside_base_dir` to `not_absolute` — a different error that looks like the fix failed
+rather than like the value was mangled. `MSYS_NO_PATHCONV=1` is already required for
+`railway service files upload` below, for the same reason.
+
+Verify after setting, always — read the value back rather than trusting the write:
+
+```bash
+railway variables --kv | grep '^MEDIA_ROOT='
+curl -s https://velolog-production.up.railway.app/healthz/
+```
 
 ## Rollback
 
@@ -75,18 +112,67 @@ directory leaves `GpxTrack` rows pointing at files that are not there — the tr
 page renders a route while its download 404s, which is exactly the silent-failure state
 the app is built to avoid.
 
+**Both commands below were wrong until the 2026-08-26 drill.** The corrections are not
+cosmetic — the old ones failed outright or silently restored nothing. See *Restore drill*
+below for what each one actually did.
+
 1. Confirm the app is stopped or accepting no writes (avoid clobbering concurrent writes during restore).
-2. Upload the last good database backup over the live file:
+2. Upload the last good database backup over the live file. **`--overwrite` is required** —
+   without it the CLI refuses with "Remote path already exists" and the restore does not happen:
    ```bash
-   MSYS_NO_PATHCONV=1 railway service files upload ./backup/db/backup-<timestamp>.sqlite3 /data/db.sqlite3
+   MSYS_NO_PATHCONV=1 railway service files upload --overwrite ./backup/db/backup-<timestamp>.sqlite3 /data/db.sqlite3
    ```
-3. Upload the matching media backup over the live directory:
+3. Upload the matching media backup. **Upload the `gpx` child directory, not the backup
+   wrapper** — for a directory upload the CLI treats REMOTE_PATH as the *parent* and appends
+   the local directory's basename, so passing the wrapper creates
+   `/data/media/media-<timestamp>/` and restores nothing Django can see:
    ```bash
-   MSYS_NO_PATHCONV=1 railway service files upload ./backup/media/media-<timestamp> /data/media
+   MSYS_NO_PATHCONV=1 railway service files upload --overwrite ./backup/media/media-<timestamp>/gpx /data/media
    ```
+   Verify the destination afterwards — `railway service files list /data/media` must show
+   `gpx/`, and no directory named after the backup timestamp.
 4. Redeploy (or restart) the service so gunicorn picks up the restored files, then verify
    via `/healthz/` — a `200` with both `"database": "ok"` and `"media": "ok"` is the
    check. Then open a trip that had a route and confirm its download returns the file.
+
+### Restore drill — 2026-08-26 (discharges engineering-backlog E-05)
+
+Run against production while it held two test trips and no data worth losing, which is the
+cheapest this drill will ever be. Sequence: back up both halves with tracks present, restore
+an earlier snapshot to simulate losing them, confirm the loss, restore the good backup,
+redeploy, confirm recovery.
+
+**It worked, and the runbook did not.** Three defects, all of which would have surfaced for
+the first time during a real incident:
+
+| What was documented | What actually happened |
+|---|---|
+| `files upload <db> /data/db.sqlite3` | Refused: *"Remote path already exists. Use --overwrite"*. The restore silently did not occur; only the CLI's exit message said so. |
+| `files upload <media-dir> /data/media` | Created `/data/media/<backup-name>/` and left the live files untouched. Reported success. A real restore would have looked fine and recovered nothing. |
+| `--overwrite` fixes both | It fixes the file case only. Directory uploads still nest — the flag replaces `REMOTE_PATH`, and for a directory `REMOTE_PATH` is the parent. |
+
+What the drill did prove, once the commands were corrected: the database restored exactly
+(2 trips / 0 tracks → 2 trips / 2 tracks), the media restore landed at `/data/media/gpx`, a
+redeploy (`9c1e188b`, previous deployment `REMOVED`) left both GPX files intact on the
+Volume, and `/healthz/` returned `{"status": "ok", "database": "ok", "media": "ok"}`
+throughout.
+
+**Still not covered: there is no scratch-target restore path.** Everything above restores
+over live production, so the only way to rehearse it is to risk the real thing. That was
+acceptable on 2026-08-26 because production held nothing of value; it will not be acceptable
+next time. A scratch path — a second Railway environment, or a local restore verified with
+`manage.py` — should exist before the next drill.
+
+**Agents cannot delete files here.** `railway service files delete` is refused for
+non-humans, so cleaning up after a botched restore needs a person:
+```bash
+MSYS_NO_PATHCONV=1 railway service files delete -y /data/media/<stray-path>
+```
+Do not copy the command out of the CLI's own refusal message — it suggests
+`files delete --service <name> <path>`, which does not parse. `-s/--service` is an option
+on the `service files` parent, before the subcommand, and is unnecessary when a service is
+already linked. `MSYS_NO_PATHCONV=1` is required from Git Bash for the same reason it is
+everywhere else on this page.
 
 ## Production superuser (one-time)
 

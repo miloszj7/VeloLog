@@ -1,9 +1,9 @@
 ---
 project: VeloLog
-version: 2
+version: 3
 status: draft
 created: 2026-05-29
-updated: 2026-08-22
+updated: 2026-08-26
 context_type: greenfield
 product_type: web-app
 target_scale:
@@ -33,7 +33,7 @@ He is technically literate, not technical-first — he wants a tool that works, 
 ## Success Criteria
 
 ### Primary
-A new user can register, log in, create a trip (name, date, description), upload one GPX file, and see the route rendered as a static map image — end to end, without assistance. If this flow completes, VeloLog v1 works.
+A new user can register, log in, create a trip (name, date, description), upload one GPX file, and see the route drawn on a non-interactive map — end to end, without assistance. If this flow completes, VeloLog v1 works.
 
 ### Secondary
 Basic trip stats (distance and duration) calculated from the uploaded GPX file and displayed on the trip detail view. Not required for the primary proof, but meaningfully raises the value of a completed upload.
@@ -48,7 +48,7 @@ Basic trip stats (distance and duration) calculated from the uploaded GPX file a
 
 - **Given** a user has registered and is logged in
 - **When** they create a trip, upload a valid GPX file, and open the trip detail view
-- **Then** they see the route rendered as a static map image and a confirmation that the trip was saved
+- **Then** they see the route drawn on a non-interactive map and a confirmation that the trip was saved
 
 #### Acceptance Criteria
 - The trip appears in the user's trip list after creation
@@ -66,8 +66,9 @@ Basic trip stats (distance and duration) calculated from the uploaded GPX file a
 - FR-003: User can create a trip with a name, date, and description. Priority: must-have
 - FR-004: User can upload a GPX file to a trip. Priority: must-have
   > Socrates: Counter-argument considered: "GPX is one format — locking to it may require migration if FIT/TCX support is added later." Resolution: kept. The product refers to this capability as uploading a 'track file'; GPX is the first supported format.
-- FR-005: User can view a static map image of a trip's route. Priority: must-have
-  > Socrates: Counter-argument considered: "A static map image would be simpler than an interactive map." Resolution: revised — static map image accepted for v1. Interactive map is the first v2 enhancement (FR-015).
+- FR-005: User can view a trip's route drawn on a non-interactive map. Priority: must-have
+  > Socrates: Counter-argument considered: "A static map image would be simpler than an interactive map." Resolution: revised — a non-interactive map accepted for v1. Interactive map is the first v2 enhancement (FR-015).
+  > Amended v3 (2026-08-26): the wording was "a static map image" until implementation. What shipped renders the route client-side onto a raster tile map with panning, zooming, and keyboard navigation all disabled — visually static, but not a server-rendered image. The delta FR-015 still owns is therefore *interactivity*, not *the map*: v2 re-enables the controls this deliberately turns off. Kept as a wording amendment rather than a scope change because the user-visible outcome is unchanged.
 - FR-006: User can view a list of their own trips. Priority: must-have
   > Socrates: Counter-argument considered: "A bare list with no filter/sort is enough for v1 with 1–2 trips." Resolution: kept as must-have, scoped to minimal list only — no filter/sort in v1 (FR-012 is nice-to-have).
 - FR-007: User can edit a trip's details (name, date, description). Priority: must-have
@@ -107,6 +108,7 @@ Multi-stage grouping (multiple track files per trip, FR-011) is a v2 feature. Wh
 ## Non-Goals
 
 - **No external platform integration**: No import from or sync with any external cycling, fitness, or mapping platform. Users upload track files manually. This keeps VeloLog independent and removes third-party API dependency and OAuth complexity from v1.
+  > Clarified v3 (2026-08-26): rendering the route requires map tiles, which v1 fetches from OpenStreetMap in the browser. This is consistent with the non-goal rather than an exception to it — there is no import, no sync, no account, no API key, and no server-side dependency, so an OSM outage degrades the map to blank tiles with the route still drawn. What the non-goal excludes is integration with a *platform holding user data*; a public basemap is not that. See `DEPLOY.md` for the tile-usage policy and privacy consequences.
 - **No route planning or track editing**: VeloLog is a log and viewer, not a planner or editor. Users upload finished tracks; no in-app route building or track modification.
 - **No native mobile app**: A responsive web app accessible from mobile browsers is sufficient. No app store distribution in v1.
 - **No AI or geographic enrichment features**: Automatic geographic enrichment (landmarks, regions, administrative areas) and weather retrieval are deferred to v2+.
@@ -115,6 +117,7 @@ Multi-stage grouping (multiple track files per trip, FR-011) is a v2 feature. Wh
 
 - **v1 (2026-05-29)** — Initial PRD: hard deadline `2026-06-30`.
 - **v2 (2026-08-22)** — `hard_deadline` changed `2026-06-30` → `2026-09-10`.
+- **v3 (2026-08-26)** — FR-005, the Primary Success Criterion, and US-01 reworded from "static map image" to a non-interactive map, matching what shipped in slice S-03; FR-015's remaining v2 delta narrowed to interactivity. Non-Goals clarified that browser-fetched OSM raster tiles are in scope and why that does not contradict "no external platform integration". No scope change — user-visible outcome is unchanged.
 
 ## Open Questions
 

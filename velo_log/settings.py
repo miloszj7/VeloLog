@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import logging
 from pathlib import Path
 
 import environ
@@ -187,19 +188,72 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
 # Logging
 # https://docs.djangoproject.com/en/6.0/topics/logging/
 
-# Deliberately unconfigured — E-06 owns introducing a LOGGING dict. Recorded here because
-# that dict inherits two obligations it would otherwise have no way to know about:
+
+class _MediaRootDefaultFilter(logging.Filter):
+    """Default a missing `media_root` field so the formatter can render it unconditionally.
+
+    Most records through this handler (e.g. `logger.exception` calls with no `extra=`)
+    never set `media_root`; without this, `{media_root}` in the format string would raise
+    `KeyError` at format time for every one of them.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if not hasattr(record, "media_root"):
+            record.media_root = ""
+        return True
+
+
+# Named `velo_log_console`, not `console` — Django's own DEFAULT_LOGGING already
+# registers a handler literally named `console` (gated by a `require_debug_true` filter,
+# wired to the `django` logger). This project's LOGGING dict is applied via a second
+# dictConfig call on top of Django's own; reusing the name `console` would reconfigure
+# that same handler object in place, silently dropping its `require_debug_true` filter
+# even though `django.*` loggers are meant to be left untouched below.
 #
-#   1. It must include a `velo_log` logger. /healthz/ catches broadly and reports what it
-#      caught only through `logger.exception` (velo_log/urls.py) — the response body
-#      carries no detail for the store-unreachable case on purpose. With no LOGGING dict
-#      those records reach stderr through `logging.lastResort`, so a dict scoped to
-#      `django`/`django.server` alone, or one leaving `disable_existing_loggers` true,
-#      silently removes the only diagnostic channel the probe has.
-#   2. Its formatter must emit the `media_root` extra. A misconfigured media path is
-#      withheld from the anonymous caller and passed as `extra` instead (see
-#      `_media_root_context`), and `lastResort`'s formatter renders the message alone —
-#      so that path is invisible today and stays invisible until a formatter names it.
+# The root (`""`) logger is deliberately given a handler too: `gpx/views.py` also logs
+# via `logging.getLogger(__name__)` (`gpx.views`, not a descendant of `velo_log`), so it
+# only reaches the console through root propagation.
+#
+# Known tradeoff: Django's own `"django"` logger does not set `propagate: False` (only
+# `"django.server"` does), so once root has a handler, a `django`-logger record already
+# handled by Django's own `console`/`mail_admins` handlers also reaches root and prints a
+# second time, in this format instead of Django's. Accepted for this low-traffic personal
+# project — the duplication is confined to `DEBUG=True` local dev, and avoiding it would
+# mean giving `"django"` an explicit `propagate: False` (risking suppression of a
+# framework message this project has no mandate to touch) or dropping the root handler
+# (which would break `gpx.views`' coverage).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "media_root_default": {"()": "velo_log.settings._MediaRootDefaultFilter"},
+    },
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} {levelname} {name} {message} media_root={media_root}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "velo_log_console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "verbose",
+            "filters": ["media_root_default"],
+        },
+    },
+    "loggers": {
+        "": {
+            "handlers": ["velo_log_console"],
+            "level": "INFO" if DEBUG else "WARNING",
+        },
+        "velo_log": {
+            "handlers": ["velo_log_console"],
+            "level": "INFO" if DEBUG else "WARNING",
+            "propagate": False,
+        },
+    },
+}
 
 
 # Authentication

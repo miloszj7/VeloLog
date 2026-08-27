@@ -31,7 +31,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | done |
 | S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route on a non-interactive map (or empty state)| S-02           | FR-004, FR-005, US-01 | done |
 | S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | done |
-| S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
+| S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | planning |
 
 ## Baseline
 
@@ -109,7 +109,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Not required for the primary proof — if the 2026-09-10 deadline gets tight, this is the first must-have-adjacent slice to reconsider deferring, since the PRD itself frames it as value-add rather than blocking.
-- **Status:** proposed
+- **Status:** planning
 
 ## Backlog Handoff
 

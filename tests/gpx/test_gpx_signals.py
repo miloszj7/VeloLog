@@ -8,6 +8,7 @@ nothing about it.
 """
 
 import pytest
+from django.core.exceptions import SuspiciousFileOperation
 from django.core.files.storage import default_storage
 from django.db import transaction
 from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
@@ -125,6 +126,40 @@ def test_a_cleanup_failure_does_not_fail_a_delete_that_already_committed(
 
     assert not GpxTrack.objects.filter(pk=pk).exists()
     # The row is gone either way; only the file survives the refusal.
+    assert default_storage.exists(name)
+
+
+@pytest.mark.django_db
+def test_a_non_oserror_from_storage_is_absorbed_too(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The refusal above is an `OSError`; the ones that actually reach here need not be.
+
+    `FileSystemStorage.delete` resolves the key through `safe_join` before it touches the
+    filesystem, so a key that escapes `MEDIA_ROOT` raises `SuspiciousFileOperation`, and a
+    remote backend raises its own client error — neither inherits `OSError`. A guard written
+    against `OSError` alone lets both straight through and turns a committed delete into a
+    500, which is the one thing this receiver promises never to do. The test above cannot
+    catch that narrowing, because `PermissionError` *is* an `OSError`.
+    """
+
+    def refuse_delete(self: object, name: str) -> None:
+        raise SuspiciousFileOperation(name)
+
+    track = make_stored_track(trip)
+    name = stored_name(track)
+    pk = track.pk
+    monkeypatch.setattr(
+        "django.core.files.storage.FileSystemStorage.delete", refuse_delete, raising=True
+    )
+
+    with django_capture_on_commit_callbacks(execute=True):
+        track.delete()
+
+    assert not GpxTrack.objects.filter(pk=pk).exists()
     assert default_storage.exists(name)
 
 

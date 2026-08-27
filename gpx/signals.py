@@ -29,12 +29,20 @@ def discard_track_file(track: GpxTrack) -> None:
     missing file on its own but nothing else, so an unmounted Volume or a permission
     change on the media directory would do exactly that.
 
+    The catch is deliberately `Exception`, not `OSError`: `FileSystemStorage.delete`
+    resolves the key through `safe_join` before it touches the filesystem, which raises
+    `SuspiciousFileOperation`, and a remote backend raises its own client error — neither is
+    an `OSError`, and either one escaping would produce exactly the 500 this guard exists to
+    prevent. Fire-and-forget post-commit cleanup has no failure it could usefully re-raise,
+    so the broad catch is what matches the contract stated above; `logger.exception` is what
+    stops a programming error in here from vanishing with it.
+
     Swallowing it silently would leave orphan files accumulating with nothing to show
     for them, so the failure is logged rather than dropped.
     """
     try:
         track.file.delete(save=False)
-    except OSError:
+    except Exception:
         logger.exception(
             "Could not delete track file",
             extra={"track_id": track.pk, "storage_key": track.file.name},

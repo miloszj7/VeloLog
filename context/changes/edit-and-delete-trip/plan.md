@@ -147,6 +147,11 @@ Every new owner-scoped surface reproduces the fixed test matrix: owner → 200; 
 → **404 plus a no-leak or persistence assertion**; anonymous → 302 to login with `?next=`;
 wrong verb → 405.
 
+The 405 leg is **not** free from the framework — both new views must narrow
+`http_method_names` to earn it. See *Critical Implementation Details → Verb narrowing*
+below; without it, a raw HTTP `DELETE` on the delete route destroys the trip and its GPX
+file with no confirmation page at all.
+
 ## Critical Implementation Details
 
 **Timing & lifecycle.** `post_delete` fires **inside** the collector's transaction, so the
@@ -161,6 +166,24 @@ transactional wrapping. Every test asserting a file was removed must wrap the re
 `django_capture_on_commit_callbacks(execute=True)`, per the exemplars
 `tests/gpx/test_gpx_upload.py:272` and `:309`. Without it the assertion passes while
 proving nothing.
+
+**Verb narrowing.** `BaseDeleteView` still inherits `DeletionMixin.delete()`
+(`django/views/generic/edit.py:215-232`, `:240`), and `View.dispatch` resolves its handler
+with `getattr(self, request.method.lower(), ...)` (`django/views/generic/base.py:139-142`),
+while `_allowed_methods` lists any method the class merely has an attribute for
+(`base.py:181-182`). So a raw HTTP `DELETE` at `/trips/<pk>/delete/` runs `get_object()`
+→ `get_success_url()` → `self.object.delete()` → 302 — bypassing the confirmation page and
+the empty `Form` entirely, and, via Phase 2's receiver, taking the GPX file with it. The
+Django test client does not enforce CSRF by default, so `client.delete(url)` succeeds.
+`UpdateView` has the milder half of the same problem: `ProcessFormView.put` calls
+`self.post(*args, **kwargs)` (`edit.py:155-157`) and `ModelFormMixin.get_form_kwargs`
+binds `request.POST` — empty on a PUT — so PUT 200-re-renders with field errors rather
+than returning 405.
+
+Both new views therefore set `http_method_names = ["get", "post"]`, each with a comment
+naming what it closes. This is already the repo's idiom, not a new pattern:
+`GpxUploadView.http_method_names = ["post"]` (`gpx/views.py:62-64`), asserted at
+`tests/gpx/test_gpx_upload.py:420` — the suite's only existing 405.
 
 **Cross-app context coupling.** Any new context key added to
 `TripDetailView.get_context_data` must also be added to `GpxUploadView.get_context_data`
@@ -200,8 +223,8 @@ description. Reuse the existing `_SuccessMessageMixinBase` alias — it is param
 
 **Contract**: `class TripUpdateView(LoginRequiredMixin, _SuccessMessageMixinBase,
 _TripUpdateViewBase)` with `form_class = TripForm`, an explicit `template_name =
-"trips/trip_form.html"`, `success_message`, and an owner-scoped `get_queryset() ->
-QuerySet[Trip]` returning `Trip.objects.filter(owner=cast(User, self.request.user))` —
+"trips/trip_form.html"`, `success_message`, `http_method_names = ["get", "post"]`, and an
+owner-scoped `get_queryset() -> QuerySet[Trip]` returning `Trip.objects.filter(owner=cast(User, self.request.user))` —
 the same body and the same reason as `TripDetailView.get_queryset:58-66`. No
 `success_url`: `ModelFormMixin.get_success_url` falls through to
 `Trip.get_absolute_url()`, which is why S-03 added it. Add
@@ -210,6 +233,11 @@ the same body and the same reason as `TripDetailView.get_queryset:58-66`. No
 
 The `template_name` is set explicitly even though it is also `UpdateView`'s silent
 default. Naming it is what turns a documented trap into a decision a reader can see.
+
+`http_method_names` is what makes this surface's 405 leg true. Left at the default, a
+`PUT` re-enters `post()` against an empty `request.POST` and returns a 200 re-render with
+field errors — not a 405. Carry a comment saying so; the mechanism is in *Critical
+Implementation Details → Verb narrowing*.
 
 #### 2. The route
 
@@ -265,7 +293,8 @@ database (status code alone was itself a review finding,
 `impl-review-phase-4.md:200-216`); anonymous GET → 302 to `reverse('login')` with
 `?next=`; a POST attempting to set `owner` → owner unchanged, mirroring the
 mass-assignment test at `tests/trips/test_trip_creation.py:48-64`; an invalid POST (blank
-`name`) → 200 re-render carrying `form.errors["name"]`.
+`name`) → 200 re-render carrying `form.errors["name"]`; and an owner `PUT` → 405, which
+holds only because of `http_method_names` and fails loudly the moment it is dropped.
 
 **File**: `tests/trips/test_trip_creation.py`
 
@@ -451,7 +480,14 @@ link on the detail page. File cleanup comes for free from Phase 2.
 
 **Contract**: `class TripDeleteView(LoginRequiredMixin, _DeleteSuccessMessageMixinBase,
 _TripDeleteViewBase)` with `success_url = reverse_lazy("trips:list")`, a static
-`success_message`, and the same owner-scoped `get_queryset()` as the other views.
+`success_message`, `http_method_names = ["get", "post"]`, and the same owner-scoped
+`get_queryset()` as the other views.
+
+`http_method_names` is load-bearing here rather than stylistic. Without it,
+`DeletionMixin.delete()` stays reachable and a raw HTTP `DELETE` destroys the trip **and
+its GPX file** with no confirmation page — the very guard §4 leans on when it makes the
+detail-page control a link instead of a form. Comment it as such; the full mechanism is in
+*Critical Implementation Details → Verb narrowing*.
 
 Three typing facts, each verified against the installed stubs — getting any of them wrong
 raises at import:
@@ -494,11 +530,18 @@ saying plainly that it cannot be undone.
 Phase 1 reasoning. Extends `base.html`, fills `{% block title %}` and
 `{% block content %}`. A POST form to the delete URL with `{% csrf_token %}` immediately
 after `<form>` and a submit button; the trip's name in the prose; a sentence stating the
-attached GPX file goes too, since that is the part a rider cannot re-derive; and a Cancel
+attached GPX file goes too, since that is the part a rider cannot re-derive — wrapped in
+`{% if trip.tracks.all %}` so a trackless trip is not warned about losing a file it never
+had (Manual Testing step 4 deletes exactly such a trip); and a Cancel
 `<p><a>…</a></p>` **outside** the `<form>` pointing at `trip.get_absolute_url` — the
 binding convention review F1 established. No `{% static %}` reference, so
 `tests/test_static_references.py`'s hand-maintained tuple (`:45-53`) needs no change. No
 CSS.
+
+Branch in the template rather than on a new context key: `trip_confirm_delete.html` is
+rendered only by `TripDeleteView`, so the cross-app context-coupling trap does not apply
+either way, and `trip_detail.html` already branches on this same condition twice (`:22`,
+`:61`) — following it keeps one idiom instead of introducing a second.
 
 #### 4. The detail-page entry point
 
@@ -519,14 +562,18 @@ destroys nothing, and a POST that removes the row, its track rows **and** their 
 
 **Contract**: Same style rules as Phase 1. Cases: owner GET → 200 rendering the trip's name
 and the irreversibility copy, with `Trip.objects.count()` unchanged — a confirmation page
-that deletes on GET is the failure this asserts against; owner POST → 302 to the trip list,
+that deletes on GET is the failure this asserts against; the same GET on a **trackless**
+trip → 200 with the GPX sentence **absent**, which is the only automated check on the
+`{% if trip.tracks.all %}` branch; owner POST → 302 to the trip list,
 trip gone from the database, success message asserted on the next page's body; owner POST
 on a trip with a stored track, wrapped in `django_capture_on_commit_callbacks(execute=True)`
 → the `GpxTrack` row **and** its file both gone (this is the end-to-end proof that Phase 2
 wired into Phase 3, and it is the assertion the whole S-03 handoff was about); other
 user's pk GET **and** POST → 404 each, paired with an assertion the trip still exists,
 using a needle with no escapable characters; anonymous GET and POST → 302 to login with
-`?next=`; `PUT`/`DELETE` verb → 405.
+`?next=`; `PUT` and `DELETE` verbs → 405 **each**, the `DELETE` case paired with an
+assertion that the trip still exists — that pairing is what states the real stake, since a
+dropped `http_method_names` turns this leg into a silent confirmation-free deletion.
 
 ### Success Criteria
 
@@ -545,7 +592,7 @@ using a needle with no escapable characters; anonymous GET and POST → 302 to l
 - Cancel on that page returns to the trip with nothing deleted
 - Confirming returns to the trip list, the trip is gone, the success message shows, and the trip's `.gpx` file is gone from `MEDIA_ROOT`
 - Reloading the deleted trip's detail URL gives a 404
-- Deleting a trip that has no GPX file works and raises nothing
+- Deleting a trip that has no GPX file works, raises nothing, and its confirmation page does **not** mention a GPX file
 
 **Implementation Note**: After this phase and all automated verification passes, pause for
 manual confirmation. **Both must-have FRs are complete at this point** — Phase 4 is the
@@ -579,8 +626,15 @@ meaning to write the label.
 
 **Contract**: Add `def clean_date(self) -> date:` to `TripForm`, raising
 `forms.ValidationError` when the value is later than one day past the current date, and
-returning it otherwise. Add `labels` and/or `help_text` to `Meta` stating the date is when
+returning it otherwise. Add `help_texts = {"date": ...}` to `Meta` stating the date is when
 the ride happened.
+
+The key is `help_texts`, **plural**. `ModelFormOptions` reads
+`getattr(options, "help_texts", None)` (`django/forms/models.py:268`, applied at
+`:231-232`), so a singular `help_text = {...}` on `Meta` is silently ignored — no error,
+nothing rendered, every automated gate green. One mechanism, not "and/or": `labels` is not
+the one to reach for, because the auto-derived label is already "Date" and what is missing
+is the sentence saying *which* date, not a better caption.
 
 Three things the rule must get right:
 
@@ -604,7 +658,7 @@ Three things the rule must get right:
    it sets the bar, and `branch = true` means a half-covered `clean_date()` shows as a gap.
 
 **Migration note**: adding `help_text` or `verbose_name` **to the model** generates a
-migration; adding `labels`/`help_text` to the **form's** `Meta` does not. Prefer the form
+migration; adding `labels`/`help_texts` to the **form's** `Meta` does not. Prefer the form
 if no migration is wanted. If the model is touched instead, generate and commit the
 migration by hand and verify with `makemigrations --check --dry-run` — `manage.py check`
 passes with a model/schema mismatch, and the deploy pipeline runs `migrate` unattended
@@ -622,6 +676,9 @@ instantiates a form class — so assert via `response.context["form"].errors["da
 a far-future date → 200 re-render with a `date` error and nothing persisted; today's date
 → accepted; the `+1 day` boundary → accepted, which is the test that documents the
 tolerance as intentional rather than an off-by-one; one day past the boundary → rejected.
+Add one more, cheap and non-negotiable: a GET of the create form asserts the help-text
+sentence appears in `response.content`. A misspelled `Meta` key fails no gate and renders
+nothing — this assertion is the only thing standing between that typo and a green build.
 Compute dates relative to `timezone.localdate()`, never as literals, or the tests expire.
 Existing tests post `2026-06-01`/`2026-07-01`, both past — they need no change.
 
@@ -650,7 +707,7 @@ rejected with a `date` error. Build the future-dated trip directly via
 
 - Submitting a trip dated next year shows an error next to the date field and does not save
 - Submitting today's date saves normally
-- The date field now carries a label or hint saying it is when the ride happened
+- The date field **renders** a help text on the page saying it is when the ride happened — visible in the browser, not merely present in `Meta`
 - A future-dated trip created through the admin can still have its **name** edited through the app without touching its date
 - The admin can still change that trip's date, as its repair-path docstring claims
 
@@ -676,8 +733,18 @@ fix it describes already exists in history (`lessons.md` #8,
 **Intent**: Close S-04 and E-08, and record the start/end date split as a new open row so a
 real product insight is not lost by being out of scope.
 
-**Contract**: Set S-04's status to `done` in both places the `/10x-roadmap` template keeps
-it — the `## At a glance` row (`:33`) and the item body's `- **Status:**` line (`:101`).
+**Contract**: Set S-04's status to `done` in all **three** places the `/10x-roadmap`
+template keeps it — the `## At a glance` row (`:33`), the item body's `- **Status:**` line
+(`:101`), and the **Backlog Handoff** row (`:121`), whose `Ready for /10x-plan` cell still
+reads `no` and whose Notes still read "Waiting on S-02" although S-02 shipped long ago.
+Follow the S-02 precedent two rows up (`:118`): `yes`, with Notes reading "Planned and
+implemented (Phase 5, `/10x-implement edit-and-delete-trip`)". The Backlog Handoff table is
+the site a `grep` for the first two forms misses — the `lessons.md` #5 shape exactly.
+
+Fix S-03's Backlog Handoff row (`:120`) in the same pass: it reads `no` / "Waiting on S-02"
+even though S-03 shipped, and this slice is already opening the table. S-05's "Waiting on
+S-03" note (`:122`) is knowingly **left alone** — declaring S-05 ready is a sequencing
+judgment for the next roadmap pass, not a bookkeeping correction this slice can make.
 Set E-08's `Status` cell to `done` (`:159`) with the `Change ID` cell filled in as
 `edit-and-delete-trip`, following the E-05 precedent of a narrative close (`:157`). If
 Phase 4 was dropped, leave E-08 `open` and name the frame brief as its record instead.
@@ -721,7 +788,7 @@ here and would cost it again. Add via `/10x-lesson` if it survives review.
 
 #### Automated Verification
 
-- `grep -n "S-04" context/foundation/roadmap.md` shows `done` in both the glance table and the item body
+- `grep -n "S-04" context/foundation/roadmap.md` shows `done` in the glance table and the item body, and `yes` in the Backlog Handoff row; `grep -n "Waiting on S-02" context/foundation/roadmap.md` returns **nothing** (clears both the S-04 and the S-03 row)
 - `grep -n "E-08" context/foundation/roadmap.md` shows a status consistent with whether Phase 4 shipped
 - The new start/end-date backlog row exists with a trigger and a PRD-amendment note
 - `SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pytest --cov` still passes
@@ -754,7 +821,9 @@ commit it references.
 ### Integration Tests
 
 - The fixed owner-scoped matrix on both new surfaces: owner → 200; other user → 404 **plus**
-  a persistence assertion; anonymous → 302 with `?next=`; wrong verb → 405
+  a persistence assertion; anonymous → 302 with `?next=`; wrong verb → 405 — the last leg
+  holding only because both views narrow `http_method_names`, and the `DELETE` case pairing
+  the status code with a still-exists assertion
 - Edit: GET pre-fills, POST persists and redirects to the trip, invalid POST re-renders
   with a field error, `owner` cannot be mass-assigned
 - Delete: GET destroys nothing, POST removes the trip **and** its track rows **and** their
@@ -766,7 +835,7 @@ commit it references.
 1. Create a trip, upload a GPX, then edit the trip's name from its detail page — confirm the change lands on both the detail page and the list, and the GPX is untouched
 2. Confirm the edit page is not titled "New trip", and that Cancel returns to the trip while the new-trip page's Cancel still returns to the list
 3. Delete that trip: confirm the page names it and warns about the file, that Cancel leaves it intact, and that confirming removes the trip **and** its `.gpx` from `MEDIA_ROOT`
-4. Delete a trip that has no GPX file at all — nothing should raise
+4. Delete a trip that has no GPX file at all — nothing should raise, and its confirmation page must **not** claim a GPX file is about to go
 5. In the Django admin, select several trips and use **Delete selected trips**; confirm every GPX file is gone from `MEDIA_ROOT`. This is the bulk path a view-level cleanup would have missed and is the check that justifies the signal
 6. Submit a trip dated next year — expect a rejection next to the date field; submit today's date — expect success
 7. Create a future-dated trip through the admin, then edit only its **name** through the app — expect success
@@ -874,7 +943,7 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 - [ ] 3.8 Cancel returns to the trip with nothing deleted
 - [ ] 3.9 Confirming removes trip, redirects to list, shows message, and the `.gpx` is gone from `MEDIA_ROOT`
 - [ ] 3.10 Deleted trip's detail URL gives 404
-- [ ] 3.11 Deleting a trip with no GPX file raises nothing
+- [ ] 3.11 Deleting a trip with no GPX file raises nothing and its confirmation page omits the GPX sentence
 
 ### Phase 4: E-08 — Block Future Dates and Label the Date Field
 
@@ -891,7 +960,7 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 - [ ] 4.7 Trip dated next year shows a date error and does not save
 - [ ] 4.8 Today's date saves normally
-- [ ] 4.9 Date field carries a label or hint saying it is when the ride happened
+- [ ] 4.9 Date field renders a help text on the page saying it is when the ride happened
 - [ ] 4.10 A future-dated trip's name can still be edited without touching its date
 - [ ] 4.11 Admin can still change that trip's date
 
@@ -899,7 +968,7 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 #### Automated
 
-- [ ] 5.1 S-04 shows `done` in both the glance table and the item body
+- [ ] 5.1 S-04 `done` in glance table, item body and Backlog Handoff row; no "Waiting on S-02" text left on the S-04 or S-03 rows
 - [ ] 5.2 E-08 status consistent with whether Phase 4 shipped
 - [ ] 5.3 New start/end-date backlog row exists with trigger and PRD-amendment note
 - [ ] 5.4 CI-equivalence pytest run still passes

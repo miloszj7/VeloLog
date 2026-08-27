@@ -1,10 +1,10 @@
 ---
 change_id: edit-and-delete-trip
 title: Edit and delete a trip
-status: impl_reviewed
+status: archived
 created: 2026-08-26
 updated: 2026-08-27
-archived_at: null
+archived_at: 2026-08-27T19:39:19Z
 ---
 
 ## Notes

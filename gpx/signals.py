@@ -10,6 +10,7 @@ import logging
 from functools import partial
 from typing import Any
 
+from django.core.files.storage import Storage
 from django.db import transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
@@ -19,8 +20,21 @@ from gpx.models import GpxTrack
 logger = logging.getLogger(__name__)
 
 
-def discard_track_file(track: GpxTrack) -> None:
-    """Delete a deleted track's file, never letting the attempt fail the request.
+def discard_file_by_key(track_pk: int, storage_key: str, storage: Storage) -> None:
+    """Delete a deleted track's file by storage key, never failing the request for it.
+
+    Scalars rather than the instance, on purpose. Registering this module's receiver makes
+    `Collector` skip its field-deferral optimization for any model with listeners
+    (`django/db/models/deletion.py:325-337`), so a cascade already `SELECT`s whole
+    `GpxTrack` rows — `points` included, which `gpx/constants.py` caps at
+    `MAX_GPX_POINTS = 100_000`. Closing over the instance would hold every one of those
+    rows resident *past* commit as well; closing over a key lets the collector's list go as
+    the transaction ends. An admin `delete_selected` over a season of trips is the path
+    where the difference is measured in megabytes.
+
+    The pk is read in the receiver and passed in for the same reason it cannot be read
+    here: the collector nulls out each deleted instance's pk (`deletion.py:455`) once the
+    signals have fired, so a callback reading `track.pk` at commit time logs `None`.
 
     This runs from `on_commit`, which fires synchronously as the outermost `atomic()`
     exits — inside the request, after the deletion has already committed. An exception
@@ -41,11 +55,11 @@ def discard_track_file(track: GpxTrack) -> None:
     for them, so the failure is logged rather than dropped.
     """
     try:
-        track.file.delete(save=False)
+        storage.delete(storage_key)
     except Exception:
         logger.exception(
             "Could not delete track file",
-            extra={"track_id": track.pk, "storage_key": track.file.name},
+            extra={"track_id": track_pk, "storage_key": storage_key},
         )
 
 
@@ -75,4 +89,11 @@ def discard_file_of_deleted_track(
     (`impl-review-phase-4.md:98-114`) had to enforce that equality by hand, because the
     view computed its cleanup set separately from its delete.
     """
-    transaction.on_commit(partial(discard_track_file, instance))
+    storage_key = instance.file.name
+    if not storage_key:
+        # `FieldFile.delete` used to absorb this for free; a key-based callback has to
+        # decline explicitly rather than ask storage to delete "". Nothing was stored.
+        return
+    transaction.on_commit(
+        partial(discard_file_by_key, instance.pk, storage_key, instance.file.storage)
+    )

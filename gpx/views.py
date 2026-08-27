@@ -1,5 +1,4 @@
 import logging
-from functools import partial
 from typing import TYPE_CHECKING, Any, cast
 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -23,28 +22,6 @@ if TYPE_CHECKING:
 else:
     _GpxUploadViewBase = CreateView
     _SuccessMessageMixinBase = SuccessMessageMixin
-
-
-def discard_superseded_file(track: GpxTrack) -> None:
-    """Delete a retired track's file, never letting the attempt fail the request.
-
-    This runs from `on_commit`, which fires synchronously as the outermost `atomic()`
-    exits — inside the request, after the upload has already committed. An exception
-    escaping here would give the user a 500 for an upload the database has accepted,
-    which is the one response that cannot be true. `FileSystemStorage.delete` absorbs a
-    missing file on its own but nothing else, so an unmounted Volume or a permission
-    change on the media directory would do exactly that.
-
-    Swallowing it silently would leave orphan files accumulating with nothing to show
-    for them, so the failure is logged rather than dropped.
-    """
-    try:
-        track.file.delete(save=False)
-    except OSError:
-        logger.exception(
-            "Could not delete superseded track file",
-            extra={"track_id": track.pk, "storage_key": track.file.name},
-        )
 
 
 class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadViewBase):
@@ -104,18 +81,18 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         return self.trip.get_absolute_url()
 
     def form_valid(self, form: GpxUploadForm) -> HttpResponse:
-        """Persist the new track, then retire the one it supersedes.
+        """Persist the new track, then retire the rows it supersedes.
 
-        The ordering is load-bearing on both axes:
+        The new row and its file are saved **first**; the reverse order loses both if the
+        new save fails.
 
-        * The new row and its file are saved **first**. The reverse order loses both if
-          the new save fails.
-        * The superseded *file* is deleted on commit, never inside the block. Storage
-          deletes do not participate in the transaction, so a delete performed inside
-          `atomic()` is already gone if the block later raises — the database then rolls
-          the old row back into existence pointing at a file that no longer exists, and
-          the detail page renders a track whose download 404s. That is precisely the
-          silent-failure state the mitigation exists to prevent.
+        Removing the superseded *files* is no longer this method's business — the
+        `post_delete` receiver in `gpx/signals.py` schedules that for every row the delete
+        below removes, and it does so on commit for the reasons its docstring gives. That
+        is strictly stronger than scheduling the cleanup here was: the receiver fires once
+        per row actually deleted, so the cleanup set equals the delete set by
+        construction, rather than by this method taking care to reuse one snapshot for
+        both.
         """
         # The parsed route is already on the instance — `GpxUploadForm.clean_file` puts
         # it there. Ownership is the one thing the form cannot know.
@@ -124,21 +101,18 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         with transaction.atomic():
             # Read inside the transaction, and before the insert below so the new row is
             # not in it. Both halves matter: read outside, and two concurrent uploads to
-            # one trip each see the same predecessor, so the second deletes the first's
-            # row without ever scheduling its file for cleanup — a permanent orphan on
-            # the Volume. Deleting by this explicit pk set rather than by
-            # `exclude(pk=...)` is what makes the rows deleted and the files scheduled
-            # provably the same set. `select_for_update` is a no-op on SQLite, so today
-            # the pk set is the half carrying the fix; it earns its place if the database
-            # ever changes.
+            # one trip each see the same predecessor, so the second deletes rows the
+            # first has already deleted while leaving its own predecessor in place.
+            # Deleting by this explicit pk set rather than by `exclude(pk=...)` is what
+            # bounds the delete to the rows this request observed. `select_for_update` is
+            # a no-op on SQLite, so today the pk set is the half carrying the fix; it
+            # earns its place if the database ever changes.
             superseded = list(self.trip.tracks.select_for_update())
 
             # Saves the row and writes the file, adds the success message, and returns
             # the redirect to `get_success_url`.
             response = super().form_valid(form)
             self.trip.tracks.filter(pk__in=[track.pk for track in superseded]).delete()
-            for old in superseded:
-                transaction.on_commit(partial(discard_superseded_file, old))
         return response
 
 

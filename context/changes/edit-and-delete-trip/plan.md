@@ -894,37 +894,37 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 #### Automated
 
-- [x] 1.1 CI-equivalence pytest run passes with no coverage regression
-- [x] 1.2 ruff, black, isort pass
-- [x] 1.3 mypy passes — two-parameter `UpdateView[Trip, TripForm]` alias imports
-- [x] 1.4 `manage.py check` passes
-- [x] 1.5 `makemigrations --check --dry-run` reports no missing migration
-- [x] 1.6 `test_trip_creation.py:88-93` passes unchanged (create markup byte-identical)
+- [x] 1.1 CI-equivalence pytest run passes with no coverage regression — 7241008
+- [x] 1.2 ruff, black, isort pass — 7241008
+- [x] 1.3 mypy passes — two-parameter `UpdateView[Trip, TripForm]` alias imports — 7241008
+- [x] 1.4 `manage.py check` passes — 7241008
+- [x] 1.5 `makemigrations --check --dry-run` reports no missing migration — 7241008
+- [x] 1.6 `test_trip_creation.py:88-93` passes unchanged (create markup byte-identical) — 7241008
 
 #### Manual
 
-- [x] 1.7 Edit page is titled and headed for editing, not "New trip"
-- [x] 1.8 Cancel targets differ correctly between edit and create
-- [x] 1.9 Editing a name updates detail and list, success message appears
-- [x] 1.10 Edit link present on detail page, absent from trip list
+- [x] 1.7 Edit page is titled and headed for editing, not "New trip" — 7241008
+- [x] 1.8 Cancel targets differ correctly between edit and create — 7241008
+- [x] 1.9 Editing a name updates detail and list, success message appears — 7241008
+- [x] 1.10 Edit link present on detail page, absent from trip list — 7241008
 
 ### Phase 2: A `post_delete` Signal Owns GPX File Cleanup
 
 #### Automated
 
-- [ ] 2.1 CI-equivalence pytest run passes with no coverage regression
-- [ ] 2.2 Both existing upload `on_commit` tests pass with scheduling moved
-- [ ] 2.3 `grep -rn "discard_superseded_file\|handed to S-04" gpx/ tests/` returns no hits
-- [ ] 2.4 ruff, black, isort, mypy pass
-- [ ] 2.5 `manage.py check` and `makemigrations --check --dry-run` clean
-- [ ] 2.6 Every new file-removal assertion sits inside `django_capture_on_commit_callbacks`
+- [x] 2.1 CI-equivalence pytest run passes with no coverage regression
+- [x] 2.2 Both existing upload `on_commit` tests pass with scheduling moved
+- [x] 2.3 `grep -rn "discard_superseded_file\|handed to S-04" gpx/ tests/` returns no hits
+- [x] 2.4 ruff, black, isort, mypy pass
+- [x] 2.5 `manage.py check` and `makemigrations --check --dry-run` clean
+- [x] 2.6 Every new file-removal assertion sits inside `django_capture_on_commit_callbacks`
 
 #### Manual
 
-- [ ] 2.7 Replacement upload still removes the previous file from `MEDIA_ROOT`
-- [ ] 2.8 Admin single-trip delete removes its GPX files
-- [ ] 2.9 Admin **Delete selected trips** bulk action removes all their GPX files
-- [ ] 2.10 Upload flow and detail page visibly unchanged
+- [x] 2.7 Replacement upload still removes the previous file from `MEDIA_ROOT`
+- [x] 2.8 Admin single-trip delete removes its GPX files
+- [x] 2.9 Admin **Delete selected trips** bulk action removes all their GPX files
+- [x] 2.10 Upload flow and detail page visibly unchanged
 
 ### Phase 3: Delete a Trip (FR-008)
 

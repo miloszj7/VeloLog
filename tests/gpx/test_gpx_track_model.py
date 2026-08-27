@@ -1,8 +1,11 @@
 import pytest
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 
 from gpx.models import GpxTrack, gpx_upload_path
 from tests.conftest import GPX_POINTS, TrackFactory
+from tests.gpx.conftest import StoredTrackFactory
 from trips.models import Trip
 
 
@@ -16,14 +19,32 @@ def test_track_is_reachable_from_its_trip_via_reverse_accessor(
 
 
 @pytest.mark.django_db
-def test_deleting_a_trip_cascades_its_tracks(trip: Trip, make_gpx_track: TrackFactory) -> None:
-    make_gpx_track(trip)
+def test_deleting_a_trip_cascades_its_tracks_and_their_files(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """The cascade takes the rows *and* the bytes on disk.
 
-    trip.delete()
+    Django has not deleted `FileField` files on model delete since 1.3, so the file half
+    is ours: the `post_delete` receiver in `gpx/signals.py` schedules it. Registering that
+    receiver is also what stops the collector fast-deleting these rows, which is the only
+    reason there is an instance to read a storage key from at all.
 
-    # Rows only. Django has not deleted `FileField` files on model delete since 1.3, and
-    # this slice does not add that behaviour — orphan cleanup is handed to S-04.
+    `make_stored_track` rather than `make_gpx_track` because the latter assigns a file
+    *name* and never writes bytes — `default_storage.exists` would then be false before
+    the delete, and the assertion below would prove nothing.
+    """
+    track = make_stored_track(trip)
+    name = track.file.name
+    assert name is not None
+    assert default_storage.exists(name)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        trip.delete()
+
     assert GpxTrack.objects.count() == 0
+    assert not default_storage.exists(name)
 
 
 @pytest.mark.django_db

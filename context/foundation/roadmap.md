@@ -3,7 +3,7 @@ project: VeloLog
 version: 1
 status: draft
 created: 2026-08-22
-updated: 2026-08-26
+updated: 2026-08-27
 prd_version: 3
 main_goal: speed
 top_blocker: time
@@ -30,7 +30,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | done |
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | done |
 | S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route on a non-interactive map (or empty state)| S-02           | FR-004, FR-005, US-01 | done |
-| S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
+| S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | planning |
 | S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
 
 ## Baseline
@@ -97,7 +97,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — edit/delete on an already-modeled Trip is table-stakes CRUD with no new domain concepts; safe to build alongside S-03 since neither depends on the other.
-- **Status:** proposed
+- **Status:** planning
 
 ### S-05: User can view basic trip stats
 

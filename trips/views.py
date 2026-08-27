@@ -6,7 +6,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DetailView, ListView
+from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 # `gpx` already imports `trips` (its model points at `Trip`), so this line makes the
 # dependency mutual. Accepted rather than avoided: the trip detail page is where a route
@@ -22,11 +22,13 @@ if TYPE_CHECKING:
     _TripListViewBase = ListView[Trip]
     _TripDetailViewBase = DetailView[Trip]
     _TripCreateViewBase = CreateView[Trip, TripForm]
+    _TripUpdateViewBase = UpdateView[Trip, TripForm]
     _SuccessMessageMixinBase = SuccessMessageMixin[TripForm]
 else:
     _TripListViewBase = ListView
     _TripDetailViewBase = DetailView
     _TripCreateViewBase = CreateView
+    _TripUpdateViewBase = UpdateView
     _SuccessMessageMixinBase = SuccessMessageMixin
 
 
@@ -80,3 +82,27 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         context["map_config"] = build_map_config(track)
         context["form"] = GpxUploadForm()
         return context
+
+
+class TripUpdateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripUpdateViewBase):
+    """Edits one of the requesting user's own trips."""
+
+    form_class = TripForm
+    # Named rather than left to `UpdateView`'s default, which resolves to this same
+    # template anyway. `trips/trip_form.html` was written for the create flow and now
+    # branches on `form.instance.pk`; saying which template this view renders is what
+    # keeps that shared ownership visible to the next reader.
+    template_name = "trips/trip_form.html"
+    success_message = "Trip updated."
+    # GET and POST only. Left at the default, `ProcessFormView.put` re-enters `post()`
+    # against an empty `request.POST`, so a `PUT` would 200-re-render with every field
+    # in error instead of returning 405. `GpxUploadView` narrows the same way.
+    http_method_names = ["get", "post"]
+
+    def get_queryset(self) -> QuerySet[Trip]:
+        """Restrict the lookup to trips owned by the requesting user.
+
+        The same body and the same reason as `TripDetailView.get_queryset` above: another
+        user's pk 404s rather than 403s, for the write verbs as much as the read one.
+        """
+        return Trip.objects.filter(owner=cast(User, self.request.user))

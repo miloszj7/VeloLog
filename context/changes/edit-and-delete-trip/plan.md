@@ -894,19 +894,19 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 #### Automated
 
-- [ ] 1.1 CI-equivalence pytest run passes with no coverage regression
-- [ ] 1.2 ruff, black, isort pass
-- [ ] 1.3 mypy passes — two-parameter `UpdateView[Trip, TripForm]` alias imports
-- [ ] 1.4 `manage.py check` passes
-- [ ] 1.5 `makemigrations --check --dry-run` reports no missing migration
-- [ ] 1.6 `test_trip_creation.py:88-93` passes unchanged (create markup byte-identical)
+- [x] 1.1 CI-equivalence pytest run passes with no coverage regression
+- [x] 1.2 ruff, black, isort pass
+- [x] 1.3 mypy passes — two-parameter `UpdateView[Trip, TripForm]` alias imports
+- [x] 1.4 `manage.py check` passes
+- [x] 1.5 `makemigrations --check --dry-run` reports no missing migration
+- [x] 1.6 `test_trip_creation.py:88-93` passes unchanged (create markup byte-identical)
 
 #### Manual
 
-- [ ] 1.7 Edit page is titled and headed for editing, not "New trip"
-- [ ] 1.8 Cancel targets differ correctly between edit and create
-- [ ] 1.9 Editing a name updates detail and list, success message appears
-- [ ] 1.10 Edit link present on detail page, absent from trip list
+- [x] 1.7 Edit page is titled and headed for editing, not "New trip"
+- [x] 1.8 Cancel targets differ correctly between edit and create
+- [x] 1.9 Editing a name updates detail and list, success message appears
+- [x] 1.10 Edit link present on detail page, absent from trip list
 
 ### Phase 2: A `post_delete` Signal Owns GPX File Cleanup
 

@@ -1,7 +1,7 @@
 ---
 change_id: edit-and-delete-trip
 title: Edit and delete a trip
-status: plan_reviewed
+status: implementing
 created: 2026-08-26
 updated: 2026-08-27
 archived_at: null

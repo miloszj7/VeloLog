@@ -17,6 +17,13 @@
     {% if trip.description %}
         <p>{{ trip.description }}</p>
     {% endif %}
+    {% comment %}
+    The trip's own controls sit with the trip's own fields, above the route. `trip.pk` is
+    already in the context on both render paths — this page's own and `GpxUploadView`'s
+    re-render — so the link needs no new context key, which is what keeps the two paths
+    from drifting apart the way `trips/views.py` warns about.
+    {% endcomment %}
+    <p><a href="{% url 'trips:edit' pk=trip.pk %}">Edit trip</a></p>
 
     <h2>Route</h2>
     {% if track %}

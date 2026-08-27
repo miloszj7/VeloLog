@@ -135,7 +135,13 @@ def test_one_day_ahead_is_accepted_because_the_tolerance_is_deliberate(
     widget submits the rider's local one, so a rider east of UTC posting just after
     midnight is legitimately a day ahead. This test is what documents that as intended —
     without it, tightening the rule to `> localdate()` would look like a cleanup.
+
+    The tolerance is asserted, not just used: both boundary tests derive their date from
+    the same constant `TripForm.clean_date` reads, so widening it to five days would move
+    the expectation with the code and leave both tests green. Pinning the value here is
+    what makes the boundary a boundary in the other direction too.
     """
+    assert FUTURE_TRIP_DATE_TOLERANCE == timedelta(days=1)
     tomorrow = timezone.localdate() + FUTURE_TRIP_DATE_TOLERANCE
 
     response = auth_client.post(

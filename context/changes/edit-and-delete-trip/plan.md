@@ -418,6 +418,13 @@ Replace the deferral comment with one naming the receiver as the mechanism.
 `make_stored_track` already lives in `tests/gpx/conftest.py:40`, the same package — no
 fixture move needed.
 
+> **Correction (Phase 3, recorded during implementation review):** true for Phase 2 only.
+> Phase 3's `tests/trips/test_trip_delete.py` needs a stored track from a *different* test
+> package, so the fixture was moved to the root `tests/conftest.py` with
+> `StoredTrackFactory` re-exported there. The move is the correct call; this sentence is
+> what went stale.
+
+
 **File**: `tests/gpx/test_gpx_signals.py` (new)
 
 **Intent**: Cover the paths the receiver exists for and that no view test reaches.

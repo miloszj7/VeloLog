@@ -214,6 +214,29 @@ def test_put_is_rejected_as_a_disallowed_method(auth_client: Client, rider: User
 
 
 @pytest.mark.django_db
+def test_head_and_options_are_served_like_the_page_they_describe(
+    auth_client: Client, rider: User
+) -> None:
+    """`head` and `options` are in `http_method_names` on purpose, not by omission.
+
+    `View.setup` aliases `head` to `get`, so a page-serving view answers HEAD for free —
+    until the narrowing that closes `put` takes it away too. Narrowing to
+    `["get", "post"]` made this one of only two pages in the app that 405 a HEAD an
+    authenticated client is entitled to send. The `Allow` assertion is the other half:
+    OPTIONS answering is worth nothing if it advertises a verb the view refuses.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
+    url = reverse("trips:edit", kwargs={"pk": trip.pk})
+
+    assert auth_client.head(url).status_code == 200
+
+    options = auth_client.options(url)
+
+    assert options.status_code == 200
+    assert "PUT" not in options.headers["Allow"]
+
+
+@pytest.mark.django_db
 def test_name_of_a_future_dated_trip_can_be_edited_without_touching_its_date(
     auth_client: Client, rider: User
 ) -> None:

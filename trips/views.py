@@ -103,10 +103,14 @@ class TripUpdateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripUpdateVi
     # keeps that shared ownership visible to the next reader.
     template_name = "trips/trip_form.html"
     success_message = "Trip updated."
-    # GET and POST only. Left at the default, `ProcessFormView.put` re-enters `post()`
-    # against an empty `request.POST`, so a `PUT` would 200-re-render with every field
-    # in error instead of returning 405. `GpxUploadView` narrows the same way.
-    http_method_names = ["get", "post"]
+    # No write verbs beyond POST. Left at the default, `ProcessFormView.put` re-enters
+    # `post()` against an empty `request.POST`, so a `PUT` would 200-re-render with every
+    # field in error instead of returning 405. `GpxUploadView` narrows the same way.
+    #
+    # `head` and `options` stay in the list because this view serves a page: `View.setup`
+    # aliases `head` to `get`, and dropping them would make these two URLs the only pages
+    # in the app that refuse a HEAD an authenticated client is entitled to.
+    http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self) -> QuerySet[Trip]:
         """Restrict the lookup to trips owned by the requesting user.
@@ -135,8 +139,9 @@ class TripDeleteView(LoginRequiredMixin, _DeleteSuccessMessageMixinBase, _TripDe
     # `self.object.delete()`, destroying the trip and (via the `post_delete` receiver) its
     # GPX file without ever rendering the confirmation page. That page is the only guard
     # the detail-page Delete *link* relies on, so narrowing here is what makes the link
-    # safe to be a link.
-    http_method_names = ["get", "post"]
+    # safe to be a link. `head` and `options` are kept for the reason `TripUpdateView`
+    # gives: this view serves a page, and only `delete`/`put`/`patch` are the point.
+    http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self) -> QuerySet[Trip]:
         """Restrict the lookup to trips owned by the requesting user.

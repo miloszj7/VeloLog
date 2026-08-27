@@ -227,3 +227,24 @@ def test_http_delete_is_rejected_and_the_trip_survives(auth_client: Client, ride
 
     assert response.status_code == 405
     assert Trip.objects.filter(pk=trip.pk).exists()
+
+
+@pytest.mark.django_db
+def test_head_and_options_are_served_and_delete_nothing(auth_client: Client, rider: User) -> None:
+    """The same reason as `test_trip_edit.py`'s pair, plus the verb this page must refuse.
+
+    `head` aliases `get`, which only renders the confirmation page, so the survival
+    assertion is what separates "served" from "served and acted". `Allow` naming DELETE
+    would mean the narrowing that keeps the Delete link safe to be a link had been dropped.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
+    url = reverse("trips:delete", kwargs={"pk": trip.pk})
+
+    assert auth_client.head(url).status_code == 200
+
+    options = auth_client.options(url)
+
+    assert options.status_code == 200
+    assert "DELETE" not in options.headers["Allow"]
+    assert "PUT" not in options.headers["Allow"]
+    assert Trip.objects.filter(pk=trip.pk).exists()

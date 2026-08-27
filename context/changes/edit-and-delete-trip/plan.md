@@ -949,33 +949,33 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 #### Automated
 
-- [x] 4.1 CI-equivalence pytest run passes with no coverage regression
-- [x] 4.2 `clean_date()` shows no partial branch; `changed_data` guard exercised both ways
-- [x] 4.3 All six existing `test_trip_creation.py` posts pass unchanged
-- [x] 4.4 ruff, black, isort, mypy pass
-- [x] 4.5 `manage.py check` clean; `makemigrations --check --dry-run` clean or migration committed
-- [x] 4.6 No future-date literals in the new tests
+- [x] 4.1 CI-equivalence pytest run passes with no coverage regression — 66959da
+- [x] 4.2 `clean_date()` shows no partial branch; `changed_data` guard exercised both ways — 66959da
+- [x] 4.3 All six existing `test_trip_creation.py` posts pass unchanged — 66959da
+- [x] 4.4 ruff, black, isort, mypy pass — 66959da
+- [x] 4.5 `manage.py check` clean; `makemigrations --check --dry-run` clean or migration committed — 66959da
+- [x] 4.6 No future-date literals in the new tests — 66959da
 
 #### Manual
 
-- [x] 4.7 Trip dated next year shows a date error and does not save
-- [x] 4.8 Today's date saves normally
-- [x] 4.9 Date field renders a help text on the page saying it is when the ride happened
-- [x] 4.10 A future-dated trip's name can still be edited without touching its date
-- [x] 4.11 Admin can still change that trip's date
+- [x] 4.7 Trip dated next year shows a date error and does not save — 66959da
+- [x] 4.8 Today's date saves normally — 66959da
+- [x] 4.9 Date field renders a help text on the page saying it is when the ride happened — 66959da
+- [x] 4.10 A future-dated trip's name can still be edited without touching its date — 66959da
+- [x] 4.11 Admin can still change that trip's date — 66959da
 
 ### Phase 5: Bookkeeping — Roadmap, Backlog, Docs
 
 #### Automated
 
-- [ ] 5.1 S-04 `done` in glance table, item body and Backlog Handoff row; no "Waiting on S-02" text left on the S-04 or S-03 rows
-- [ ] 5.2 E-08 status consistent with whether Phase 4 shipped
-- [ ] 5.3 New start/end-date backlog row exists with trigger and PRD-amendment note
-- [ ] 5.4 CI-equivalence pytest run still passes
-- [ ] 5.5 `git log --oneline master..HEAD` shows every fix commit preceding its decision commit
+- [x] 5.1 S-04 `done` in glance table, item body and Backlog Handoff row; no "Waiting on S-02" text left on the S-04 or S-03 rows
+- [x] 5.2 E-08 status consistent with whether Phase 4 shipped
+- [x] 5.3 New start/end-date backlog row exists with trigger and PRD-amendment note
+- [x] 5.4 CI-equivalence pytest run still passes
+- [x] 5.5 `git log --oneline master..HEAD` shows every fix commit preceding its decision commit
 
 #### Manual
 
-- [ ] 5.6 `AGENTS.md` accurately describes `gpx/`'s file-lifecycle role and `trips/`'s edit/delete
-- [ ] 5.7 Roadmap reads correctly end to end, including the E-08-deferred case
-- [ ] 5.8 No file under `context/archive/` was modified
+- [x] 5.6 `AGENTS.md` accurately describes `gpx/`'s file-lifecycle role and `trips/`'s edit/delete
+- [x] 5.7 Roadmap reads correctly end to end, including the E-08-deferred case
+- [x] 5.8 No file under `context/archive/` was modified

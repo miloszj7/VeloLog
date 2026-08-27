@@ -968,14 +968,14 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 #### Automated
 
-- [x] 5.1 S-04 `done` in glance table, item body and Backlog Handoff row; no "Waiting on S-02" text left on the S-04 or S-03 rows
-- [x] 5.2 E-08 status consistent with whether Phase 4 shipped
-- [x] 5.3 New start/end-date backlog row exists with trigger and PRD-amendment note
-- [x] 5.4 CI-equivalence pytest run still passes
-- [x] 5.5 `git log --oneline master..HEAD` shows every fix commit preceding its decision commit
+- [x] 5.1 S-04 `done` in glance table, item body and Backlog Handoff row; no "Waiting on S-02" text left on the S-04 or S-03 rows — b11b38a
+- [x] 5.2 E-08 status consistent with whether Phase 4 shipped — b11b38a
+- [x] 5.3 New start/end-date backlog row exists with trigger and PRD-amendment note — b11b38a
+- [x] 5.4 CI-equivalence pytest run still passes — b11b38a
+- [x] 5.5 `git log --oneline master..HEAD` shows every fix commit preceding its decision commit — b11b38a
 
 #### Manual
 
-- [x] 5.6 `AGENTS.md` accurately describes `gpx/`'s file-lifecycle role and `trips/`'s edit/delete
-- [x] 5.7 Roadmap reads correctly end to end, including the E-08-deferred case
-- [x] 5.8 No file under `context/archive/` was modified
+- [x] 5.6 `AGENTS.md` accurately describes `gpx/`'s file-lifecycle role and `trips/`'s edit/delete — b11b38a
+- [x] 5.7 Roadmap reads correctly end to end, including the E-08-deferred case — b11b38a
+- [x] 5.8 No file under `context/archive/` was modified — b11b38a

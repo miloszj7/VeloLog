@@ -56,3 +56,15 @@ every `/10x-implement` run and let it shape implementation choices. Add to it vi
    pipeline runs `migrate` unattended before starting the app server — a forgotten
    migration file ships green through every automated gate and only surfaces as a
    production outage (`no such column`) after deploy.
+
+10. **A `post_delete` receiver is what makes a cascade's rows exist at all — file cleanup
+    on cascade is impossible without one.**
+    Source: `context/changes/edit-and-delete-trip/plan.md` (Key Discoveries, Phase 2),
+    verified against `django/db/models/deletion.py` in the installed source.
+    Why: `Collector.can_fast_delete()` returns `False` only when a model has
+    `pre_delete`/`post_delete` listeners. With no receiver, a parent's cascade
+    fast-deletes the child rows in one SQL statement and **never materializes them**, so
+    there is no instance to read a file path or any other external key from. Registering
+    the receiver is the mechanism, not merely the hook — and it must schedule its storage
+    work with `transaction.on_commit`, because `post_delete` fires inside the collector's
+    transaction and a delete performed there is already gone if the block later raises.

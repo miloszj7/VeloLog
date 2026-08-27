@@ -3,7 +3,7 @@ project: VeloLog
 version: 1
 status: draft
 created: 2026-08-22
-updated: 2026-08-26
+updated: 2026-08-27
 prd_version: 3
 main_goal: speed
 top_blocker: time
@@ -30,7 +30,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | S-01 | `user-registration-login`     | Register with email/password, and log in/out                                 | —              | FR-001, FR-002, US-01 | done |
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | done |
 | S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route on a non-interactive map (or empty state)| S-02           | FR-004, FR-005, US-01 | done |
-| S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | proposed |
+| S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | done |
 | S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
 
 ## Baseline
@@ -97,7 +97,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — edit/delete on an already-modeled Trip is table-stakes CRUD with no new domain concepts; safe to build alongside S-03 since neither depends on the other.
-- **Status:** proposed
+- **Status:** done
 
 ### S-05: User can view basic trip stats
 
@@ -117,8 +117,8 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 | ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ------------ | ------------ | ----- |
 | S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | [#1](https://github.com/miloszj7/VeloLog/issues/1) | [10X-1](https://linear.app/miloszj/issue/10X-1/s-01-user-can-register-log-in-and-log-out) | Run `/10x-plan user-registration-login` |
 | S-02       | `create-and-list-trips`          | Create and list trips                                       | yes                     | [#2](https://github.com/miloszj7/VeloLog/issues/2) | [10X-2](https://linear.app/miloszj/issue/10X-2/s-02-user-can-create-a-trip-and-see-it-in-their-trip-list) | Planned and implemented (Phase 5, `/10x-implement create-and-list-trips`) |
-| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | no                      | [#3](https://github.com/miloszj7/VeloLog/issues/3) | [10X-3](https://linear.app/miloszj/issue/10X-3/s-03-user-can-upload-a-gpx-file-and-see-the-route-as-a-static-map) | Waiting on S-02 |
-| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | no                      | [#4](https://github.com/miloszj7/VeloLog/issues/4) | [10X-4](https://linear.app/miloszj/issue/10X-4/s-04-user-can-edit-and-delete-a-trip) | Waiting on S-02 |
+| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | yes                     | [#3](https://github.com/miloszj7/VeloLog/issues/3) | [10X-3](https://linear.app/miloszj/issue/10X-3/s-03-user-can-upload-a-gpx-file-and-see-the-route-as-a-static-map) | Planned and implemented (Phase 6, `/10x-implement upload-gpx-and-view-map`) |
+| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | yes                     | [#4](https://github.com/miloszj7/VeloLog/issues/4) | [10X-4](https://linear.app/miloszj/issue/10X-4/s-04-user-can-edit-and-delete-a-trip) | Planned and implemented (Phase 5, `/10x-implement edit-and-delete-trip`) |
 | S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | [#5](https://github.com/miloszj7/VeloLog/issues/5) | [10X-5](https://linear.app/miloszj/issue/10X-5/s-05-user-can-view-basic-trip-stats) | Waiting on S-03 |
 
 Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions.
@@ -156,8 +156,10 @@ is picked up until its trigger fires.
 | E-05 | The `/data/db.sqlite3` restore path has never been exercised | Restore a backup into a scratch environment once, to prove the runbook | Before the deploy following S-03, once real user data exists | — | done (2026-08-26) | Drilled against production rather than a scratch environment — production held only test data, the cheapest this would ever be. Found **three** runbook defects, all corrected in `DEPLOY.md` → *Restore drill*: the documented DB restore was refused outright without `--overwrite`, and the documented media restore reported success while nesting the backup and recovering nothing. The scratch-target path still does not exist and is now the open remainder — see the note at the end of that section. |
 | E-06 | No structured logging or error tracking — `/healthz/` is the whole observability story | Introduce `LOGGING` config; a trips view 500ing in production is diagnosed only via `railway logs`. The dict must include a `velo_log` logger and a formatter that emits the `media_root` extra — `/healthz/` reports failures through logging alone, and its misconfigured-path detail is passed via `extra`, which `logging.lastResort` drops. See the Logging note in `velo_log/settings.py` | When the first production incident is diagnosed by guesswork | `logging-config` | done (2026-08-26) | [#12](https://github.com/miloszj7/VeloLog/issues/12) (closed) |
 | E-07 | The `$5` Railway spend alert is flagged un-reverified (`DEPLOY.md:43`) | Re-confirm the alert fires | Next time the Railway dashboard is open | — | open | — |
-| E-08 | `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | — | open | — |
+| E-08 | `TripForm` accepts a future-dated trip with no validation (found during S-02 Phase 3 manual verification) | Decide product intent (block future dates? allow and label as "planned"?) then add `clean_date()` if blocking is the answer | When trip-date semantics are next revisited, e.g. alongside S-03/S-04 | `edit-and-delete-trip` | done (2026-08-27) | Product intent was never actually open: E-08's "allow and label as 'planned'" branch is excluded by a named PRD Non-Goal (*"not a planner"*), and the owner confirmed usage is "always after riding" — so blocking was the only live option. See `context/changes/edit-and-delete-trip/frame.md`. The rule allows **one day** of slack, which is a timezone correction rather than a fudge: `TIME_ZONE = "UTC"` makes `timezone.localdate()` the UTC date while the `type="date"` widget submits the rider's local one, so a rider east of UTC filing a ride just after midnight is legitimately a day ahead. It is also skipped when the date is unchanged, so a trip already stored with a future date stays editable. The `date` field now carries help text saying it is the day the ride happened — the semantic gap the frame brief found underneath E-08. |
 | E-09 | `.github/workflows/deploy.yml` pins `actions/checkout@v4` and `astral-sh/setup-uv@v3.2.4`, both of which target the deprecated Node 20 runtime — CI already logs a deprecation warning since GitHub forces them onto Node 24 anyway | Bump `actions/checkout` to `v5+` and `astral-sh/setup-uv` to a Node-24-runtime major (`v10` confirmed Node 24; exact cutover unverified), re-pinning both to commit SHAs with trailing version comments per the existing convention | Before GitHub removes the forced Node 24 fallback and these actions stop running altogether | `ci-quality-gates` (found post-merge, F11) | open | — |
+| E-10 | `Trip.date` is a single `DateField` on a product whose subject is the **multi-day** tour — the owner's own framing: *"for one day trip it is simple, for multi day, better will be two date fields - start and end"* (2026-08-26) | Split `Trip.date` into start and end dates, and re-derive `Meta.ordering`, both templates, the admin column and `TripForm.clean_date`'s comparison from the pair | FR-011 (multi-stage grouping) — multi-day chronology actually lives there per `prd.md:99`, so the split has a consumer rather than being shape-for-its-own-sake. **Needs a PRD amendment first**: FR-003, FR-007 and the Primary Success Criterion all say "a date", singular | — | open | — |
+| E-11 | A GPX upload whose transaction rolls back leaves its file in storage with no row pointing at it (`gpx/views.py:100-113`) — `super().form_valid(form)` writes the file *inside* `transaction.atomic()`, and storage writes do not participate in the transaction. The `post_delete` receiver can never reach such a file: it fires on deletes, not on failed inserts, so this is the one gap in the "lifecycle owned end-to-end" claim in `AGENTS.md` | Move the file write outside the atomic block, or register a compensating rollback hook that discards the newly written file | The next time `gpx/views.py`'s upload transaction is touched — the block's ordering was hardened by three prior review findings, so it should be reopened deliberately rather than in passing | — (found during `edit-and-delete-trip` implementation review, F10) | open | — |
 
 ## Done
 

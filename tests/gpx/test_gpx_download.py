@@ -7,7 +7,7 @@ from django.test import Client
 from django.urls import reverse
 
 from gpx.models import GpxTrack
-from tests.gpx.conftest import StoredTrackFactory
+from tests.conftest import StoredTrackFactory
 from trips.models import Trip
 
 TRACK_BYTES = b'<?xml version="1.0"?><gpx version="1.1"><trk/></gpx>'

@@ -1,20 +1,48 @@
 {% extends "base.html" %}
 
-{% block title %}New trip — VeloLog{% endblock %}
+{% comment %}
+One template, two flows. `UpdateView` resolves to `trips/trip_form.html` by the same
+naming rule `CreateView` does, so rather than fork a near-duplicate the four strings that
+differ between creating and editing branch on `form.instance.pk` — set only once the form
+is bound to a saved trip. The field loop, the CSRF token and `non_field_errors` are shared
+verbatim, which is the point: the form conventions stay in one place.
+
+Each branch is written inline so the create flow's rendered markup is byte-identical to
+what it was before this file gained conditionals — `tests/trips/test_trip_creation.py`
+asserts the Cancel anchor as an exact string.
+{% endcomment %}
+{% block title %}{% if form.instance.pk %}Edit trip{% else %}New trip{% endif %} — VeloLog{% endblock %}
 
 {% block content %}
-    <h1>New trip</h1>
+    <h1>{% if form.instance.pk %}Edit trip{% else %}New trip{% endif %}</h1>
     <form method="post">
         {% csrf_token %}
         {{ form.non_field_errors }}
         {% for field in form %}
             <p>
                 {{ field.label_tag }}
+                {% comment %}
+                The `id` is load-bearing, not decoration. `BoundField.build_widget_attrs`
+                stamps `aria-describedby="<auto_id>_helptext"` onto the widget the moment a
+                field carries help text, so omitting the id here leaves that reference
+                dangling and the sentence unreachable to a screen reader. Same markup
+                Django's own `field.html` emits, for that reason. `{{ field.errors }}`
+                below needs no equivalent — `ErrorList` carries its own `field_id`.
+
+                Guarded, so `name` and `description` — which have no help text — render
+                exactly the bytes they did before.
+                {% endcomment %}
+                {% if field.help_text %}<div class="helptext"{% if field.auto_id %} id="{{ field.auto_id }}_helptext"{% endif %}>{{ field.help_text }}</div>{% endif %}
                 {{ field }}
                 {{ field.errors }}
             </p>
         {% endfor %}
-        <button type="submit">Save trip</button>
+        <button type="submit">{% if form.instance.pk %}Save changes{% else %}Save trip{% endif %}</button>
     </form>
-    <p><a href="{% url 'trips:list' %}">Cancel</a></p>
+    {% comment %}
+    Outside the `<form>`, as a sibling paragraph — Cancel is navigation, not a control
+    that submits anything. Editing returns to the trip being edited; creating has no trip
+    to return to, so it falls back to the list.
+    {% endcomment %}
+    <p><a href="{% if form.instance.pk %}{{ form.instance.get_absolute_url }}{% else %}{% url 'trips:list' %}{% endif %}">Cancel</a></p>
 {% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Delete {{ trip.name }} — VeloLog{% endblock %}
+
+{% block content %}
+    <h1>Delete this trip?</h1>
+    <p>You are about to delete <strong>{{ trip.name }}</strong> ({{ trip.date }}).</p>
+    {% comment %}
+    Branching in the template rather than on a new context key: this page is rendered by
+    `TripDeleteView` and nothing else, so the cross-app context-coupling trap that
+    `trips/views.py` documents cannot apply, and `trip_detail.html` already branches on
+    this same condition twice. One idiom, not two.
+
+    Worth its own sentence because it is the part a rider cannot re-derive: a name and a
+    date can be retyped, an uploaded GPX file cannot.
+    {% endcomment %}
+    {% if trip.tracks.exists %}
+        <p>Its GPX file will be deleted too.</p>
+    {% endif %}
+    <p>This cannot be undone.</p>
+    <form method="post">
+        {% csrf_token %}
+        {% comment %}
+        `BaseDeleteView` is form-based in Django 4+, so this template really does get a
+        `form` in its context. The empty form always validates, which makes a re-render
+        unreachable today — but every other form template in the repo renders this, and a
+        Delete button with no indication that anything failed is the failure mode the
+        convention exists to rule out.
+        {% endcomment %}
+        {{ form.non_field_errors }}
+        <button type="submit">Delete trip</button>
+    </form>
+    {% comment %}
+    Outside the `<form>`, as a sibling paragraph — Cancel is navigation, not a control
+    that submits anything. Same binding convention as `trip_form.html`.
+    {% endcomment %}
+    <p><a href="{{ trip.get_absolute_url }}">Cancel</a></p>
+{% endblock %}

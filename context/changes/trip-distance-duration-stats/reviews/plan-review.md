@@ -4,18 +4,24 @@
 - **Plan**: `context/changes/trip-distance-duration-stats/plan.md`
 - **Mode**: Deep
 - **Date**: 2026-08-27
-- **Verdict**: REVISE
-- **Findings**: 1 critical, 4 warnings, 4 observations
+- **Verdict**: REVISE → **SOUND** after triage (2026-08-27, all 9 findings fixed)
+- **Findings**: 1 critical, 4 warnings, 4 observations — 9 fixed, 0 skipped, 0 accepted,
+  0 dismissed
 
 ## Verdicts
 
-| Dimension | Verdict |
-|-----------|---------|
-| End-State Alignment | WARNING |
-| Lean Execution | WARNING |
-| Architectural Fitness | WARNING |
-| Blind Spots | FAIL |
-| Plan Completeness | WARNING |
+| Dimension | Verdict (at review) | After triage |
+|-----------|---------------------|--------------|
+| End-State Alignment | WARNING | PASS — F5 |
+| Lean Execution | WARNING | PASS — F7 |
+| Architectural Fitness | WARNING | PASS — F3 |
+| Blind Spots | FAIL | PASS — F1, F2, F6, F9 |
+| Plan Completeness | WARNING | PASS — F4, F8 |
+
+Triage changed the slice's shape in two ways worth carrying forward: it now ships
+**four** stats columns rather than five (F7 dropped `moving_seconds`, parked as a feature
+item on the roadmap), and the time stat is **recorded time**, not elapsed time (F6). Two
+new fixtures pin branches the original fixture set could not reach.
 
 ## Grounding
 
@@ -85,7 +91,12 @@ taking the plan's probe notes on faith:
   - Blind spot: `get_time_bounds` behaviour on a partial-time file (some points timed)
     is unverified; expected to return the bounds of the timed subset, which is the
     same all-or-nothing limitation F9 notes for elevation.
-- **Decision**: PENDING
+- **Decision**: FIXED — the probe is now `get_time_bounds().start_time is None`, applied
+  in Key Discoveries, in the "State sequencing" gate, and in Phase 1 §2. A
+  `single-point-track.gpx` fixture (Phase 1 §6) pins the branch, and the Phase 1 §8 test
+  contract requires it to fail if the probe is ever changed back to `get_duration()`.
+  The blind spot this fix carries — partial-time files — is now stated explicitly in
+  "What We're NOT Doing" as part of F9's fix.
 
 ### F2 — One-shot backfill, with the project's most-documented fault as its silent failure
 
@@ -131,7 +142,13 @@ taking the plan's probe notes on faith:
   - Confidence: MEDIUM — correct on the engineering merits, but reverses a decision the
     brief made deliberately.
   - Blind spot: Whether the owner will actually run a post-deploy command.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — migration `0003` kept; Phase 2 gained §3, a
+  `backfill_gpx_stats` management command over the same helper (`--all` to reprocess
+  every row, per-row failures reported not raised, exit 0 on a partially unreadable media
+  directory). Its tests are specified in Phase 2 §4, Migration Notes now names it as the
+  recovery path instead of "re-upload the affected file", "What We're NOT Doing" was
+  reworded from "no management command" to "no scheduled or automatic re-backfill", and
+  Phase 4 adds it to the AGENTS.md Development Commands table. Progress bullet 2.8 added.
 
 ### F3 — The per-row `except` cannot catch the failure it is described as preventing
 
@@ -164,7 +181,13 @@ taking the plan's probe notes on faith:
   - Confidence: HIGH — this is Django migration-graph loading behaviour, not a
     judgement call.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED — "Backfill robustness" now separates the two failures it was
+  conflating: a per-row failure (broad `except`, row left null, `migrate` succeeds) and
+  an import failure (evaluated at migration-graph build time, before any row, breaking
+  `migrate`, `makemigrations --check` and `manage.py check` at once). The import moves
+  inside the `RunPython` body under the same guard, with a comment saying why it is not
+  at module level; Phase 2 §2's contract states the same. The docstring pin is now named
+  as what defends against deletion, rather than the `except` being credited with it.
 
 ### F4 — `build_trip_stats`'s all-null rule restates the zero-vs-null trap one layer up
 
@@ -184,7 +207,11 @@ taking the plan's probe notes on faith:
 - **Fix**: State the rule in the contract as `all(value is None for value in …)`, and
   add a test for a track with `distance_meters = 0.0` and four `None`s asserting a
   populated `TripStats` is returned.
-- **Decision**: PENDING
+- **Decision**: FIXED — Phase 3 §1 now pins the rule as `all(value is None for value in
+  …)` and states why explicitly (`not any(...)` discards a legal all-identical-points
+  track storing `distance_meters = 0.0`), naming it as the same zero-versus-null trap one
+  layer up. The test is specified in Phase 3 §5 and in Testing Strategy. Under F7 the
+  companion `None`s are three, not four.
 
 ### F5 — Phase 4 syncs AGENTS.md but not the roadmap, though it cites the rule naming both
 
@@ -206,7 +233,11 @@ taking the plan's probe notes on faith:
 - **Fix**: Extend Phase 4 to cover the two roadmap rows alongside the `AGENTS.md`
   bullet, rename the phase to "Sync AGENTS.md and roadmap", and add a manual
   verification bullet (4.3) for the roadmap rows.
-- **Decision**: PENDING
+- **Decision**: FIXED — Phase 4 is renamed "Sync AGENTS.md and roadmap", its Overview
+  quotes both halves of lessons.md #5, and a new §2 specifies both edits against the
+  wording S-03/S-04 already use: slice-table status `planning` → `done`, issue-table
+  `Waiting on S-03` → `Planned and implemented (…)` with the shipped column `no` → `yes`.
+  Manual bullet 4.3 and the matching Progress entry added.
 
 ### F6 — "Elapsed duration" may not be what `get_duration()` measures on a tour export
 
@@ -226,7 +257,14 @@ taking the plan's probe notes on faith:
 - **Fix**: Decide and state the semantic in `ParsedTrack`'s field docstring and the
   template label ("recorded time" rather than "elapsed" if the sum is kept), and
   consider a two-segment fixture so the behaviour is pinned rather than inherited.
-- **Decision**: PENDING
+- **Decision**: FIXED — the semantic is decided in favour of the per-segment sum and
+  named **"recorded time"** throughout: a dedicated paragraph in the Overview, a Key
+  Discoveries bullet tracing `2341 → 1754 → 1119`, a `ParsedTrack` field docstring and a
+  model `help_text` (Phase 1 §2 and §3), and the template label in Phase 3 §4 ("Recorded
+  time", not "Elapsed time"). A `two-segment-track.gpx` fixture pins it — two timed
+  segments an hour each, six hours apart, so the sum and the first-to-last span cannot be
+  confused — asserted in Phase 1 §8 and Testing Strategy. Manual step 1 asks for one
+  check against a real multi-segment export.
 
 ### F7 — `moving_seconds` ships from the same call whose `max_speed` was excluded as unreliable
 
@@ -249,7 +287,15 @@ taking the plan's probe notes on faith:
 - **Fix**: Either state why moving time survives the argument that killed max speed, or
   drop `moving_seconds` — which would remove a column, a migration field, a formatter,
   a template row and three tests.
-- **Decision**: PENDING
+- **Decision**: FIXED by dropping `moving_seconds` — the second branch of the fix. The
+  slice now stores **four** columns, not five, and the whole of `get_moving_data()` is
+  excluded rather than one of its outputs. "What We're NOT Doing" states the reason
+  honestly: the two outputs are not equally suspect, but neither was probed against a
+  real ride, so deferring both together is an argument the slice can actually make.
+  Speed and moving-time stats are parked as a **feature** item in `roadmap.md`'s
+  `## Parked` section (not the Engineering Backlog — this is deferred product scope, not
+  debt), with the probe numbers, the reason, and the note that picking it up needs real
+  timed exports in hand. Every "five" in the plan was re-counted to "four".
 
 ### F8 — `change.md`'s E-11 scope note describes an approach the plan replaced
 
@@ -268,7 +314,11 @@ taking the plan's probe notes on faith:
   E-11's own trigger is genuinely not fired. Only the reasoning is stale.
 - **Fix**: Reword `change.md`'s E-11 paragraph to the actual basis — this change adds
   columns and a render path, and does not open `form_valid`'s transaction block.
-- **Decision**: PENDING
+- **Decision**: FIXED — `change.md`'s E-11 paragraph now states the actual basis: the
+  slice adds derived columns, fills them inside the existing `parse_gpx` call, and in
+  `gpx/views.py` touches `get_context_data` (`:66-78`) only, never opening the
+  transaction block at `:100-113`. The stale "reads `points` to compute distance" claim
+  is gone; the conclusion (E-11 stays open) is unchanged.
 
 ### F9 — Partial elevation passes the presence probe and reports gain over a subset
 
@@ -285,4 +335,9 @@ taking the plan's probe notes on faith:
 - **Fix**: Accept it explicitly in "What We're NOT Doing" (partial-elevation files
   report over the points that carry elevation), rather than leaving a reader to infer
   the gate is stronger than it is.
-- **Decision**: PENDING
+- **Decision**: FIXED — "What We're NOT Doing" gains a bullet stating that both gates are
+  all-or-nothing by design, covering the new `get_time_bounds()` probe as well as
+  elevation. It quotes gpxpy's "those are simply ignored", and argues the acceptance
+  rather than merely recording it: the gates exist to stop a wholly absent input
+  rendering as a confident `0`, and a subset-derived figure is an understated real number
+  rather than a fabricated one.

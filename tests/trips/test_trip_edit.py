@@ -193,6 +193,31 @@ def test_unauthenticated_get_redirects_to_login_with_next(client: Client, rider:
 
 
 @pytest.mark.django_db
+def test_unauthenticated_post_redirects_to_login_and_changes_nothing(
+    client: Client, rider: User
+) -> None:
+    """The write leg of the same rule the GET test above covers.
+
+    `LoginRequiredMixin` guards `dispatch`, so both verbs are covered by one mechanism —
+    which is exactly why the POST leg needs its own test: a regression in that mixin's
+    position in the MRO is invisible on the read path (an anonymous GET of a form page
+    leaks nothing much) and silently accepts an edit on the write path. The unchanged-name
+    assertion is the point; the 302 alone would pass against a view that saved first.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
+    edit_url = reverse("trips:edit", kwargs={"pk": trip.pk})
+
+    response = client.post(
+        edit_url, {"name": "Anonymous Edit", "date": "2026-06-01", "description": ""}
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"] == f"{reverse('login')}?next={edit_url}"
+    trip.refresh_from_db()
+    assert trip.name == "Alps Loop"
+
+
+@pytest.mark.django_db
 def test_put_is_rejected_as_a_disallowed_method(auth_client: Client, rider: User) -> None:
     """Holds only because the view narrows `http_method_names`.
 

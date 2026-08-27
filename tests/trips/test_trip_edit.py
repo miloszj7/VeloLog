@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from trips.models import Trip
 
@@ -210,3 +211,52 @@ def test_put_is_rejected_as_a_disallowed_method(auth_client: Client, rider: User
     assert response.status_code == 405
     trip.refresh_from_db()
     assert trip.name == "Alps Loop"
+
+
+@pytest.mark.django_db
+def test_name_of_a_future_dated_trip_can_be_edited_without_touching_its_date(
+    auth_client: Client, rider: User
+) -> None:
+    """The `changed_data` escape in `clean_date`, which is what stops the rule trapping.
+
+    Built via `Trip.objects.create` deliberately — the form is now what refuses to make a
+    future-dated trip, so going through it could not set this fixture up. Trips like this
+    exist for real: created through the admin, or before E-08 closed. Without the escape
+    the rider could not fix this trip's name without also moving its date, and editing is
+    the very capability this slice adds.
+    """
+    future = timezone.localdate() + timedelta(days=365)
+    trip = Trip.objects.create(name="Alps Loop", date=future, owner=rider)
+
+    response = auth_client.post(
+        reverse("trips:edit", kwargs={"pk": trip.pk}),
+        {"name": "Alps Grand Loop", "date": future.isoformat(), "description": ""},
+    )
+
+    assert response.status_code == 302
+    trip.refresh_from_db()
+    assert trip.name == "Alps Grand Loop"
+    assert trip.date == future
+
+
+@pytest.mark.django_db
+def test_moving_a_future_dated_trip_to_another_future_date_is_rejected(
+    auth_client: Client, rider: User
+) -> None:
+    """The escape is scoped to an *unchanged* date — it is not an exemption for the trip."""
+    future = timezone.localdate() + timedelta(days=365)
+    trip = Trip.objects.create(name="Alps Loop", date=future, owner=rider)
+
+    response = auth_client.post(
+        reverse("trips:edit", kwargs={"pk": trip.pk}),
+        {
+            "name": "Alps Loop",
+            "date": (future + timedelta(days=1)).isoformat(),
+            "description": "",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.context["form"].errors["date"]
+    trip.refresh_from_db()
+    assert trip.date == future

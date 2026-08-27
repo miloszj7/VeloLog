@@ -930,39 +930,39 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 #### Automated
 
-- [x] 3.1 CI-equivalence pytest run passes with no coverage regression
-- [x] 3.2 mypy passes — `DeleteView[Trip, Form]` and the separate `SuccessMessageMixin[Form]` alias import
-- [x] 3.3 ruff, black, isort pass
-- [x] 3.4 `manage.py check` and `makemigrations --check --dry-run` clean
-- [x] 3.5 `collectstatic --noinput` succeeds and `test_static_references.py` passes
-- [x] 3.6 Cross-user delete POST test asserts the trip still exists, not just the 404
+- [x] 3.1 CI-equivalence pytest run passes with no coverage regression — 2dfecfc
+- [x] 3.2 mypy passes — `DeleteView[Trip, Form]` and the separate `SuccessMessageMixin[Form]` alias import — 2dfecfc
+- [x] 3.3 ruff, black, isort pass — 2dfecfc
+- [x] 3.4 `manage.py check` and `makemigrations --check --dry-run` clean — 2dfecfc
+- [x] 3.5 `collectstatic --noinput` succeeds and `test_static_references.py` passes — 2dfecfc
+- [x] 3.6 Cross-user delete POST test asserts the trip still exists, not just the 404 — 2dfecfc
 
 #### Manual
 
-- [x] 3.7 Confirmation page names the trip and warns the GPX file goes too
-- [x] 3.8 Cancel returns to the trip with nothing deleted
-- [x] 3.9 Confirming removes trip, redirects to list, shows message, and the `.gpx` is gone from `MEDIA_ROOT`
-- [x] 3.10 Deleted trip's detail URL gives 404
-- [x] 3.11 Deleting a trip with no GPX file raises nothing and its confirmation page omits the GPX sentence
+- [x] 3.7 Confirmation page names the trip and warns the GPX file goes too — 2dfecfc
+- [x] 3.8 Cancel returns to the trip with nothing deleted — 2dfecfc
+- [x] 3.9 Confirming removes trip, redirects to list, shows message, and the `.gpx` is gone from `MEDIA_ROOT` — 2dfecfc
+- [x] 3.10 Deleted trip's detail URL gives 404 — 2dfecfc
+- [x] 3.11 Deleting a trip with no GPX file raises nothing and its confirmation page omits the GPX sentence — 2dfecfc
 
 ### Phase 4: E-08 — Block Future Dates and Label the Date Field
 
 #### Automated
 
-- [ ] 4.1 CI-equivalence pytest run passes with no coverage regression
-- [ ] 4.2 `clean_date()` shows no partial branch; `changed_data` guard exercised both ways
-- [ ] 4.3 All six existing `test_trip_creation.py` posts pass unchanged
-- [ ] 4.4 ruff, black, isort, mypy pass
-- [ ] 4.5 `manage.py check` clean; `makemigrations --check --dry-run` clean or migration committed
-- [ ] 4.6 No future-date literals in the new tests
+- [x] 4.1 CI-equivalence pytest run passes with no coverage regression
+- [x] 4.2 `clean_date()` shows no partial branch; `changed_data` guard exercised both ways
+- [x] 4.3 All six existing `test_trip_creation.py` posts pass unchanged
+- [x] 4.4 ruff, black, isort, mypy pass
+- [x] 4.5 `manage.py check` clean; `makemigrations --check --dry-run` clean or migration committed
+- [x] 4.6 No future-date literals in the new tests
 
 #### Manual
 
-- [ ] 4.7 Trip dated next year shows a date error and does not save
-- [ ] 4.8 Today's date saves normally
-- [ ] 4.9 Date field renders a help text on the page saying it is when the ride happened
-- [ ] 4.10 A future-dated trip's name can still be edited without touching its date
-- [ ] 4.11 Admin can still change that trip's date
+- [x] 4.7 Trip dated next year shows a date error and does not save
+- [x] 4.8 Today's date saves normally
+- [x] 4.9 Date field renders a help text on the page saying it is when the ride happened
+- [x] 4.10 A future-dated trip's name can still be edited without touching its date
+- [x] 4.11 Admin can still change that trip's date
 
 ### Phase 5: Bookkeeping — Roadmap, Backlog, Docs
 

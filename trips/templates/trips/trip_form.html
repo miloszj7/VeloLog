@@ -21,6 +21,18 @@ asserts the Cancel anchor as an exact string.
         {% for field in form %}
             <p>
                 {{ field.label_tag }}
+                {% comment %}
+                The `id` is load-bearing, not decoration. `BoundField.build_widget_attrs`
+                stamps `aria-describedby="<auto_id>_helptext"` onto the widget the moment a
+                field carries help text, so omitting the id here leaves that reference
+                dangling and the sentence unreachable to a screen reader. Same markup
+                Django's own `field.html` emits, for that reason. `{{ field.errors }}`
+                below needs no equivalent — `ErrorList` carries its own `field_id`.
+
+                Guarded, so `name` and `description` — which have no help text — render
+                exactly the bytes they did before.
+                {% endcomment %}
+                {% if field.help_text %}<div class="helptext"{% if field.auto_id %} id="{{ field.auto_id }}_helptext"{% endif %}>{{ field.help_text }}</div>{% endif %}
                 {{ field }}
                 {{ field.errors }}
             </p>

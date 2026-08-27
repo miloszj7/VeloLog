@@ -20,6 +20,14 @@
     <p>This cannot be undone.</p>
     <form method="post">
         {% csrf_token %}
+        {% comment %}
+        `BaseDeleteView` is form-based in Django 4+, so this template really does get a
+        `form` in its context. The empty form always validates, which makes a re-render
+        unreachable today — but every other form template in the repo renders this, and a
+        Delete button with no indication that anything failed is the failure mode the
+        convention exists to rule out.
+        {% endcomment %}
+        {{ form.non_field_errors }}
         <button type="submit">Delete trip</button>
     </form>
     {% comment %}

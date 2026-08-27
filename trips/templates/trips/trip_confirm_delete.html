@@ -14,7 +14,7 @@
     Worth its own sentence because it is the part a rider cannot re-derive: a name and a
     date can be retyped, an uploaded GPX file cannot.
     {% endcomment %}
-    {% if trip.tracks.all %}
+    {% if trip.tracks.exists %}
         <p>Its GPX file will be deleted too.</p>
     {% endif %}
     <p>This cannot be undone.</p>

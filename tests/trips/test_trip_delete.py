@@ -45,7 +45,7 @@ def test_owner_get_shows_the_confirmation_page_and_deletes_nothing(
 def test_confirmation_page_for_a_trackless_trip_omits_the_gpx_warning(
     auth_client: Client, rider: User
 ) -> None:
-    """The only automated check on the `{% if trip.tracks.all %}` branch.
+    """The only automated check on the `{% if trip.tracks.exists %}` branch.
 
     Warning a rider they are about to lose a file they never uploaded is the kind of
     wrong-but-harmless copy nothing else in the suite would catch.

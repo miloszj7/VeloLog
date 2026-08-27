@@ -4,18 +4,18 @@
 - **Plan**: `context/changes/edit-and-delete-trip/plan.md`
 - **Scope**: All 5 phases (full plan review)
 - **Date**: 2026-08-27
-- **Verdict**: NEEDS ATTENTION
+- **Verdict**: NEEDS ATTENTION → **ADDRESSED** after triage (all 10 findings decided, 2026-08-27: 9 fixed, 1 accepted as backlog E-11)
 - **Findings**: 0 critical, 5 warnings, 5 observations
 
 ## Verdicts
 
 | Dimension | Verdict |
 |-----------|---------|
-| Plan Adherence | WARNING |
+| Plan Adherence | WARNING → PASS (F6 annotated) |
 | Scope Discipline | PASS |
-| Safety & Quality | WARNING |
+| Safety & Quality | WARNING → PASS (F1, F2, F3, F7 fixed; F10 accepted as E-11) |
 | Architecture | PASS |
-| Pattern Consistency | WARNING |
+| Pattern Consistency | WARNING → PASS (F4, F8, F9 fixed) |
 | Success Criteria | PASS |
 
 ## Success criteria re-run (all green)
@@ -85,7 +85,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
     because `logger.exception` records the traceback.
   - Confidence: HIGH — exception surface read directly from the installed Django source.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: **FIXED** — widened to `except Exception:` with a `SuspiciousFileOperation` test that fails against the old guard (`c517b8b`).
 
 ### F2 — Registering the receiver also disables field deferral, so a cascade now loads every `points` blob
 
@@ -121,7 +121,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
     mode, and it is the one deletion path with no user watching it.
   - Confidence: MEDIUM — depends on whether bulk admin deletes over many trips ever happen.
   - Blind spot: Haven't measured actual resident memory for a realistic bulk delete.
-- **Decision**: PENDING
+- **Decision**: **FIXED via Fix A** — callback now closes over pk + storage key + storage; empty-key guard and log-context assertions added; deferral amplification documented in `AGENTS.md` (`9548b67`). Confirmed in passing that the collector nulls a deleted instance's pk, so the old callback logged `track_id: None`.
 
 ### F3 — Confirmation page materializes every track (with `points`) to answer an emptiness question
 
@@ -136,7 +136,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   row for the map. The template comment's reasoning (branch here, not on a new context key) is
   sound; only the accessor is wrong.
 - **Fix**: Change to `{% if trip.tracks.exists %}` — a `SELECT 1 … LIMIT 1`.
-- **Decision**: PENDING
+- **Decision**: **FIXED** — `{% if trip.tracks.exists %}`, with the trackless-branch test's docstring renamed to the accessor it guards (`dd9bbb5`; landed as two commits and squashed into one in the pre-merge history review).
 
 ### F4 — The one form template in the repo without `{{ form.non_field_errors }}`
 
@@ -153,7 +153,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   which is why this is a consistency finding rather than a UX defect — but the rule is recorded
   and `trips/views.py:129-131` shows the author already reasoning about that empty form.
 - **Fix**: Add `{{ form.non_field_errors }}` after `{% csrf_token %}`.
-- **Decision**: PENDING
+- **Decision**: **FIXED** — `{{ form.non_field_errors }}` added, with a comment on why the path is unreachable today (`d9d9e08`).
 
 ### F5 — The `+1 day` boundary tests cannot detect a widened tolerance
 
@@ -173,7 +173,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   and is unaffected.
 - **Fix**: Add `assert FUTURE_TRIP_DATE_TOLERANCE == timedelta(days=1)` to one of the two tests
   (keeping the constant in the arithmetic, so the intent stays readable).
-- **Decision**: PENDING
+- **Decision**: **FIXED** — `assert FUTURE_TRIP_DATE_TOLERANCE == timedelta(days=1)` added; verified that widening the constant to 5 days now fails the test (`fc7ef58`).
 
 ### F6 — `make_stored_track` moved against an explicit plan statement
 
@@ -190,7 +190,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   This is the only drift found in the whole change — there are no MISSING items.
 - **Fix**: None to the code. Optionally note the Phase-3 correction in the plan so a future
   reader of `plan.md:418-419` isn't misled.
-- **Decision**: PENDING
+- **Decision**: **FIXED (plan annotated)** — `plan.md:418-419` now carries a Phase-3 correction block rather than a rewrite, so the original claim stays visible next to what overtook it (`8939bb4`). No code change; the fixture move was the correct call.
 
 ### F7 — `test_trip_edit.py` has no unauthenticated-POST test
 
@@ -205,7 +205,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   *write* path, which is the leg that matters.
 - **Fix**: Add `test_unauthenticated_post_redirects_and_changes_nothing`, mirroring
   `test_trip_delete.py:189`.
-- **Decision**: PENDING
+- **Decision**: **FIXED** — `test_unauthenticated_post_redirects_to_login_and_changes_nothing` added, asserting the name is unchanged rather than only the 302 (`df4f2cf`).
 
 ### F8 — `TripCreateView` is the one form view that does not narrow `http_method_names`
 
@@ -221,7 +221,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   it undercuts the claim that narrowing is the project idiom.
 - **Fix**: Add `http_method_names = ["get", "post"]` to `TripCreateView` with the same comment,
   plus a `PUT → 405` test alongside the existing create tests.
-- **Decision**: PENDING
+- **Decision**: **FIXED** — `TripCreateView` narrowed to the same list as `TripUpdateView`, with a `PUT → 405` test that also pins the `Allow` header (`1ee8a88`).
 
 ### F9 — Narrowing to `["get", "post"]` also drops HEAD and OPTIONS
 
@@ -237,7 +237,7 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   redirect and never reaches the method check; only an authenticated HEAD sees the 405.
 - **Fix**: Use `["get", "post", "head", "options"]` on the two page-serving views, keeping the
   comments that explain what the narrowing closes.
-- **Decision**: PENDING
+- **Decision**: **FIXED** — both page-serving views now allow `head` and `options`; tests assert HEAD is served, `Allow` omits PUT/DELETE, and a HEAD of the delete page deletes nothing (`bb54afb`). Applied before F8 so the third view inherited the corrected list.
 
 ### F10 — The one orphan path the branch's cleanup story still does not cover
 
@@ -267,4 +267,22 @@ emits `label_tag`/`field`/`errors` only); and `model = Trip` at `trips/views.py:
   - Confidence: MEDIUM — the ordering inside that block is subtle and previously contested.
   - Blind spot: Haven't worked out whether moving the write out breaks the "new row and file saved
     first" invariant the docstring depends on.
-- **Decision**: PENDING
+- **Decision**: **ACCEPTED via Fix A** — recorded as roadmap **E-11**, triggered the next time `gpx/views.py`'s upload transaction is touched; `AGENTS.md`'s lifecycle claim now names the gap instead of implying it away (`6b10cee`). Code deliberately unchanged.
+
+## Triage outcome (2026-08-27)
+
+| Decision | Findings |
+|---|---|
+| Fixed | F1, F2 (Fix A), F3, F4, F5, F6 (plan annotation), F7, F8, F9 |
+| Accepted, recorded as backlog | F10 (Fix A → roadmap E-11) |
+| Skipped / dismissed | none |
+
+One fix per commit, `c517b8b`..`6b10cee`, every code fix landing before this record. Two
+fixes were verified by making them fail first: the widened catch (reverted to `OSError` →
+the new test fails) and the pinned tolerance (constant set to 5 days → the boundary test
+fails).
+
+Gates after triage, under the CI-equivalence command: `ruff`, `black`, `isort`,
+`mypy --strict`, `manage.py check` and the migration guard all clean; **163 passed**
+(baseline 157), coverage **99.80%** — unchanged, with `trips/models.py:22` still the only
+uncovered line repo-wide.

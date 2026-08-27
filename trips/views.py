@@ -56,6 +56,10 @@ class TripCreateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripCreateVi
     template_name = "trips/trip_form.html"
     success_url = reverse_lazy("trips:list")
     success_message = "Trip saved."
+    # The same narrowing, and the same list, as `TripUpdateView` below — the two views
+    # render one template through one form class, so a verb one of them refuses and the
+    # other answers with a field-error re-render is a difference with no reason behind it.
+    http_method_names = ["get", "post", "head", "options"]
 
     def form_valid(self, form: TripForm) -> HttpResponse:
         """Assign the requesting user as owner before saving the trip."""

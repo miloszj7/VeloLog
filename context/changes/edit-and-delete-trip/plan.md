@@ -912,38 +912,38 @@ Existing future-dated trips in production are **not** migrated or repaired. Phas
 
 #### Automated
 
-- [x] 2.1 CI-equivalence pytest run passes with no coverage regression
-- [x] 2.2 Both existing upload `on_commit` tests pass with scheduling moved
-- [x] 2.3 `grep -rn "discard_superseded_file\|handed to S-04" gpx/ tests/` returns no hits
-- [x] 2.4 ruff, black, isort, mypy pass
-- [x] 2.5 `manage.py check` and `makemigrations --check --dry-run` clean
-- [x] 2.6 Every new file-removal assertion sits inside `django_capture_on_commit_callbacks`
+- [x] 2.1 CI-equivalence pytest run passes with no coverage regression — d746f0f
+- [x] 2.2 Both existing upload `on_commit` tests pass with scheduling moved — d746f0f
+- [x] 2.3 `grep -rn "discard_superseded_file\|handed to S-04" gpx/ tests/` returns no hits — d746f0f
+- [x] 2.4 ruff, black, isort, mypy pass — d746f0f
+- [x] 2.5 `manage.py check` and `makemigrations --check --dry-run` clean — d746f0f
+- [x] 2.6 Every new file-removal assertion sits inside `django_capture_on_commit_callbacks` — d746f0f
 
 #### Manual
 
-- [x] 2.7 Replacement upload still removes the previous file from `MEDIA_ROOT`
-- [x] 2.8 Admin single-trip delete removes its GPX files
-- [x] 2.9 Admin **Delete selected trips** bulk action removes all their GPX files
-- [x] 2.10 Upload flow and detail page visibly unchanged
+- [x] 2.7 Replacement upload still removes the previous file from `MEDIA_ROOT` — d746f0f
+- [x] 2.8 Admin single-trip delete removes its GPX files — d746f0f
+- [x] 2.9 Admin **Delete selected trips** bulk action removes all their GPX files — d746f0f
+- [x] 2.10 Upload flow and detail page visibly unchanged — d746f0f
 
 ### Phase 3: Delete a Trip (FR-008)
 
 #### Automated
 
-- [ ] 3.1 CI-equivalence pytest run passes with no coverage regression
-- [ ] 3.2 mypy passes — `DeleteView[Trip, Form]` and the separate `SuccessMessageMixin[Form]` alias import
-- [ ] 3.3 ruff, black, isort pass
-- [ ] 3.4 `manage.py check` and `makemigrations --check --dry-run` clean
-- [ ] 3.5 `collectstatic --noinput` succeeds and `test_static_references.py` passes
-- [ ] 3.6 Cross-user delete POST test asserts the trip still exists, not just the 404
+- [x] 3.1 CI-equivalence pytest run passes with no coverage regression
+- [x] 3.2 mypy passes — `DeleteView[Trip, Form]` and the separate `SuccessMessageMixin[Form]` alias import
+- [x] 3.3 ruff, black, isort pass
+- [x] 3.4 `manage.py check` and `makemigrations --check --dry-run` clean
+- [x] 3.5 `collectstatic --noinput` succeeds and `test_static_references.py` passes
+- [x] 3.6 Cross-user delete POST test asserts the trip still exists, not just the 404
 
 #### Manual
 
-- [ ] 3.7 Confirmation page names the trip and warns the GPX file goes too
-- [ ] 3.8 Cancel returns to the trip with nothing deleted
-- [ ] 3.9 Confirming removes trip, redirects to list, shows message, and the `.gpx` is gone from `MEDIA_ROOT`
-- [ ] 3.10 Deleted trip's detail URL gives 404
-- [ ] 3.11 Deleting a trip with no GPX file raises nothing and its confirmation page omits the GPX sentence
+- [x] 3.7 Confirmation page names the trip and warns the GPX file goes too
+- [x] 3.8 Cancel returns to the trip with nothing deleted
+- [x] 3.9 Confirming removes trip, redirects to list, shows message, and the `.gpx` is gone from `MEDIA_ROOT`
+- [x] 3.10 Deleted trip's detail URL gives 404
+- [x] 3.11 Deleting a trip with no GPX file raises nothing and its confirmation page omits the GPX sentence
 
 ### Phase 4: E-08 — Block Future Dates and Label the Date Field
 

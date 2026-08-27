@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.files.base import ContentFile
 from django.test import Client
 from pytest_django.fixtures import Settings
 
@@ -21,6 +22,7 @@ GPX_BOUNDS = {
 }
 
 TrackFactory = Callable[..., GpxTrack]
+StoredTrackFactory = Callable[..., GpxTrack]
 
 
 @pytest.fixture(autouse=True)
@@ -116,5 +118,34 @@ def make_gpx_track() -> TrackFactory:
             original_filename=original_filename,
             **GPX_BOUNDS,
         )
+
+    return _make
+
+
+@pytest.fixture
+def make_stored_track() -> StoredTrackFactory:
+    """Return a factory that persists a `GpxTrack` whose file holds real bytes.
+
+    `make_gpx_track` above assigns a file *name* and nothing else, which is all the
+    read-side tests need. Anything that opens the file or asserts its removal needs bytes
+    on disk — under `MEDIA_ROOT`, which `_media_root_in_tmp_path` has already pointed at
+    `tmp_path`. Sits here rather than in `tests/gpx/conftest.py` for the same reason
+    `make_gpx_track` does: `tests/trips/` builds stored tracks too, now that deleting a
+    trip has to prove it took the file with it.
+    """
+
+    def _make(
+        trip: Trip,
+        content: bytes = b"<gpx/>",
+        original_filename: str = "alps-day-1.gpx",
+    ) -> GpxTrack:
+        track = GpxTrack.objects.create(
+            trip=trip,
+            points=GPX_POINTS,
+            original_filename=original_filename,
+            **GPX_BOUNDS,
+        )
+        track.file.save(original_filename, ContentFile(content), save=True)
+        return track
 
     return _make

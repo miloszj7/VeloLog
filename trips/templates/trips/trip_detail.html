@@ -24,6 +24,12 @@
     from drifting apart the way `trips/views.py` warns about.
     {% endcomment %}
     <p><a href="{% url 'trips:edit' pk=trip.pk %}">Edit trip</a></p>
+    {% comment %}
+    A link, not a form. What guards the destruction is the confirmation page it leads to,
+    plus `TripDeleteView.http_method_names`, which is what keeps the deletion itself
+    reachable by POST only.
+    {% endcomment %}
+    <p><a href="{% url 'trips:delete' pk=trip.pk %}">Delete trip</a></p>
 
     <h2>Route</h2>
     {% if track %}

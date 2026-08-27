@@ -13,7 +13,7 @@ from django.db import transaction
 from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 
 from gpx.models import GpxTrack
-from tests.gpx.conftest import StoredTrackFactory
+from tests.conftest import StoredTrackFactory
 from trips.models import Trip
 
 

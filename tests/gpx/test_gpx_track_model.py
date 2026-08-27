@@ -4,8 +4,7 @@ from django.core.files.storage import default_storage
 from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 
 from gpx.models import GpxTrack, gpx_upload_path
-from tests.conftest import GPX_POINTS, TrackFactory
-from tests.gpx.conftest import StoredTrackFactory
+from tests.conftest import GPX_POINTS, StoredTrackFactory, TrackFactory
 from trips.models import Trip
 
 

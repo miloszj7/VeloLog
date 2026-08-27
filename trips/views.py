@@ -4,9 +4,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import QuerySet
+from django.forms import Form
 from django.http import HttpResponse
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DetailView, ListView, UpdateView
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 # `gpx` already imports `trips` (its model points at `Trip`), so this line makes the
 # dependency mutual. Accepted rather than avoided: the trip detail page is where a route
@@ -23,13 +24,21 @@ if TYPE_CHECKING:
     _TripDetailViewBase = DetailView[Trip]
     _TripCreateViewBase = CreateView[Trip, TripForm]
     _TripUpdateViewBase = UpdateView[Trip, TripForm]
+    # Two parameters, and the second is `django.forms.Form` rather than `TripForm`:
+    # `BaseDeleteView` posts an empty `Form` it declares itself. The same reason forces a
+    # second `SuccessMessageMixin` alias below — the mixin is parameterized by the form,
+    # so `_SuccessMessageMixinBase` above (bound to `TripForm`) cannot be reused here.
+    _TripDeleteViewBase = DeleteView[Trip, Form]
     _SuccessMessageMixinBase = SuccessMessageMixin[TripForm]
+    _DeleteSuccessMessageMixinBase = SuccessMessageMixin[Form]
 else:
     _TripListViewBase = ListView
     _TripDetailViewBase = DetailView
     _TripCreateViewBase = CreateView
     _TripUpdateViewBase = UpdateView
+    _TripDeleteViewBase = DeleteView
     _SuccessMessageMixinBase = SuccessMessageMixin
+    _DeleteSuccessMessageMixinBase = SuccessMessageMixin
 
 
 class TripListView(LoginRequiredMixin, _TripListViewBase):
@@ -104,5 +113,39 @@ class TripUpdateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripUpdateVi
 
         The same body and the same reason as `TripDetailView.get_queryset` above: another
         user's pk 404s rather than 403s, for the write verbs as much as the read one.
+        """
+        return Trip.objects.filter(owner=cast(User, self.request.user))
+
+
+class TripDeleteView(LoginRequiredMixin, _DeleteSuccessMessageMixinBase, _TripDeleteViewBase):
+    """Deletes one of the requesting user's own trips, asking on GET and doing on POST."""
+
+    model = Trip
+    # Named rather than left to `template_name_suffix = "_confirm_delete"`, for the same
+    # reason `TripUpdateView` names its own: which template a view renders should be
+    # readable here, not reconstructed from a naming rule.
+    template_name = "trips/trip_confirm_delete.html"
+    success_url = reverse_lazy("trips:list")
+    # Static, not a `%(name)s` template. `BaseDeleteView` posts an empty `Form`, so
+    # `get_success_message` is handed `{}` and any interpolation placeholder raises.
+    success_message = "Trip deleted."
+    # GET and POST only, and load-bearing rather than stylistic here. Left at the default,
+    # `DeletionMixin.delete()` stays reachable — `View.dispatch` resolves a handler by
+    # method name, so a raw HTTP `DELETE` would run straight through `get_object()` to
+    # `self.object.delete()`, destroying the trip and (via the `post_delete` receiver) its
+    # GPX file without ever rendering the confirmation page. That page is the only guard
+    # the detail-page Delete *link* relies on, so narrowing here is what makes the link
+    # safe to be a link.
+    http_method_names = ["get", "post"]
+
+    def get_queryset(self) -> QuerySet[Trip]:
+        """Restrict the lookup to trips owned by the requesting user.
+
+        The same body and the same reason as `TripDetailView.get_queryset` above. This is
+        the whole authorization story for delete too: `BaseDeleteView.post` sets
+        `self.object = self.get_object()` before it builds the form, so a foreign pk 404s
+        on POST as well as on GET. The resolve-the-object-before-the-form override
+        `GpxUploadView.post` needs is deliberately *not* repeated here — the framework
+        already does it in the right order.
         """
         return Trip.objects.filter(owner=cast(User, self.request.user))

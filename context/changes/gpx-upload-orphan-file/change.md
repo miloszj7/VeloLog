@@ -9,6 +9,12 @@ archived_at: null
 
 ## Notes
 
+**Superseded**: the cause and proposed fix below are the pre-framing observation this change
+opened with. `frame.md` refuted both — the atomic block was never the cause — and
+`context/foundation/roadmap.md`'s E-11 row now records "Original proposal refuted" and the
+actual two-layer fix that shipped. Kept verbatim below as the historical record, not as a
+live description of what this change built.
+
 Roadmap Engineering Backlog **E-11** (`context/foundation/roadmap.md`), found during the
 `edit-and-delete-trip` implementation review (F10).
 

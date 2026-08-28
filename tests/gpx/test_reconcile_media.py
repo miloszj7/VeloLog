@@ -164,6 +164,26 @@ def test_a_negative_min_age_minutes_is_refused() -> None:
 
 
 @pytest.mark.django_db
+def test_a_freshly_written_orphan_spared_line_reports_its_size(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The spared-recent-file line should carry the size the orphan line already does."""
+    back_date(str(make_stored_track(trip).file.name))
+    content = b"<gpx>in-flight</gpx>"
+    fresh = write_orphan("gpx/1/1/in-flight.gpx", content=content, aged=False)
+
+    call_command("reconcile_media")
+
+    captured = capsys.readouterr()
+    assert (
+        f"Spared {fresh}: modified in the last {ORPHAN_MIN_AGE_MINUTES} minute(s) "
+        f"({len(content)} bytes)." in captured.err
+    )
+
+
+@pytest.mark.django_db
 def test_an_orphan_outside_the_gpx_prefix_is_found(
     trip: Trip,
     make_stored_track: StoredTrackFactory,
@@ -329,6 +349,39 @@ def test_an_unreadable_subdirectory_is_a_counted_skip_not_a_crash(
 
 
 @pytest.mark.django_db
+def test_a_directory_whose_mtime_cannot_be_read_is_not_called_recently_modified(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unreadable directory mtime must be reported as unreadable, not as 'recent'.
+
+    `if modified is None or modified > cutoff:` used to collapse both states into one
+    'modified recently' message — wrong when the mtime simply could not be read. Sparing
+    is correct either way; only the reported reason was wrong.
+    """
+    back_date(str(make_stored_track(trip).file.name))
+    write_orphan("gpx/9/9/stray.gpx")
+    back_date("gpx/9/9")
+    back_date("gpx/9")
+    real_get_modified_time = default_storage.get_modified_time
+
+    def vanish(name: str) -> object:
+        if name == "gpx/9/9":
+            raise FileNotFoundError(name)
+        return real_get_modified_time(name)
+
+    monkeypatch.setattr(default_storage, "get_modified_time", vanish, raising=True)
+
+    call_command("reconcile_media")
+
+    captured = capsys.readouterr()
+    assert "Spared directory gpx/9/9: it could not be read." in captured.err
+    assert "Spared directory gpx/9/9: modified in the last" not in captured.err
+
+
+@pytest.mark.django_db
 def test_a_directory_that_refuses_removal_is_a_counted_skip_not_a_crash(
     trip: Trip,
     make_stored_track: StoredTrackFactory,
@@ -441,6 +494,22 @@ def test_report_only_warns_about_the_skew_without_needing_the_flag(
     captured = capsys.readouterr()
     assert "not one of them is referenced" in captured.err
     assert "Refusing --delete." not in captured.err
+
+
+@pytest.mark.django_db
+def test_the_resolved_media_root_is_the_first_stderr_line(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The operator's whole safety story rests on knowing which tree was walked.
+
+    Nothing else in this command's output names `MEDIA_ROOT` — only its docstrings did,
+    before this — yet `DEPLOY.md`'s precondition and the `MSYS_NO_PATHCONV` trap both
+    assume the operator can see what was actually confirmed.
+    """
+    call_command("reconcile_media")
+
+    captured = capsys.readouterr()
+    assert captured.err.splitlines()[0] == f"MEDIA_ROOT: {settings.MEDIA_ROOT}"
 
 
 @pytest.mark.django_db

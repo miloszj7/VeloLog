@@ -189,6 +189,11 @@ class Command(BaseCommand):
                 "request is writing right now."
             )
 
+        # The command's entire safety story rests on the operator knowing which tree was
+        # scanned — the pairing guard below only catches a *complete* MEDIA_ROOT
+        # misconfiguration, not one where the operator misjudges a correct refusal.
+        self.stderr.write(f"MEDIA_ROOT: {settings.MEDIA_ROOT}")
+
         found, directories = walk_storage()
         referenced = {key for key in GpxTrack.objects.values_list("file", flat=True) if key}
 
@@ -212,7 +217,9 @@ class Command(BaseCommand):
                 continue
             if modified > cutoff:
                 spared += 1
-                self.stderr.write(f"Spared {key}: modified in the last {min_age} minute(s).")
+                self.stderr.write(
+                    f"Spared {key}: modified in the last {min_age} minute(s) ({size} bytes)."
+                )
                 continue
             orphans.append(key)
             self.stderr.write(f"Orphan {key} ({size} bytes).")
@@ -269,7 +276,10 @@ class Command(BaseCommand):
             if any(survivor.startswith(prefix) for survivor in surviving):
                 continue
             modified, _ = self._stat(key)
-            if modified is None or modified > cutoff:
+            if modified is None:
+                self.stderr.write(f"Spared directory {key}: it could not be read.")
+                continue
+            if modified > cutoff:
                 self.stderr.write(
                     f"Spared directory {key}: modified in the last {min_age} minute(s)."
                 )

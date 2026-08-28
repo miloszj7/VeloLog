@@ -16,6 +16,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 # unbroken; a model-level import in either direction is what would turn this into one.
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
+from gpx.statistics import build_trip_stats
 from trips.forms import TripForm
 from trips.models import Trip
 
@@ -86,13 +87,15 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         The unbound upload form is supplied here too. The page hosts a form it does not
         own, so this GET path and `GpxUploadView`'s re-render path have to present the
         same template with the same context keys — one of them bound, one of them not.
-        The map blob is on that list: a key supplied here and missed there would render
-        the "route could not be displayed" branch over a healthy track.
+        The map blob is on that list, and so is the stats blob: either key supplied here
+        and missed there renders a failure branch over healthy data — "route could not be
+        displayed" for the first, the re-upload sentence for the second.
         """
         context = super().get_context_data(**kwargs)
         track = self.object.tracks.first()
         context["track"] = track
         context["map_config"] = build_map_config(track)
+        context["stats"] = build_trip_stats(track)
         context["form"] = GpxUploadForm()
         return context
 

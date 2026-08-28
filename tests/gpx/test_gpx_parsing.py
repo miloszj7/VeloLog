@@ -1,3 +1,4 @@
+import gpxpy
 import gpxpy.parser
 import pytest
 
@@ -8,12 +9,19 @@ from gpx.exceptions import (
     GpxSyntaxError,
     GpxTooManyPointsError,
 )
-from gpx.parsing import parse_gpx, parse_gpx_bytes
+from gpx.parsing import parse_gpx, parse_gpx_bytes, track_statistics
 from tests.gpx.conftest import GpxBytesReader
 
 # Two bytes that are a valid UTF-16 BOM and never a valid UTF-8 sequence, kept as a
 # named constant so the encoding tests below read as intent rather than as an escape.
 UNDECODABLE = bytes([0xFF, 0xFE])
+
+# `timed-track.gpx` runs 08:00 → 09:00 in one segment.
+TIMED_TRACK_SECONDS = 3600.0
+# `two-segment-track.gpx` records 08:00 → 09:00 and 15:00 → 16:00. The sum of the two
+# segment spans is the recorded time; the span from its first point to its last is not.
+TWO_SEGMENT_RECORDED_SECONDS = 2 * 3600.0
+TWO_SEGMENT_WALL_CLOCK_SECONDS = 8 * 3600.0
 
 
 def test_gpxpy_parses_with_the_stdlib_backend() -> None:
@@ -68,6 +76,150 @@ def test_json_points_are_lists_the_json_field_can_store(gpx_bytes: GpxBytesReade
     parsed = parse_gpx_bytes(gpx_bytes("valid-track.gpx"))
 
     assert parsed.json_points() == [[50.06, 19.94], [50.07, 19.95], [50.05, 19.96]]
+
+
+def test_a_file_with_elevation_and_timestamps_populates_every_statistic(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """The fully-populated shape — no existing fixture carried both `<ele>` and `<time>`.
+
+    Distance and duration are asserted against the fixture's own geometry and clock.
+    The elevation figures are asserted as present and correctly signed rather than to a
+    decimal: gpxpy smooths the elevation series before summing it, so pinning the exact
+    metres would pin its smoothing constant rather than this module's behaviour. The
+    fixture descends further than it climbs, which is what `loss > gain` encodes.
+    """
+    parsed = parse_gpx_bytes(gpx_bytes("timed-track.gpx"))
+
+    assert parsed.distance_meters == pytest.approx(3661.09, abs=0.01)
+    assert parsed.duration_seconds == TIMED_TRACK_SECONDS
+    assert parsed.elevation_gain_meters is not None
+    assert parsed.elevation_loss_meters is not None
+    assert parsed.elevation_gain_meters > 0
+    assert parsed.elevation_loss_meters > parsed.elevation_gain_meters
+
+
+def test_a_file_with_elevation_but_no_timestamps_reports_no_duration(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """`is None`, never falsy: `0.0` is precisely the wrong value being pinned against."""
+    parsed = parse_gpx_bytes(gpx_bytes("valid-track.gpx"))
+
+    assert parsed.distance_meters == pytest.approx(3661.09, abs=0.01)
+    assert parsed.duration_seconds is None
+    assert parsed.elevation_gain_meters is not None
+    assert parsed.elevation_loss_meters is not None
+
+
+def test_a_file_with_neither_elevation_nor_timestamps_reports_only_distance(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    parsed = parse_gpx_bytes(gpx_bytes("second-track.gpx"))
+
+    assert parsed.distance_meters == pytest.approx(1829.71, abs=0.01)
+    assert parsed.duration_seconds is None
+    assert parsed.elevation_gain_meters is None
+    assert parsed.elevation_loss_meters is None
+
+
+def test_a_single_untimed_point_reports_no_duration_rather_than_zero(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """The case a `get_duration() is None` gate gets wrong, pinned so it cannot come back.
+
+    `GPXTrackSegment.get_duration` returns `0.0` for any segment of fewer than two
+    points *before* it reaches the timestamp check that returns `None`, and the file-level
+    call sums those zeros — so `get_duration()` reports `0.0`, not `None`, for this file.
+    `parse_gpx` accepts a one-point track, so this shape is reachable from a real upload.
+    """
+    raw = gpx_bytes("single-point-track.gpx")
+
+    assert gpxpy.parse(raw.decode()).get_duration() == 0.0
+
+    parsed = parse_gpx_bytes(raw)
+
+    assert parsed.duration_seconds is None
+
+
+def test_recorded_time_sums_the_segment_spans_and_excludes_the_gap_between_them(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """The recorded-time semantic, pinned rather than inherited.
+
+    gpxpy sums each segment's own first-to-last span and never counts the gap between
+    segments. On a multi-day tour that gap is every overnight, which is why the stat is
+    labelled "recorded time" and not "elapsed time". The fixture's two spans are an hour
+    each and sit six hours apart, so the two candidate numbers cannot be confused.
+    """
+    parsed = parse_gpx_bytes(gpx_bytes("two-segment-track.gpx"))
+
+    assert parsed.duration_seconds == TWO_SEGMENT_RECORDED_SECONDS
+    assert parsed.duration_seconds != TWO_SEGMENT_WALL_CLOCK_SECONDS
+
+
+def test_absent_elevation_is_stored_as_absent_even_though_gpxpy_reports_zero(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """Assert the zero-versus-null gate at its helper, not only through `parse_gpx`.
+
+    `get_uphill_downhill()` answers `(0, 0)` for a file that carries no `<ele>` at all —
+    storing that would render "0 m climbed" for an Alpine tour whose exporter omitted
+    elevation. The first assertion is what makes the second one mean something.
+    """
+    gpx = gpxpy.parse(gpx_bytes("second-track.gpx").decode())
+
+    assert gpx.get_uphill_downhill() == (0, 0)
+
+    statistics = track_statistics(gpx)
+
+    assert statistics.elevation_gain_meters is None
+    assert statistics.elevation_loss_meters is None
+
+
+def test_a_lone_elevated_point_reports_no_elevation_rather_than_zero() -> None:
+    """The zero-versus-null gate at its second degenerate case, alongside the first.
+
+    An elevation *presence* probe — any point carrying an `<ele>` — passes on this file,
+    but a climb is a sum of deltas and one point yields none, so `get_uphill_downhill()`
+    answers the same `(0, 0)` it answers for a file with no elevation at all. The first
+    assertion is what makes the second one mean something.
+    """
+    text = (
+        '<?xml version="1.0"?><gpx version="1.1" creator="test"><trk><trkseg>'
+        '<trkpt lat="50.06" lon="19.94"/>'
+        '<trkpt lat="50.07" lon="19.95"><ele>250.0</ele></trkpt>'
+        '<trkpt lat="50.05" lon="19.96"/>'
+        "</trkseg></trk></gpx>"
+    )
+
+    gpx = gpxpy.parse(text)
+
+    assert gpx.get_elevation_extremes().minimum == 250.0
+    assert gpx.get_uphill_downhill() == (0, 0)
+
+    parsed = parse_gpx(text)
+
+    assert parsed.elevation_gain_meters is None
+    assert parsed.elevation_loss_meters is None
+
+
+def test_two_elevated_points_are_enough_to_report_a_climb() -> None:
+    """The other side of the threshold: at two points a delta exists, so it is reported.
+
+    Pinned as a pair with the test above so a future tightening of the gate cannot quietly
+    refuse partially elevated files, which the design accepts deliberately — an understated
+    real climb is not the same failure as a fabricated zero.
+    """
+    parsed = parse_gpx(
+        '<?xml version="1.0"?><gpx version="1.1" creator="test"><trk><trkseg>'
+        '<trkpt lat="50.06" lon="19.94"><ele>100.0</ele></trkpt>'
+        '<trkpt lat="50.07" lon="19.95"><ele>250.0</ele></trkpt>'
+        '<trkpt lat="50.05" lon="19.96"/>'
+        "</trkseg></trk></gpx>"
+    )
+
+    assert parsed.elevation_gain_meters is not None
+    assert parsed.elevation_loss_meters is not None
 
 
 def test_malformed_xml_is_a_syntax_error(gpx_bytes: GpxBytesReader) -> None:

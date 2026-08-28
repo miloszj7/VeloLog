@@ -3,7 +3,7 @@ project: VeloLog
 version: 1
 status: draft
 created: 2026-08-22
-updated: 2026-08-27
+updated: 2026-08-28
 prd_version: 3
 main_goal: speed
 top_blocker: time
@@ -31,7 +31,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | S-02 | `create-and-list-trips`       | Create a trip (name, date, description) and see it in their trip list        | S-01           | FR-003, FR-006, US-01 | done |
 | S-03 | `upload-gpx-and-view-map`     | Upload a GPX file to a trip and see the route on a non-interactive map (or empty state)| S-02           | FR-004, FR-005, US-01 | done |
 | S-04 | `edit-and-delete-trip`        | Edit a trip's details or delete a trip                                       | S-02           | FR-007, FR-008        | done |
-| S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | proposed |
+| S-05 | `trip-distance-duration-stats`| See basic trip stats (distance, duration) on the trip detail view            | S-03           | FR-010                | done |
 
 ## Baseline
 
@@ -109,7 +109,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Not required for the primary proof — if the 2026-09-10 deadline gets tight, this is the first must-have-adjacent slice to reconsider deferring, since the PRD itself frames it as value-add rather than blocking.
-- **Status:** proposed
+- **Status:** done
 
 ## Backlog Handoff
 
@@ -119,7 +119,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 | S-02       | `create-and-list-trips`          | Create and list trips                                       | yes                     | [#2](https://github.com/miloszj7/VeloLog/issues/2) | [10X-2](https://linear.app/miloszj/issue/10X-2/s-02-user-can-create-a-trip-and-see-it-in-their-trip-list) | Planned and implemented (Phase 5, `/10x-implement create-and-list-trips`) |
 | S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | yes                     | [#3](https://github.com/miloszj7/VeloLog/issues/3) | [10X-3](https://linear.app/miloszj/issue/10X-3/s-03-user-can-upload-a-gpx-file-and-see-the-route-as-a-static-map) | Planned and implemented (Phase 6, `/10x-implement upload-gpx-and-view-map`) |
 | S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | yes                     | [#4](https://github.com/miloszj7/VeloLog/issues/4) | [10X-4](https://linear.app/miloszj/issue/10X-4/s-04-user-can-edit-and-delete-a-trip) | Planned and implemented (Phase 5, `/10x-implement edit-and-delete-trip`) |
-| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | no                      | [#5](https://github.com/miloszj7/VeloLog/issues/5) | [10X-5](https://linear.app/miloszj/issue/10X-5/s-05-user-can-view-basic-trip-stats) | Waiting on S-03 |
+| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | yes                     | [#5](https://github.com/miloszj7/VeloLog/issues/5) | [10X-5](https://linear.app/miloszj/issue/10X-5/s-05-user-can-view-basic-trip-stats) | Planned and implemented (Phase 5, `/10x-implement trip-distance-duration-stats`) |
 
 Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions.
 Mirrored to Linear on 2026-08-22 — see `context/foundation/linear-issues-migration.md` for the format, labels, and mirroring decisions.
@@ -136,6 +136,7 @@ _None — the PRD has 0 Open Questions, and no cross-cutting sequencing question
 - **FR-013 (trip metadata — start location, photos, companions)** — Why parked: nice-to-have, not required by the primary or secondary Success Criteria.
 - **FR-014 (accommodation waypoints between stages)** — Why parked: nice-to-have, depends on multi-stage grouping (FR-011) which is itself parked.
 - **FR-015 (interactive map)** — Why parked: PRD explicitly notes this is "the first feature after the core upload-and-view flow is validated" — a stated v2 priority, not v1.
+- **Speed and moving-time stats (average speed, max speed, moving time)** — Why parked: dropped from S-05 during its plan review (2026-08-27, F7). All three come out of gpxpy's `get_moving_data()`, which on S-05's synthetic probe input reported `max_speed = 0.0` and classified half a 3-point track's legs as stopped (`moving_time = 1800.0` against `7200.0` elapsed). S-05 shipped distance, recorded time and elevation instead, and deferred the whole call rather than ship one of its outputs while excluding another on reliability grounds it could not argue. Pick this up with **real timed exports in hand** — the thresholds behave sensibly on genuine 1 Hz data, so the question is empirical, not architectural. Adding it is one column, one migration field, one formatter and one template row on the structure S-05 already built.
 - **No external platform integration** — Why parked: PRD Non-Goals — avoids third-party API/OAuth complexity in v1.
 - **No route planning or track editing** — Why parked: PRD Non-Goals — VeloLog is a log/viewer, not a planner or editor.
 - **No native mobile app** — Why parked: PRD Non-Goals — a responsive web app is sufficient for v1.

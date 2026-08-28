@@ -108,14 +108,29 @@ def make_gpx_track() -> TrackFactory:
     Both the `trips` and `gpx` test packages build tracks, and the columns Phase 5
     renders the map from (`points` plus the four bounds) have to stay identical
     across them — so the defaults live here rather than in a per-package helper.
+
+    The four statistics default to `None` so every existing caller keeps producing the
+    track it always did — which is also the shape of a row uploaded before the stats
+    columns existed, and the one the detail page has to render deliberately.
     """
 
-    def _make(trip: Trip, original_filename: str = "alps-day-1.gpx") -> GpxTrack:
+    def _make(
+        trip: Trip,
+        original_filename: str = "alps-day-1.gpx",
+        distance_meters: float | None = None,
+        duration_seconds: float | None = None,
+        elevation_gain_meters: float | None = None,
+        elevation_loss_meters: float | None = None,
+    ) -> GpxTrack:
         return GpxTrack.objects.create(
             trip=trip,
             file="gpx/1/1/deadbeef.gpx",
             points=GPX_POINTS,
             original_filename=original_filename,
+            distance_meters=distance_meters,
+            duration_seconds=duration_seconds,
+            elevation_gain_meters=elevation_gain_meters,
+            elevation_loss_meters=elevation_loss_meters,
             **GPX_BOUNDS,
         )
 

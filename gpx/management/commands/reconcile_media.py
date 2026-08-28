@@ -19,8 +19,11 @@ nothing on the volume is referenced, and the flag itself.
 
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
+from django.conf import settings
+from django.core.exceptions import SuspiciousFileOperation
 from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand, CommandParser
 from django.utils import timezone
@@ -38,6 +41,41 @@ def _join(prefix: str, name: str) -> str:
     `FileField` stores them with forward slashes on every platform.
     """
     return f"{prefix}/{name}" if prefix else name
+
+
+def _is_walkable_directory(key: str) -> bool:
+    """Return whether a directory key is a real directory inside `MEDIA_ROOT`.
+
+    `Storage.listdir` classifies entries with `entry.is_dir()`, which follows symlinks, and
+    `safe_join` — the containment check behind `FileSystemStorage.path` — compares `abspath`
+    and never `realpath` (`django/utils/_os.py:65-92`). A symlinked directory therefore
+    passes that check, and `FileSystemStorage.delete`'s `os.remove` then follows the
+    symlinked *parent* and unlinks the real file behind it. So `ln -s /data/backups
+    /data/media/archive` would have this command reclaim the backups themselves.
+
+    Both halves of the test are load-bearing and neither subsumes the other:
+
+    - `is_symlink()` is what bounds the recursion. A self-referential link (`ln -s . loop`)
+      resolves to `MEDIA_ROOT`, which *is* inside `MEDIA_ROOT`, so containment alone would
+      recurse `loop/loop/loop/…` without limit. Every loop needs a symlink; refusing to
+      descend through one is what makes the walk terminate.
+    - Resolving both sides is what catches an escape that is not a symlink — a bind mount,
+      or a junction on Windows — where the entry is a genuine directory whose contents live
+      somewhere else entirely.
+
+    A symlinked file needs no such guard: `os.remove` on a symlink unlinks the link, not its
+    target, so only the directory case can reach outside the volume.
+    """
+    try:
+        path = Path(default_storage.path(key))
+    except SuspiciousFileOperation, NotImplementedError, ValueError:
+        return False
+    try:
+        if path.is_symlink():
+            return False
+        return path.resolve().is_relative_to(Path(settings.MEDIA_ROOT).resolve())
+    except OSError:
+        return False
 
 
 def walk_storage(prefix: str = "") -> tuple[list[str], list[str]]:
@@ -66,6 +104,15 @@ def walk_storage(prefix: str = "") -> tuple[list[str], list[str]]:
     directory_keys: list[str] = []
     for name in sorted(directories):
         child = _join(prefix, name)
+        if not _is_walkable_directory(child):
+            # `logger.warning` rather than a `self.stderr` line: this is not a per-item
+            # finding but a refusal to look, and the production root logger sits at
+            # WARNING, so it reaches `railway logs` where an operator will see it.
+            logger.warning(
+                "Refusing to walk a media directory that leaves MEDIA_ROOT",
+                extra={"storage_key": child},
+            )
+            continue
         child_files, child_directories = walk_storage(child)
         file_keys.extend(child_files)
         # The child's own subdirectories precede it, which is what makes the whole list

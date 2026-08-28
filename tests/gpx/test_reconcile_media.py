@@ -13,12 +13,14 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.utils import timezone
 
 from gpx.constants import ORPHAN_MIN_AGE_MINUTES
+from gpx.management.commands.reconcile_media import _is_walkable_directory
 from tests.conftest import StoredTrackFactory
 from trips.models import Trip
 
@@ -496,3 +498,96 @@ def test_a_second_delete_run_is_a_clean_no_op(
     captured = capsys.readouterr()
     assert "Scanned 1, referenced 1, orphaned 0, spared 0, reclaimed 0, skipped 0" in captured.out
     assert "directories pruned 0" in captured.out
+
+
+def _symlink_or_skip(link: Path, target: Path) -> None:
+    """Create a directory symlink, skipping where the platform refuses to make one.
+
+    Windows permits this only for a privileged process or one in Developer Mode. CI runs on
+    Linux, where it always works, so a local skip never weakens the guard where it counts.
+    """
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (OSError, NotImplementedError) as exc:  # pragma: no cover - platform dependent
+        pytest.skip(f"platform does not permit directory symlinks: {exc}")
+
+
+@pytest.mark.django_db
+def test_a_symlinked_directory_is_never_walked_or_reclaimed(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A symlink under `MEDIA_ROOT` must not let `--delete` reach the real file behind it.
+
+    `safe_join` compares `abspath` and never `realpath`, so `MEDIA_ROOT/archive/backup.gpx`
+    clears containment; `FileSystemStorage.delete`'s `os.remove` then follows the symlinked
+    parent and unlinks the real file. Staging a backup beside the volume and linking it in
+    is the shape this protects — the runbook sits next to the restore material, which is
+    exactly when someone would.
+    """
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    protected = outside / "backup.gpx"
+    protected.write_bytes(b"<gpx>backup</gpx>")
+
+    media_root = Path(settings.MEDIA_ROOT)
+    media_root.mkdir(parents=True, exist_ok=True)
+    _symlink_or_skip(media_root / "archive", outside)
+
+    track = make_stored_track(trip)
+    back_date(str(track.file.name))
+
+    call_command("reconcile_media", "--delete")
+
+    captured = capsys.readouterr()
+    assert protected.exists(), "the real file behind the symlink was reclaimed"
+    assert "backup.gpx" not in captured.err
+    assert "Scanned 1, referenced 1, orphaned 0" in captured.out
+
+
+@pytest.mark.django_db
+def test_a_symlink_loop_does_not_run_the_walk_out_of_stack(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`ln -s . loop` resolves to `MEDIA_ROOT` itself, so containment alone cannot stop it.
+
+    Refusing to descend through a symlink at all is what terminates the walk — without it
+    this recurses `loop/loop/loop/…` until the interpreter runs out of stack.
+    """
+    media_root = Path(settings.MEDIA_ROOT)
+    media_root.mkdir(parents=True, exist_ok=True)
+    _symlink_or_skip(media_root / "loop", media_root)
+
+    track = make_stored_track(trip)
+    back_date(str(track.file.name))
+
+    call_command("reconcile_media")
+
+    captured = capsys.readouterr()
+    assert "Scanned 1, referenced 1, orphaned 0" in captured.out
+
+
+def test_the_walk_guard_rejects_a_directory_that_resolves_outside_media_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The containment half of the guard, exercised without needing symlink privileges.
+
+    The two symlink tests above skip on a Windows box that is not in Developer Mode, so
+    without this the guard would go unproven on every local run and only ever be checked
+    in CI. Here the escape is injected at `storage.path`, which is the single point every
+    real escape — symlink, bind mount, Windows junction — arrives through.
+    """
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    inside = Path(settings.MEDIA_ROOT) / "gpx"
+    inside.mkdir(parents=True, exist_ok=True)
+
+    assert _is_walkable_directory("gpx") is True
+
+    monkeypatch.setattr(default_storage, "path", lambda key: str(outside), raising=True)
+    assert _is_walkable_directory("gpx") is False

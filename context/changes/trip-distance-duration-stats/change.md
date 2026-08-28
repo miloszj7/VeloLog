@@ -1,7 +1,7 @@
 ---
 change_id: trip-distance-duration-stats
 title: Show trip distance and duration stats on the trip detail view
-status: implemented
+status: impl_reviewed
 created: 2026-08-27
 updated: 2026-08-28
 archived_at: null

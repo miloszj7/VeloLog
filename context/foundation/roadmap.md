@@ -168,3 +168,4 @@ is picked up until its trigger fires.
 - **S-02: User can create a trip with a name, date, and description, and see it appear in a list of their own trips.** — Archived 2026-08-23 → `context/archive/2026-08-23-create-and-list-trips/`. Lesson: —.
 - **S-03: User can upload a GPX file to a trip and open the trip detail view to see the route drawn on a non-interactive map, with a clear empty state if no file is uploaded yet.** — Archived 2026-08-26 → `context/archive/2026-08-23-upload-gpx-and-view-map/`. Lesson: —.
 - **S-04: User can edit a trip's name, date, and description, or delete the trip entirely.** — Archived 2026-08-27 → `context/archive/2026-08-26-edit-and-delete-trip/`. Lesson: —.
+- **S-05: User can see basic trip stats (distance and duration), calculated from the uploaded GPX file, on the trip detail view.** — Archived 2026-08-28 → `context/archive/2026-08-27-trip-distance-duration-stats/`. Lesson: —.

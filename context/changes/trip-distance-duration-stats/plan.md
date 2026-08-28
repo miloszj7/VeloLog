@@ -764,28 +764,28 @@ corrected — the same helper, run on demand, with no re-upload required.
 
 #### Automated
 
-- [x] 3.1 Statistics tests pass
-- [x] 3.2 Detail-page stats tests pass
-- [x] 3.3 Existing detail and map tests still pass
-- [x] 3.4 Static references still resolve
-- [x] 3.5 Full suite passes with no `.env`
-- [x] 3.6 Lint, format, import order and strict typing pass
+- [x] 3.1 Statistics tests pass — 46e02ec
+- [x] 3.2 Detail-page stats tests pass — 46e02ec
+- [x] 3.3 Existing detail and map tests still pass — 46e02ec
+- [x] 3.4 Static references still resolve — 46e02ec
+- [x] 3.5 Full suite passes with no `.env` — 46e02ec
+- [x] 3.6 Lint, format, import order and strict typing pass — 46e02ec
 
 #### Manual
 
-- [x] 3.7 A trip with a timed GPX file shows all four stats, correctly formatted, labelled "Recorded time"
-- [x] 3.8 A trip with `valid-track.gpx` shows distance and elevation, recorded time marked not recorded
-- [x] 3.9 A trip with no GPX file shows no Stats section
-- [x] 3.10 An invalid-file re-render keeps the stats intact
-- [x] 3.11 The page is readable with the stylesheet blocked
+- [x] 3.7 A trip with a timed GPX file shows all four stats, correctly formatted, labelled "Recorded time" — 46e02ec
+- [x] 3.8 A trip with `valid-track.gpx` shows distance and elevation, recorded time marked not recorded — 46e02ec
+- [x] 3.9 A trip with no GPX file shows no Stats section — 46e02ec
+- [x] 3.10 An invalid-file re-render keeps the stats intact — 46e02ec
+- [x] 3.11 The page is readable with the stylesheet blocked — 46e02ec
 
 ### Phase 4: Sync AGENTS.md and roadmap
 
 #### Automated
 
-- [ ] 4.1 Full suite passes with no `.env`
+- [x] 4.1 Full suite passes with no `.env`
 
 #### Manual
 
-- [ ] 4.2 The `gpx/` bullet reads accurately against the shipped code
-- [ ] 4.3 Both S-05 roadmap rows read `done` / `Planned and implemented`, with no "Waiting on S-03" left
+- [x] 4.2 The `gpx/` bullet reads accurately against the shipped code
+- [x] 4.3 Both S-05 roadmap rows read `done` / `Planned and implemented`, with no "Waiting on S-03" left

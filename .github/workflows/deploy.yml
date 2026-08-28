@@ -19,7 +19,7 @@ jobs:
       DEBUG: "False"
       ALLOWED_HOSTS: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The vendored Leaflet bytes are the one part of the tree nothing else verifies:
       # `collectstatic` hashes whatever it finds, so a tampered or half-written asset
@@ -32,7 +32,7 @@ jobs:
         run: sha256sum -c SHA256SUMS
 
       - name: Install uv
-        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3.2.4
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       - name: Install dependencies
         run: uv sync --locked
@@ -69,7 +69,7 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Railway CLI
         run: npm i -g @railway/cli@5.43.1

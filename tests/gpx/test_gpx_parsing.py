@@ -176,6 +176,52 @@ def test_absent_elevation_is_stored_as_absent_even_though_gpxpy_reports_zero(
     assert statistics.elevation_loss_meters is None
 
 
+def test_a_lone_elevated_point_reports_no_elevation_rather_than_zero() -> None:
+    """The zero-versus-null gate at its second degenerate case, alongside the first.
+
+    An elevation *presence* probe — any point carrying an `<ele>` — passes on this file,
+    but a climb is a sum of deltas and one point yields none, so `get_uphill_downhill()`
+    answers the same `(0, 0)` it answers for a file with no elevation at all. The first
+    assertion is what makes the second one mean something.
+    """
+    text = (
+        '<?xml version="1.0"?><gpx version="1.1" creator="test"><trk><trkseg>'
+        '<trkpt lat="50.06" lon="19.94"/>'
+        '<trkpt lat="50.07" lon="19.95"><ele>250.0</ele></trkpt>'
+        '<trkpt lat="50.05" lon="19.96"/>'
+        "</trkseg></trk></gpx>"
+    )
+
+    gpx = gpxpy.parse(text)
+
+    assert gpx.get_elevation_extremes().minimum == 250.0
+    assert gpx.get_uphill_downhill() == (0, 0)
+
+    parsed = parse_gpx(text)
+
+    assert parsed.elevation_gain_meters is None
+    assert parsed.elevation_loss_meters is None
+
+
+def test_two_elevated_points_are_enough_to_report_a_climb() -> None:
+    """The other side of the threshold: at two points a delta exists, so it is reported.
+
+    Pinned as a pair with the test above so a future tightening of the gate cannot quietly
+    refuse partially elevated files, which the design accepts deliberately — an understated
+    real climb is not the same failure as a fabricated zero.
+    """
+    parsed = parse_gpx(
+        '<?xml version="1.0"?><gpx version="1.1" creator="test"><trk><trkseg>'
+        '<trkpt lat="50.06" lon="19.94"><ele>100.0</ele></trkpt>'
+        '<trkpt lat="50.07" lon="19.95"><ele>250.0</ele></trkpt>'
+        '<trkpt lat="50.05" lon="19.96"/>'
+        "</trkseg></trk></gpx>"
+    )
+
+    assert parsed.elevation_gain_meters is not None
+    assert parsed.elevation_loss_meters is not None
+
+
 def test_malformed_xml_is_a_syntax_error(gpx_bytes: GpxBytesReader) -> None:
     with pytest.raises(GpxSyntaxError):
         parse_gpx_bytes(gpx_bytes("malformed.gpx"))

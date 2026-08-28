@@ -35,6 +35,13 @@ METERS_PER_KILOMETER = 1000
 SECONDS_PER_MINUTE = 60
 SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE
 
+# The fewest points carrying an `<ele>` before `gpx/parsing.py` will report a climb.
+# Two, because a climb is a sum of deltas and one point yields no delta: a file with a
+# single elevated point satisfies every cheaper presence probe yet makes gpxpy return
+# exactly the `(0, 0)` that would render as "0 m climbed" for an Alpine tour — the one
+# string the elevation gate exists to prevent.
+MIN_ELEVATED_POINTS = 2
+
 # Paths of the Leaflet marker images `gpx/map_config.py` hands to the template, relative to
 # a static root. Resolved through `static()` at render — never written out as literal URLs —
 # because `CompressedManifestStaticFilesStorage` serves these under content-hashed names, so

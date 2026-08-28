@@ -151,7 +151,7 @@ def format_elevation(meters: float | None) -> str | None:
 
     Args:
         meters: The stored `elevation_gain_meters` or `elevation_loss_meters`, or `None`
-            when the file carried no `<ele>`.
+            when the file carried no usable `<ele>` — see `ParsedTrack`.
 
     Returns:
         A string such as `"1240 m"`, or `None`. Whole metres because the underlying figure

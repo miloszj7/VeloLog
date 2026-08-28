@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import gpxpy
 from gpxpy.gpx import GPX, GPXException, GPXXMLSyntaxException
 
-from gpx.constants import COORDINATE_DECIMAL_PLACES, MAX_GPX_POINTS
+from gpx.constants import COORDINATE_DECIMAL_PLACES, MAX_GPX_POINTS, MIN_ELEVATED_POINTS
 from gpx.exceptions import (
     GpxContentError,
     GpxEncodingError,
@@ -52,6 +52,29 @@ class TrackStatistics:
     elevation_loss_meters: float | None
 
 
+def _has_elevation_data(gpx: GPX) -> bool:
+    """Report whether the file carries enough elevation to compute a climb from.
+
+    Args:
+        gpx: The object `gpxpy.parse` returned.
+
+    Returns:
+        Whether at least `MIN_ELEVATED_POINTS` points carry an `<ele>`. Short-circuits on
+        reaching the threshold, so a fully elevated track stops after two points rather
+        than walking all of them.
+    """
+    elevated = 0
+    for track in gpx.tracks:
+        for segment in track.segments:
+            for point in segment.points:
+                if point.elevation is None:
+                    continue
+                elevated += 1
+                if elevated >= MIN_ELEVATED_POINTS:
+                    return True
+    return False
+
+
 def track_statistics(gpx: GPX) -> TrackStatistics:
     """Derive distance, recorded time and elevation change from a parsed track.
 
@@ -71,11 +94,14 @@ def track_statistics(gpx: GPX) -> TrackStatistics:
 
     # `get_uphill_downhill()` returns `UphillDownhill(0, 0)` — not `None` — for a file
     # with no `<ele>` at all, which would render as "0 m climbed" for an Alpine tour.
-    # The elevation extremes are the only reliable presence probe: `minimum` is `None`
-    # exactly when no point carried an elevation.
+    # Counting elevated points rather than probing `get_elevation_extremes().minimum`:
+    # that probe is satisfied by a *single* elevated point, and one point yields no delta,
+    # so gpxpy returns the same `(0, 0)` and the gate lets through exactly the value it was
+    # built to stop. A partially elevated file is still accepted — its climb is understated
+    # but real — and only the degenerate case below the threshold is refused.
     elevation_gain_meters: float | None = None
     elevation_loss_meters: float | None = None
-    if gpx.get_elevation_extremes().minimum is not None:
+    if _has_elevation_data(gpx):
         uphill_downhill = gpx.get_uphill_downhill()
         elevation_gain_meters = uphill_downhill.uphill
         elevation_loss_meters = uphill_downhill.downhill
@@ -126,9 +152,14 @@ class ParsedTrack:
     `None` when no point in the file carried a `<time>`.
     """
     elevation_gain_meters: float | None
-    """Total ascent in metres, or `None` when no point carried an `<ele>`."""
+    """Total ascent in metres, or `None` when the file carried no usable `<ele>`.
+
+    "Usable" means at least `MIN_ELEVATED_POINTS` points carried one. A climb is a sum of
+    deltas, so a lone elevated point yields zero rather than a figure, and storing that
+    zero is indistinguishable from the fabricated zero this gate exists to reject.
+    """
     elevation_loss_meters: float | None
-    """Total descent in metres, or `None` when no point carried an `<ele>`."""
+    """Total descent in metres, or `None` on the same terms as `elevation_gain_meters`."""
 
     def json_points(self) -> list[list[float]]:
         """Return the points in the shape `GpxTrack.points` stores and the map reads.

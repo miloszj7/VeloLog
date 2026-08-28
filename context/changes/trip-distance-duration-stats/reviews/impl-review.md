@@ -4,7 +4,7 @@
 - **Plan**: `context/changes/trip-distance-duration-stats/plan.md`
 - **Scope**: Full plan — Phases 1–4 of 4 (all Progress items `[x]`)
 - **Date**: 2026-08-28
-- **Verdict**: NEEDS ATTENTION
+- **Verdict**: NEEDS ATTENTION → **RESOLVED** (all 10 findings fixed; see per-finding decisions)
 - **Findings**: 0 critical, 4 warnings, 6 observations
 
 ## Verdicts
@@ -110,7 +110,7 @@ commits precede the epilogue that records their SHAs.
     must not stop on one row; a single locked-database blip would then block the deploy.
   - Confidence: MEDIUM — correct mechanically, but it trades away a stated requirement.
   - Blind spot: Whether Railway's boot sequence retries a failed `migrate` at all.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — per-row savepoint in migration `0003`, plus a `try/except` around the command's helper call that counts the row as skipped (commit `63f6d2a`).
 
 ### F2 — A file with one elevated point renders "0 m" climbed — the exact string the gate exists to prevent
 
@@ -156,7 +156,7 @@ commits precede the epilogue that records their SHAs.
     single user-visible defect the whole gating design was written against.
   - Confidence: MEDIUM — defensible, but it concedes the design's headline property.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — `_has_elevation_data` counts elevated points and gates on `MIN_ELEVATED_POINTS = 2`; both sides of the threshold pinned by tests (commit `68a0c11`).
 
 ### F3 — The page tells the rider a file "carried no timestamps" when it carried plenty
 
@@ -180,7 +180,7 @@ commits precede the epilogue that records their SHAs.
   did. A partially-timed multi-segment export is an ordinary GPS-dropout artifact.
 - **Fix**: Reword the docstring and the template note to "no usable timestamps" (or
   equivalent) so neither makes a false claim about the file's contents.
-- **Decision**: PENDING
+- **Decision**: FIXED — docstring and template both reworded to "no usable timestamps", with the multi-segment cause spelled out on `ParsedTrack.duration_seconds` (commit `6c64389`).
 
 ### F4 — The boot-time migration loads every `points` blob it never reads
 
@@ -198,7 +198,7 @@ commits precede the epilogue that records their SHAs.
   which is true today, but it costed the re-parse rather than the row residency.
 - **Fix**: Add `.only("id", "file", *STATS_FIELDS).iterator()` in both places —
   `save(update_fields=…)` works on a deferred instance, and `points` is never touched.
-- **Decision**: PENDING
+- **Decision**: FIXED — `.only(...).iterator()` in both the migration and the command; `original_filename` kept loaded in the command because its skip line prints it (commit `9623a31`).
 
 ### F5 — The template gates on truthiness in a change whose whole thesis is `is None`
 
@@ -216,7 +216,7 @@ commits precede the epilogue that records their SHAs.
   not a hypothetical value.
 - **Fix**: Use `{% if stats.distance is not None %}` — Django's template `if` supports
   `is not` — so the guarantee is explicit rather than incidental.
-- **Decision**: PENDING
+- **Decision**: FIXED — all four template gates are `is not None`, with a test pinning the formatter invariant the truthiness gate had been leaning on (commit `efd2626`).
 
 ### F6 — The zero-new-queries property is claimed in three docstrings and pinned by nothing
 
@@ -233,7 +233,7 @@ commits precede the epilogue that records their SHAs.
   no test failing.
 - **Fix**: Add one `django_assert_num_queries` assertion on `TripDetailView` with a track
   present, in `tests/trips/test_trip_detail_stats.py`.
-- **Decision**: PENDING
+- **Decision**: FIXED — absolute-count query assertion on `TripDetailView`. Note the correction to the suggested fix: a delta against a stats-free baseline cannot see this regression, because deferral costs the null render as many refresh queries as the populated one. Verified by injecting a `.only()` on the track queryset — 4 queries becomes 13 (commit `b141023`).
 
 ### F7 — The `getattr` loop hides `STATS_FIELDS` from `mypy --strict`
 
@@ -249,7 +249,7 @@ commits precede the epilogue that records their SHAs.
   lines below at `statistics.py:207-210`.
 - **Fix**: Build `stored` from an explicit tuple of the four attributes and keep
   `STATS_FIELDS` for `update_fields` and the queryset filters only.
-- **Decision**: PENDING
+- **Decision**: FIXED — `stored` is an explicit 4-tuple of attribute reads; `STATS_FIELDS` still names the set where the values are column names (commit `efd2626`).
 
 ### F8 — Banker's rounding renders a 30-second recorded time as "0 min"
 
@@ -266,7 +266,7 @@ commits precede the epilogue that records their SHAs.
   seconds, with no day wrap and no lost hours.
 - **Fix**: Use `math.floor(x + 0.5)` if half-up is wanted, or add a line to the docstring
   recording banker's rounding as deliberate so it isn't read as a bug later.
-- **Decision**: PENDING
+- **Decision**: FIXED via half-up — shared `_round_half_up` helper used by both formatters, so the two cannot drift on the rule. Boundary pinned at 30 s and 0.5 m (commit `82e412e`).
 
 ### F9 — Migration 0003's import guard is narrower than the plan specified
 
@@ -284,7 +284,7 @@ commits precede the epilogue that records their SHAs.
   `manage.py check` together, precisely the triple failure the design note at `0003:19-25`
   says the guard exists to avoid.
 - **Fix**: Widen to `except Exception`.
-- **Decision**: PENDING
+- **Decision**: FIXED — guard widened to `except Exception`, with the reason recorded in the migration's docstring (commit `63f6d2a`).
 
 ### F10 — The distance fallback prints a sentence describing an impossible state
 
@@ -300,4 +300,4 @@ commits precede the epilogue that records their SHAs.
   cannot be true.
 - **Fix**: Reword to name the real cause (statistics not computed for this row), or drop the
   branch and let a null distance fall through to the `{% else %}` at line 106.
-- **Decision**: PENDING
+- **Decision**: FIXED via reword — the branch survives as a defensive fallback and no longer blames the file for a state the file cannot be in (commit `6c64389`).

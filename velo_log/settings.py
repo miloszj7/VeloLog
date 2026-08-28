@@ -189,17 +189,30 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2621440  # 2.5 MB
 # https://docs.djangoproject.com/en/6.0/topics/logging/
 
 
-class _MediaRootDefaultFilter(logging.Filter):
-    """Default a missing `media_root` field so the formatter can render it unconditionally.
+# Every optional `extra=` key the `verbose` formatter renders. A key listed here is
+# rendered on *every* line, empty when the record did not supply it — which is what lets
+# the format string name it unconditionally. Adding a key here and to the format string
+# is the whole cost of surfacing a new piece of context.
+LOG_CONTEXT_KEYS = ("media_root", "track_id", "storage_key")
+
+
+class _LogContextDefaultFilter(logging.Filter):
+    """Default every missing context field so the formatter can render them unconditionally.
 
     Most records through this handler (e.g. `logger.exception` calls with no `extra=`)
-    never set `media_root`; without this, `{media_root}` in the format string would raise
-    `KeyError` at format time for every one of them.
+    never set any of them; without this, `{media_root}` and friends in the format string
+    would raise `KeyError` at format time for every one of them.
+
+    `track_id` and `storage_key` are here because `gpx/signals.py` already passes both on
+    the one line that reports a stranded file, and a report that does not name the key is
+    not actionable — `reconcile_media` reclaims by key. This discharges the E-06 deferral
+    recorded in `context/archive/2026-08-26-logging-config/plan.md:85-88`.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if not hasattr(record, "media_root"):
-            record.media_root = ""
+        for key in LOG_CONTEXT_KEYS:
+            if not hasattr(record, key):
+                setattr(record, key, "")
         return True
 
 
@@ -226,11 +239,14 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "filters": {
-        "media_root_default": {"()": "velo_log.settings._MediaRootDefaultFilter"},
+        "log_context_default": {"()": "velo_log.settings._LogContextDefaultFilter"},
     },
     "formatters": {
         "verbose": {
-            "format": "{asctime} {levelname} {name} {message} media_root={media_root}",
+            "format": (
+                "{asctime} {levelname} {name} {message} "
+                "media_root={media_root} track_id={track_id} storage_key={storage_key}"
+            ),
             "style": "{",
         },
     },
@@ -239,7 +255,7 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
             "formatter": "verbose",
-            "filters": ["media_root_default"],
+            "filters": ["log_context_default"],
         },
     },
     "loggers": {

@@ -766,35 +766,35 @@ the volume is referenced refuses to proceed without `--allow-full-sweep`.
 
 #### Automated
 
-- [x] 2.1 Lint, format, import order, strict typing all pass
-- [x] 2.2 The command is registered and self-describes
-- [x] 2.3 The full-sweep refusal is on the command's surface
-- [x] 2.4 A clean tree reports zero orphans and exits 0
-- [x] 2.5 Full suite with coverage passes under CI-equivalent env
-- [x] 2.6 Coverage still meets `fail_under = 80` with `gpx/management/` in scope
+- [x] 2.1 Lint, format, import order, strict typing all pass — 5ba86d3
+- [x] 2.2 The command is registered and self-describes — 5ba86d3
+- [x] 2.3 The full-sweep refusal is on the command's surface — 5ba86d3
+- [x] 2.4 A clean tree reports zero orphans and exits 0 — 5ba86d3
+- [x] 2.5 Full suite with coverage passes under CI-equivalent env — 5ba86d3
+- [x] 2.6 Coverage still meets `fail_under = 80` with `gpx/management/` in scope — 5ba86d3
 
 #### Manual
 
-- [x] 2.7 Report names the four known empty local directories and no orphaned files
-- [x] 2.8 `--delete` removes those directories and leaves every referenced file untouched
-- [x] 2.9 A second `--delete` run reports zero and changes nothing
-- [x] 2.10 Report-only output is legible as plain log-style text
-- [x] 2.11 The refusal message, read cold, names the likely state, why reclaiming is wrong, and the override flag
+- [x] 2.7 Report names the four known empty local directories and no orphaned files — 5ba86d3
+- [x] 2.8 `--delete` removes those directories and leaves every referenced file untouched — 5ba86d3
+- [x] 2.9 A second `--delete` run reports zero and changes nothing — 5ba86d3
+- [x] 2.10 Report-only output is legible as plain log-style text — 5ba86d3
+- [x] 2.11 The refusal message, read cold, names the likely state, why reclaiming is wrong, and the override flag — 5ba86d3
 
 ### Phase 3: Observability — make a stranded key identifiable in the log
 
 #### Automated
 
-- [ ] 3.1 Lint, format, import order, strict typing all pass
-- [ ] 3.2 Django loads the logging config without error
-- [ ] 3.3 Full suite with coverage passes under CI-equivalent env
-- [ ] 3.4 The existing `caplog`-based signal tests still pass
+- [x] 3.1 Lint, format, import order, strict typing all pass
+- [x] 3.2 Django loads the logging config without error
+- [x] 3.3 Full suite with coverage passes under CI-equivalent env
+- [x] 3.4 The existing `caplog`-based signal tests still pass
 
 #### Manual
 
-- [ ] 3.5 A forced cleanup failure prints one line naming both track id and storage key
-- [ ] 3.6 An unrelated log line still formats, with the new keys empty rather than raising
-- [ ] 3.7 Local `runserver` output is still readable
+- [x] 3.5 A forced cleanup failure prints one line naming both track id and storage key
+- [x] 3.6 An unrelated log line still formats, with the new keys empty rather than raising
+- [x] 3.7 Local `runserver` output is still readable
 
 ### Phase 4: Documentation and roadmap — make the written record true
 

@@ -785,27 +785,27 @@ the volume is referenced refuses to proceed without `--allow-full-sweep`.
 
 #### Automated
 
-- [x] 3.1 Lint, format, import order, strict typing all pass
-- [x] 3.2 Django loads the logging config without error
-- [x] 3.3 Full suite with coverage passes under CI-equivalent env
-- [x] 3.4 The existing `caplog`-based signal tests still pass
+- [x] 3.1 Lint, format, import order, strict typing all pass — 42b6d7c
+- [x] 3.2 Django loads the logging config without error — 42b6d7c
+- [x] 3.3 Full suite with coverage passes under CI-equivalent env — 42b6d7c
+- [x] 3.4 The existing `caplog`-based signal tests still pass — 42b6d7c
 
 #### Manual
 
-- [x] 3.5 A forced cleanup failure prints one line naming both track id and storage key
-- [x] 3.6 An unrelated log line still formats, with the new keys empty rather than raising
-- [x] 3.7 Local `runserver` output is still readable
+- [x] 3.5 A forced cleanup failure prints one line naming both track id and storage key — 42b6d7c
+- [x] 3.6 An unrelated log line still formats, with the new keys empty rather than raising — 42b6d7c
+- [x] 3.7 Local `runserver` output is still readable — 42b6d7c
 
 ### Phase 4: Documentation and roadmap — make the written record true
 
 #### Automated
 
-- [ ] 4.1 No stale reference to E-11 as an open hole survives
-- [ ] 4.2 The command named in `AGENTS.md` actually exists and runs
-- [ ] 4.3 Full suite still passes under CI-equivalent env
+- [x] 4.1 No stale reference to E-11 as an open hole survives
+- [x] 4.2 The command named in `AGENTS.md` actually exists and runs
+- [x] 4.3 Full suite still passes under CI-equivalent env
 
 #### Manual
 
-- [ ] 4.4 `AGENTS.md`'s `gpx/` bullet, read cold, correctly predicts which paths clean up a file
-- [ ] 4.5 The `DEPLOY.md` section is followable by someone who has never run the command
-- [ ] 4.6 E-11's rewritten row would not mislead a reader arriving with no other context
+- [x] 4.4 `AGENTS.md`'s `gpx/` bullet, read cold, correctly predicts which paths clean up a file
+- [x] 4.5 The `DEPLOY.md` section is followable by someone who has never run the command
+- [x] 4.6 E-11's rewritten row would not mislead a reader arriving with no other context

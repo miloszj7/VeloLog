@@ -6,7 +6,7 @@ and the data write are independently reversible, and reversing this one is a no-
 
 import logging
 
-from django.db import migrations
+from django.db import migrations, transaction
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.migrations.state import StateApps
 
@@ -23,10 +23,16 @@ def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> 
     `manage.py check` all at once, and the per-row guard below would never get the chance
     to run. Under the guard the same rename degrades to one logged skip, and a replay on
     a fresh database still succeeds.
+
+    The guard is `except Exception`, not `except ImportError`. A rename or a move raises
+    `ModuleNotFoundError` and would be caught either way, but a module-level `SyntaxError`,
+    a `NameError` or a new circular import inside `gpx.statistics` is the same event from
+    this migration's point of view — application code changed shape — and produces exactly
+    the triple break described above. `ImportError` alone would let all three through.
     """
     try:
         from gpx.statistics import backfill_track_statistics
-    except ImportError:
+    except Exception:
         logger.exception(
             "gpx.statistics is unavailable; leaving existing track statistics null. "
             "Run `manage.py backfill_gpx_stats` once it is importable again."
@@ -41,7 +47,16 @@ def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> 
     tracks = gpx_track.objects.using(schema_editor.connection.alias)
     for track in tracks.filter(distance_meters__isnull=True):
         try:
-            backfill_track_statistics(track)
+            # The inner `atomic()` is a savepoint, and it is what makes the broad catch
+            # below mean what its comment says. `Model.save_base` wraps its write in
+            # `mark_for_rollback_on_error`, which sets `needs_rollback` on the enclosing
+            # transaction *before* re-raising — so without a savepoint to unwind, catching
+            # the error here leaves the transaction poisoned: every later row's `save()`
+            # raises `TransactionManagementError`, this same catch swallows that too, and
+            # `Atomic.__exit__` rolls the whole migration back without raising. `migrate`
+            # would print OK and exit 0 having written nothing.
+            with transaction.atomic():
+                backfill_track_statistics(track)
         except Exception:
             # The helper already absorbs an unreadable file and bytes that no longer
             # parse. What is left is the `save()` and whatever a future version of the

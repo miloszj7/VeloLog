@@ -11,12 +11,15 @@ It carries no computation of its own — every line of that lives in `gpx/statis
 the same helper the migration calls, so the two cannot drift.
 """
 
+import logging
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandParser
 
 from gpx.models import GpxTrack
 from gpx.statistics import backfill_track_statistics
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -37,8 +40,9 @@ class Command(BaseCommand):
 
         A partially unreadable media directory is exactly the situation this command
         exists for, so it is a report rather than a crash: the helper absorbs a row whose
-        file cannot be read, and the tally is what tells the operator how many rows are
-        still waiting on a corrected `MEDIA_ROOT`.
+        file cannot be read, the loop below absorbs a row whose write fails, and the tally
+        is what tells the operator how many rows are still waiting on a corrected
+        `MEDIA_ROOT`.
         """
         tracks = GpxTrack.objects.all()
         if not options["all"]:
@@ -51,7 +55,20 @@ class Command(BaseCommand):
         filled = 0
         skipped = 0
         for track in tracks.iterator():
-            if backfill_track_statistics(track):
+            try:
+                refilled = backfill_track_statistics(track)
+            except Exception:
+                # The helper absorbs an unreadable file and bytes that no longer parse on
+                # its own, so what reaches here is the `save()`. A tally is this command's
+                # entire contract — the operator runs it precisely because something is
+                # already wrong — so one failing row is a skip, not an abort that leaves
+                # an arbitrary prefix of rows filled and prints no count at all.
+                logger.exception(
+                    "Could not backfill track statistics", extra={"track_id": track.pk}
+                )
+                refilled = False
+
+            if refilled:
                 filled += 1
             else:
                 skipped += 1

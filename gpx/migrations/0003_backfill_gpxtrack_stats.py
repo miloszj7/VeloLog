@@ -1,0 +1,65 @@
+"""Fills the statistics columns `0002` added, for the rows that predate them.
+
+Separate from `0002` on purpose, per the additive-first migration rule: the schema change
+and the data write are independently reversible, and reversing this one is a no-op.
+"""
+
+import logging
+
+from django.db import migrations
+from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+from django.db.migrations.state import StateApps
+
+logger = logging.getLogger(__name__)
+
+
+def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
+    """Refill every row whose statistics are still null, best effort.
+
+    The import sits *inside* this function rather than at module level, and that
+    placement is load-bearing. A module-level `from gpx.statistics import …` is evaluated
+    when Django builds the migration graph — before a single row is touched — so a later
+    rename or move of that module would break `migrate`, `makemigrations --check` and
+    `manage.py check` all at once, and the per-row guard below would never get the chance
+    to run. Under the guard the same rename degrades to one logged skip, and a replay on
+    a fresh database still succeeds.
+    """
+    try:
+        from gpx.statistics import backfill_track_statistics
+    except ImportError:
+        logger.exception(
+            "gpx.statistics is unavailable; leaving existing track statistics null. "
+            "Run `manage.py backfill_gpx_stats` once it is importable again."
+        )
+        return
+
+    gpx_track = apps.get_model("gpx", "GpxTrack")
+    # `distance_meters` is the null probe because it is the one statistic that is never
+    # null once computed: `length_2d()` always returns a float, and an empty track is
+    # rejected at upload. The other three are legitimately null for a file that carried
+    # no `<ele>` or no `<time>`, so filtering on any of them would refill rows forever.
+    tracks = gpx_track.objects.using(schema_editor.connection.alias)
+    for track in tracks.filter(distance_meters__isnull=True):
+        try:
+            backfill_track_statistics(track)
+        except Exception:
+            # The helper already absorbs an unreadable file and bytes that no longer
+            # parse. What is left is the `save()` and whatever a future version of the
+            # helper adds — and this runs unattended at container boot, where one bad row
+            # must not stop the deploy. Those columns stay null, the detail page says so
+            # in words, and `manage.py backfill_gpx_stats` is the recovery path.
+            logger.exception("Could not backfill track statistics", extra={"track_id": track.pk})
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("gpx", "0002_gpxtrack_stats"),
+    ]
+
+    operations = [
+        # `noop` reverse rather than a nulling pass: reversing past this migration reaches
+        # `0002`, which drops the four columns outright, so undoing the data write on the
+        # way there would be work with nothing to show for it.
+        migrations.RunPython(backfill_stats, migrations.RunPython.noop),
+    ]

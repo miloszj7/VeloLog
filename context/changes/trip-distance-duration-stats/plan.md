@@ -732,33 +732,33 @@ corrected — the same helper, run on demand, with no re-upload required.
 
 #### Automated
 
-- [x] 1.1 Migration exists and is complete: `makemigrations --check --dry-run`
-- [x] 1.2 Django checks pass: `manage.py check`
-- [x] 1.3 Parsing tests pass
-- [x] 1.4 Upload tests pass
-- [x] 1.5 Full suite passes with no `.env`
-- [x] 1.6 Lint, format, import order and strict typing pass
+- [x] 1.1 Migration exists and is complete: `makemigrations --check --dry-run` — c5924fc
+- [x] 1.2 Django checks pass: `manage.py check` — c5924fc
+- [x] 1.3 Parsing tests pass — c5924fc
+- [x] 1.4 Upload tests pass — c5924fc
+- [x] 1.5 Full suite passes with no `.env` — c5924fc
+- [x] 1.6 Lint, format, import order and strict typing pass — c5924fc
 
 #### Manual
 
-- [x] 1.7 Uploading a real timed GPX export stores plausible values
-- [x] 1.8 The `GpxTrack` admin change form still saves without filling the new fields
+- [x] 1.7 Uploading a real timed GPX export stores plausible values — c5924fc
+- [x] 1.8 The `GpxTrack` admin change form still saves without filling the new fields — c5924fc
 
 ### Phase 2: Backfill existing tracks
 
 #### Automated
 
-- [ ] 2.1 Migrations apply cleanly on an empty database
-- [ ] 2.2 No further migration is outstanding
-- [ ] 2.3 Statistics tests pass
-- [ ] 2.4 Full suite passes with no `.env`
-- [ ] 2.5 Lint, format, import order and strict typing pass
+- [x] 2.1 Migrations apply cleanly on an empty database
+- [x] 2.2 No further migration is outstanding
+- [x] 2.3 Statistics tests pass
+- [x] 2.4 Full suite passes with no `.env`
+- [x] 2.5 Lint, format, import order and strict typing pass
 
 #### Manual
 
-- [ ] 2.6 Running `migrate` against a copy of the local database fills stats on pre-existing tracks
-- [ ] 2.7 A track whose file was deleted leaves `migrate` succeeding, with a log line naming the row
-- [ ] 2.8 `manage.py backfill_gpx_stats` refills a hand-nulled track and reports its tally
+- [x] 2.6 Running `migrate` against a copy of the local database fills stats on pre-existing tracks
+- [x] 2.7 A track whose file was deleted leaves `migrate` succeeding, with a log line naming the row
+- [x] 2.8 `manage.py backfill_gpx_stats` refills a hand-nulled track and reports its tally
 
 ### Phase 3: Render stats on the trip detail page
 

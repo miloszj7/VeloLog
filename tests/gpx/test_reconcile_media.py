@@ -17,6 +17,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.utils import timezone
 
 from gpx.constants import ORPHAN_MIN_AGE_MINUTES
@@ -151,6 +152,18 @@ def test_a_freshly_written_orphan_is_spared_until_the_threshold_is_lifted(
 
 
 @pytest.mark.django_db
+def test_a_negative_min_age_minutes_is_refused() -> None:
+    """A negative cutoff lands in the future and would spare nothing at all.
+
+    `timezone.now() - timedelta(minutes=-30)` is 30 minutes from now, so every file —
+    including one a request is writing right now — would clear `modified > cutoff` and be
+    treated as an orphan.
+    """
+    with pytest.raises(CommandError, match="must not be negative"):
+        call_command("reconcile_media", "--min-age-minutes", "-30")
+
+
+@pytest.mark.django_db
 def test_an_orphan_outside_the_gpx_prefix_is_found(
     trip: Trip,
     make_stored_track: StoredTrackFactory,
@@ -280,6 +293,39 @@ def test_a_directory_that_is_not_empty_is_left_alone_without_a_skip(
     assert "Could not prune" not in captured.err
     assert "skipped 0, directories pruned 0" in captured.out
     assert default_storage.exists(referenced)
+
+
+@pytest.mark.django_db
+def test_an_unreadable_subdirectory_is_a_counted_skip_not_a_crash(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A `PermissionError` on one subdirectory must not abort the whole walk.
+
+    The walk precedes every delete, so losing one branch is a loss of signal, never of
+    data — but it must still leave a tally for the other 99% of the tree, matching what
+    `_prune` already does for the identical `OSError` around the same call.
+    """
+    back_date(str(make_stored_track(trip).file.name))
+    write_orphan("gpx/9/9/stray.gpx")
+    for directory in ("gpx/9/9", "gpx/9"):
+        back_date(directory)
+    original_listdir = default_storage.listdir
+
+    def refuse_gpx_9(path: str) -> tuple[list[str], list[str]]:
+        if path == "gpx/9":
+            raise PermissionError(path)
+        return original_listdir(path)
+
+    monkeypatch.setattr(default_storage, "listdir", refuse_gpx_9, raising=True)
+
+    call_command("reconcile_media")
+
+    captured = capsys.readouterr()
+    assert "Could not read gpx/9." in captured.err
+    assert "Scanned 1, referenced 1, orphaned 0" in captured.out
 
 
 @pytest.mark.django_db

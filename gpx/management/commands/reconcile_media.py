@@ -18,6 +18,7 @@ nothing on the volume is referenced, and the flag itself.
 """
 
 import logging
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -25,7 +26,7 @@ from typing import Any
 from django.conf import settings
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.files.storage import default_storage
-from django.core.management.base import BaseCommand, CommandParser
+from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.utils import timezone
 
 from gpx.constants import ORPHAN_MIN_AGE_MINUTES
@@ -94,10 +95,19 @@ def walk_storage(prefix: str = "") -> tuple[list[str], list[str]]:
     joining are both the caller's job. It raises `FileNotFoundError` from `os.scandir` when
     the directory is absent; a missing `MEDIA_ROOT` is an ordinary state on a fresh
     deployment that has taken no uploads yet, so it reports empty rather than crashing.
+
+    Any other `OSError` — a `PermissionError` or a stale handle on one subdirectory,
+    say — is a per-directory skip rather than an abort: the walk precedes every delete, so
+    losing one branch is a loss of signal, never of data, and the command's contract is
+    that a per-item failure is a counted skip, not a crash. `_prune` already catches the
+    same broad `OSError` around this same call for the identical reason.
     """
     try:
         directories, files = default_storage.listdir(prefix)
     except FileNotFoundError:
+        return [], []
+    except OSError:
+        sys.stderr.write(f"Could not read {prefix or '.'}.\n")
         return [], []
 
     file_keys = [_join(prefix, name) for name in files]
@@ -141,8 +151,9 @@ class Command(BaseCommand):
             help=(
                 "Spare files modified more recently than this, since a file written "
                 "seconds ago may belong to a request still in flight. 0 disables the "
-                "guard and is only safe on an idle service. "
-                f"Default: {ORPHAN_MIN_AGE_MINUTES}."
+                "guard and is only safe on an idle service. Must not be negative — that "
+                "would place the cutoff in the future and spare nothing, including a "
+                f"file a request is writing right now. Default: {ORPHAN_MIN_AGE_MINUTES}."
             ),
         )
         parser.add_argument(
@@ -170,6 +181,13 @@ class Command(BaseCommand):
         reclaim: bool = options["delete"]
         min_age: int = options["min_age_minutes"]
         allow_full_sweep: bool = options["allow_full_sweep"]
+
+        if min_age < 0:
+            raise CommandError(
+                "--min-age-minutes must not be negative — a negative value places the "
+                "cutoff in the future and would spare nothing, including a file a "
+                "request is writing right now."
+            )
 
         found, directories = walk_storage()
         referenced = {key for key in GpxTrack.objects.values_list("file", flat=True) if key}

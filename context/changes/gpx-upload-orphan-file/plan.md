@@ -747,20 +747,20 @@ the volume is referenced refuses to proceed without `--allow-full-sweep`.
 
 #### Automated
 
-- [ ] 1.1 Lint passes
-- [ ] 1.2 Format check passes
-- [ ] 1.3 Import order passes
-- [ ] 1.4 Strict typing passes
-- [ ] 1.5 Django system check passes
-- [ ] 1.6 No migration is pending
-- [ ] 1.7 Full suite with coverage passes under CI-equivalent env
-- [ ] 1.8 The pre-existing upload replacement test still passes unchanged
+- [x] 1.1 Lint passes
+- [x] 1.2 Format check passes
+- [x] 1.3 Import order passes
+- [x] 1.4 Strict typing passes
+- [x] 1.5 Django system check passes
+- [x] 1.6 No migration is pending
+- [x] 1.7 Full suite with coverage passes under CI-equivalent env
+- [x] 1.8 The pre-existing upload replacement test still passes unchanged
 
 #### Manual
 
-- [ ] 1.9 Admin change-form replacement leaves exactly one file in the trip directory
-- [ ] 1.10 The normal upload flow still replaces and leaves exactly one file
-- [ ] 1.11 Trip detail page still renders map and statistics after an admin replacement
+- [x] 1.9 Admin change-form replacement leaves exactly one file in the trip directory
+- [x] 1.10 The normal upload flow still replaces and leaves exactly one file
+- [x] 1.11 Trip detail page still renders map and statistics after an admin replacement
 
 ### Phase 2: Detection & reclamation — the `reconcile_media` command
 

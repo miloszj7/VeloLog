@@ -6,7 +6,8 @@ class GpxConfig(AppConfig):
     name = "gpx"
 
     def ready(self) -> None:
-        """Connect `gpx.signals`, which removes a track's file when its row is deleted.
+        """Connect `gpx.signals`, which removes a track's file when its row is deleted
+        and when a surviving row's file is replaced.
 
         `INSTALLED_APPS` needs no entry for this — `"gpx"` resolves to this config through
         Django's app-config autodiscovery, and `ready()` is where a signal module is

@@ -35,6 +35,7 @@ reason the map blob is built outside the two views: two views render
 """
 
 import logging
+import math
 from dataclasses import dataclass
 
 from gpx.constants import METERS_PER_KILOMETER, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
@@ -105,6 +106,21 @@ def backfill_track_statistics(track: GpxTrack) -> bool:
     return True
 
 
+def _round_half_up(value: float) -> int:
+    """Round to the nearest integer, sending an exact half away from zero.
+
+    Args:
+        value: The figure to round. Never negative here — a distance, a count of minutes
+            and a total climb are all magnitudes — so "away from zero" and "up" coincide.
+
+    Returns:
+        The rounded integer. Python's built-in `round` is round-half-to-even, which makes
+        the half boundary alternate direction; every display figure in this module wants
+        one consistent rule instead.
+    """
+    return math.floor(value + 0.5)
+
+
 def format_distance(meters: float | None) -> str | None:
     """Render a stored distance as kilometres to one decimal place, or `None` for `None`.
 
@@ -139,7 +155,11 @@ def format_duration(seconds: float | None) -> str | None:
         return None
     # Rounded to whole minutes *before* the split, not after: rounding each part
     # separately turns 3599.9 seconds into "60 min" rather than into "1 h 00 min".
-    rounded_seconds = round(seconds / SECONDS_PER_MINUTE) * SECONDS_PER_MINUTE
+    #
+    # `math.floor(x + 0.5)` rather than `round`, which is round-half-to-even: `round`
+    # sends 30 seconds to "0 min" while sending 90 to "2 min", and "0 min" for a track
+    # that recorded half a minute is one of the strings this slice exists to avoid.
+    rounded_seconds = _round_half_up(seconds / SECONDS_PER_MINUTE) * SECONDS_PER_MINUTE
     hours, remainder = divmod(rounded_seconds, SECONDS_PER_HOUR)
     minutes = remainder // SECONDS_PER_MINUTE
     if not hours:
@@ -161,7 +181,10 @@ def format_elevation(meters: float | None) -> str | None:
     """
     if meters is None:
         return None
-    return f"{round(meters)} m"
+    # Half-up for the same reason as `format_duration`: `round` is round-half-to-even, so
+    # it sends 0.5 m to "0 m" and 1.5 m to "2 m" — an inconsistent boundary, and the low
+    # side of it prints the "nothing here" figure for a real measurement.
+    return f"{_round_half_up(meters)} m"
 
 
 @dataclass(frozen=True)

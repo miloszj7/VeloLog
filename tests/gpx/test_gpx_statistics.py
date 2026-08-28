@@ -238,6 +238,26 @@ def test_a_duration_a_breath_under_an_hour_rounds_up_to_the_hour_form() -> None:
     assert format_duration(3599.9) == "1 h 00 min"
 
 
+def test_a_half_minute_rounds_up_rather_than_to_zero() -> None:
+    """The half boundary, pinned in the direction that never prints a false nothing.
+
+    Python's `round` is round-half-to-even, so it would send 30 seconds to "0 min" while
+    sending 90 to "2 min". Both figures are trivial in magnitude, but "0 min" for a track
+    that recorded half a minute is the same class of lie as "0 m" for an unclimbed hill,
+    and this module exists to keep those strings off the page.
+    """
+    assert format_duration(30) == "1 min"
+    assert format_duration(90) == "2 min"
+    assert format_duration(0) == "0 min"
+
+
+def test_a_half_metre_rounds_up_rather_than_to_zero() -> None:
+    """The same boundary on the elevation formatter, which shares the rounding helper."""
+    assert format_elevation(0.5) == "1 m"
+    assert format_elevation(1.5) == "2 m"
+    assert format_elevation(0.0) == "0 m"
+
+
 def test_a_missing_duration_formats_as_none() -> None:
     assert format_duration(None) is None
 

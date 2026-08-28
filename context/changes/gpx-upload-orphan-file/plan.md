@@ -800,12 +800,12 @@ the volume is referenced refuses to proceed without `--allow-full-sweep`.
 
 #### Automated
 
-- [x] 4.1 No stale reference to E-11 as an open hole survives
-- [x] 4.2 The command named in `AGENTS.md` actually exists and runs
-- [x] 4.3 Full suite still passes under CI-equivalent env
+- [x] 4.1 No stale reference to E-11 as an open hole survives — 999aa47
+- [x] 4.2 The command named in `AGENTS.md` actually exists and runs — 999aa47
+- [x] 4.3 Full suite still passes under CI-equivalent env — 999aa47
 
 #### Manual
 
-- [x] 4.4 `AGENTS.md`'s `gpx/` bullet, read cold, correctly predicts which paths clean up a file
-- [x] 4.5 The `DEPLOY.md` section is followable by someone who has never run the command
-- [x] 4.6 E-11's rewritten row would not mislead a reader arriving with no other context
+- [x] 4.4 `AGENTS.md`'s `gpx/` bullet, read cold, correctly predicts which paths clean up a file — 999aa47
+- [x] 4.5 The `DEPLOY.md` section is followable by someone who has never run the command — 999aa47
+- [x] 4.6 E-11's rewritten row would not mislead a reader arriving with no other context — 999aa47

@@ -125,8 +125,9 @@ def format_duration(seconds: float | None) -> str | None:
     """Render a stored recorded time as hours and minutes, or `None` for `None`.
 
     Args:
-        seconds: The stored `duration_seconds`, or `None` when the file carried no
-            `<time>`. This is the sum of each segment's own span, so a multi-day tour's
+        seconds: The stored `duration_seconds`, or `None` when the file carried no usable
+            timestamps — see `ParsedTrack`. This is the sum of each segment's own span,
+            so a multi-day tour's
             overnight gaps are not in it — the template labels it "Recorded time" for that
             reason, and this function is not the place the semantic is explained twice.
 

@@ -20,8 +20,8 @@ from trips.models import Trip
 
 STATS_HEADING = "<h2>Stats</h2>"
 RE_UPLOAD_SENTENCE = "These stats have not been worked out for this route."
-NO_TIMESTAMPS_NOTE = "Not recorded — the GPX file carried no timestamps."
-NO_ELEVATION_NOTE = "Not recorded — the GPX file carried no elevation data."
+NO_TIMESTAMPS_NOTE = "Not recorded — the GPX file carried no usable timestamps."
+NO_ELEVATION_NOTE = "Not recorded — the GPX file carried no usable elevation data."
 
 
 def detail_url(trip: Trip) -> str:

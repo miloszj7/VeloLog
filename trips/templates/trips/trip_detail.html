@@ -80,8 +80,16 @@
         <h2>Stats</h2>
         {% if stats %}
             <dl>
+                {% comment %}
+                This branch names no cause in the file, unlike the three below it. A file
+                with no positions is refused at upload, and a row with every column null
+                takes the `{% templatetag openblock %} else {% templatetag closeblock %}`
+                at the bottom instead — so a null distance beside a non-null anything else
+                is reachable only by hand-editing a row, and any sentence blaming the GPX
+                would be false.
+                {% endcomment %}
                 <dt>Distance</dt>
-                <dd>{% if stats.distance %}{{ stats.distance }}{% else %}Not recorded — the GPX file carried no positions to measure.{% endif %}</dd>
+                <dd>{% if stats.distance %}{{ stats.distance }}{% else %}Not recorded — this route's distance has not been worked out.{% endif %}</dd>
 
                 {% comment %}
                 "Recorded time", not "Elapsed time". The stored figure is the sum of each
@@ -89,13 +97,13 @@
                 a multi-day tour — are not in it. See `GpxTrack.duration_seconds`.
                 {% endcomment %}
                 <dt>Recorded time</dt>
-                <dd>{% if stats.recorded_time %}{{ stats.recorded_time }}{% else %}Not recorded — the GPX file carried no timestamps.{% endif %}</dd>
+                <dd>{% if stats.recorded_time %}{{ stats.recorded_time }}{% else %}Not recorded — the GPX file carried no usable timestamps.{% endif %}</dd>
 
                 <dt>Elevation gained</dt>
-                <dd>{% if stats.elevation_gain %}{{ stats.elevation_gain }}{% else %}Not recorded — the GPX file carried no elevation data.{% endif %}</dd>
+                <dd>{% if stats.elevation_gain %}{{ stats.elevation_gain }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
 
                 <dt>Elevation lost</dt>
-                <dd>{% if stats.elevation_loss %}{{ stats.elevation_loss }}{% else %}Not recorded — the GPX file carried no elevation data.{% endif %}</dd>
+                <dd>{% if stats.elevation_loss %}{{ stats.elevation_loss }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
             </dl>
         {% else %}
             {% comment %}

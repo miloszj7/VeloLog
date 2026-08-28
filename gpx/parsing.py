@@ -149,7 +149,12 @@ class ParsedTrack:
     paused-and-resumed export this is riding time, not the span from the first point to
     the last. The two coincide only for a single-segment file.
 
-    `None` when no point in the file carried a `<time>`.
+    `None` when the file carried no *usable* timestamps — which is broader than carrying
+    none at all. `GPX.get_duration()` answers `None` whenever any one segment's own span
+    cannot be determined, so a two-segment export whose first segment lost its timestamps
+    reports nothing even though the second segment is fully timed. Partial recovery is not
+    attempted: summing only the segments that do have spans would report a recorded time
+    quietly missing an unknown amount of riding, which is worse than reporting none.
     """
     elevation_gain_meters: float | None
     """Total ascent in metres, or `None` when the file carried no usable `<ele>`.

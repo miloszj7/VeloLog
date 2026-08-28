@@ -747,39 +747,39 @@ the volume is referenced refuses to proceed without `--allow-full-sweep`.
 
 #### Automated
 
-- [x] 1.1 Lint passes
-- [x] 1.2 Format check passes
-- [x] 1.3 Import order passes
-- [x] 1.4 Strict typing passes
-- [x] 1.5 Django system check passes
-- [x] 1.6 No migration is pending
-- [x] 1.7 Full suite with coverage passes under CI-equivalent env
-- [x] 1.8 The pre-existing upload replacement test still passes unchanged
+- [x] 1.1 Lint passes — 01ed4ad
+- [x] 1.2 Format check passes — 01ed4ad
+- [x] 1.3 Import order passes — 01ed4ad
+- [x] 1.4 Strict typing passes — 01ed4ad
+- [x] 1.5 Django system check passes — 01ed4ad
+- [x] 1.6 No migration is pending — 01ed4ad
+- [x] 1.7 Full suite with coverage passes under CI-equivalent env — 01ed4ad
+- [x] 1.8 The pre-existing upload replacement test still passes unchanged — 01ed4ad
 
 #### Manual
 
-- [x] 1.9 Admin change-form replacement leaves exactly one file in the trip directory
-- [x] 1.10 The normal upload flow still replaces and leaves exactly one file
-- [x] 1.11 Trip detail page still renders map and statistics after an admin replacement
+- [x] 1.9 Admin change-form replacement leaves exactly one file in the trip directory — 01ed4ad
+- [x] 1.10 The normal upload flow still replaces and leaves exactly one file — 01ed4ad
+- [x] 1.11 Trip detail page still renders map and statistics after an admin replacement — 01ed4ad
 
 ### Phase 2: Detection & reclamation — the `reconcile_media` command
 
 #### Automated
 
-- [ ] 2.1 Lint, format, import order, strict typing all pass
-- [ ] 2.2 The command is registered and self-describes
-- [ ] 2.3 The full-sweep refusal is on the command's surface
-- [ ] 2.4 A clean tree reports zero orphans and exits 0
-- [ ] 2.5 Full suite with coverage passes under CI-equivalent env
-- [ ] 2.6 Coverage still meets `fail_under = 80` with `gpx/management/` in scope
+- [x] 2.1 Lint, format, import order, strict typing all pass
+- [x] 2.2 The command is registered and self-describes
+- [x] 2.3 The full-sweep refusal is on the command's surface
+- [x] 2.4 A clean tree reports zero orphans and exits 0
+- [x] 2.5 Full suite with coverage passes under CI-equivalent env
+- [x] 2.6 Coverage still meets `fail_under = 80` with `gpx/management/` in scope
 
 #### Manual
 
-- [ ] 2.7 Report names the four known empty local directories and no orphaned files
-- [ ] 2.8 `--delete` removes those directories and leaves every referenced file untouched
-- [ ] 2.9 A second `--delete` run reports zero and changes nothing
-- [ ] 2.10 Report-only output is legible as plain log-style text
-- [ ] 2.11 The refusal message, read cold, names the likely state, why reclaiming is wrong, and the override flag
+- [x] 2.7 Report names the four known empty local directories and no orphaned files
+- [x] 2.8 `--delete` removes those directories and leaves every referenced file untouched
+- [x] 2.9 A second `--delete` run reports zero and changes nothing
+- [x] 2.10 Report-only output is legible as plain log-style text
+- [x] 2.11 The refusal message, read cold, names the likely state, why reclaiming is wrong, and the override flag
 
 ### Phase 3: Observability — make a stranded key identifiable in the log
 

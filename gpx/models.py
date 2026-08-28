@@ -34,6 +34,27 @@ class GpxTrack(models.Model):
     max_longitude = models.FloatField()
     original_filename = models.CharField(max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    # Derived at upload alongside the points, for the same reason: the detail page reads
+    # plain columns and can never fail on a parse. All four are `null=True` because rows
+    # uploaded before these columns existed are backfilled best-effort, and because a
+    # file that carried no `<ele>` or no `<time>` has no honest value to store — a `0`
+    # there would read as "no climbing" rather than as "not recorded".
+    #
+    # `blank=True` is load-bearing, not decoration: `GpxTrackAdmin` excludes only
+    # `points`, so without it these render as *required* on the admin change form and
+    # break the documented admin repair path.
+    distance_meters = models.FloatField(null=True, blank=True)
+    duration_seconds = models.FloatField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Recorded time: the sum of each GPX segment's own span. Gaps between "
+            "segments — including overnight gaps on a multi-day tour — are excluded, so "
+            "this is not wall-clock elapsed time."
+        ),
+    )
+    elevation_gain_meters = models.FloatField(null=True, blank=True)
+    elevation_loss_meters = models.FloatField(null=True, blank=True)
 
     class Meta:
         ordering = ["-uploaded_at", "-id"]

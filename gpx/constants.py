@@ -28,6 +28,13 @@ MAX_GPX_POINTS = 100_000
 # every future consumer read the same value rather than re-deriving it.
 COORDINATE_DECIMAL_PLACES = 5
 
+# Unit conversions for the statistics derived at the parse boundary. gpxpy reports metres
+# and seconds; kilometres, hours and minutes are display units and the conversion belongs
+# in one named place rather than inline in a formatter.
+METERS_PER_KILOMETER = 1000
+SECONDS_PER_MINUTE = 60
+SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE
+
 # Paths of the Leaflet marker images `gpx/map_config.py` hands to the template, relative to
 # a static root. Resolved through `static()` at render — never written out as literal URLs —
 # because `CompressedManifestStaticFilesStorage` serves these under content-hashed names, so

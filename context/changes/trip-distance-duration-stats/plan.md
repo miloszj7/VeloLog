@@ -732,17 +732,17 @@ corrected — the same helper, run on demand, with no re-upload required.
 
 #### Automated
 
-- [ ] 1.1 Migration exists and is complete: `makemigrations --check --dry-run`
-- [ ] 1.2 Django checks pass: `manage.py check`
-- [ ] 1.3 Parsing tests pass
-- [ ] 1.4 Upload tests pass
-- [ ] 1.5 Full suite passes with no `.env`
-- [ ] 1.6 Lint, format, import order and strict typing pass
+- [x] 1.1 Migration exists and is complete: `makemigrations --check --dry-run`
+- [x] 1.2 Django checks pass: `manage.py check`
+- [x] 1.3 Parsing tests pass
+- [x] 1.4 Upload tests pass
+- [x] 1.5 Full suite passes with no `.env`
+- [x] 1.6 Lint, format, import order and strict typing pass
 
 #### Manual
 
-- [ ] 1.7 Uploading a real timed GPX export stores plausible values
-- [ ] 1.8 The `GpxTrack` admin change form still saves without filling the new fields
+- [x] 1.7 Uploading a real timed GPX export stores plausible values
+- [x] 1.8 The `GpxTrack` admin change form still saves without filling the new fields
 
 ### Phase 2: Backfill existing tracks
 

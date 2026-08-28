@@ -87,4 +87,8 @@ class GpxUploadForm(_GpxUploadFormBase):
         self.instance.min_longitude = parsed.min_longitude
         self.instance.max_latitude = parsed.max_latitude
         self.instance.max_longitude = parsed.max_longitude
+        self.instance.distance_meters = parsed.distance_meters
+        self.instance.duration_seconds = parsed.duration_seconds
+        self.instance.elevation_gain_meters = parsed.elevation_gain_meters
+        self.instance.elevation_loss_meters = parsed.elevation_loss_meters
         return uploaded

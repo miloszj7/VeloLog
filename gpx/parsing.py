@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 
 import gpxpy
-from gpxpy.gpx import GPXException, GPXXMLSyntaxException
+from gpxpy.gpx import GPX, GPXException, GPXXMLSyntaxException
 
 from gpx.constants import COORDINATE_DECIMAL_PLACES, MAX_GPX_POINTS
 from gpx.exceptions import (
@@ -37,6 +37,69 @@ DECLARATION_SNIFF_BYTES = 256
 
 
 @dataclass(frozen=True)
+class TrackStatistics:
+    """What a parsed track reports about itself, with absent inputs kept absent.
+
+    Two gpxpy calls return `0` where a caller would read `None`, so the presence of each
+    optional statistic is decided by a separate probe rather than by the value itself —
+    see `track_statistics`. A `None` here means the file carried no such data; a `0.0`
+    means the file carried the data and the answer is zero.
+    """
+
+    distance_meters: float
+    duration_seconds: float | None
+    elevation_gain_meters: float | None
+    elevation_loss_meters: float | None
+
+
+def track_statistics(gpx: GPX) -> TrackStatistics:
+    """Derive distance, recorded time and elevation change from a parsed track.
+
+    Args:
+        gpx: The object `gpxpy.parse` returned. The only place elevation and per-point
+            timestamps still exist — neither survives into `ParsedTrack.points`.
+
+    Returns:
+        The four statistics, with each optional one `None` when the file did not carry
+        the input it is computed from.
+    """
+    # `length_2d` rather than `length_3d`: the 3D length varies with whether the export
+    # happened to carry `<ele>`, so the same route would report two different distances
+    # depending on the exporter. Horizontal distance is both stable and what a rider's
+    # other tools report.
+    distance_meters = gpx.length_2d()
+
+    # `get_uphill_downhill()` returns `UphillDownhill(0, 0)` — not `None` — for a file
+    # with no `<ele>` at all, which would render as "0 m climbed" for an Alpine tour.
+    # The elevation extremes are the only reliable presence probe: `minimum` is `None`
+    # exactly when no point carried an elevation.
+    elevation_gain_meters: float | None = None
+    elevation_loss_meters: float | None = None
+    if gpx.get_elevation_extremes().minimum is not None:
+        uphill_downhill = gpx.get_uphill_downhill()
+        elevation_gain_meters = uphill_downhill.uphill
+        elevation_loss_meters = uphill_downhill.downhill
+
+    # The same trap, mirrored. `get_duration()` looks like the presence probe for time
+    # and is not one: `GPXTrackSegment.get_duration` returns `0.0` for any segment of
+    # fewer than two points *before* it reaches the timestamp check that returns `None`,
+    # and the track- and file-level calls sum those zeros. `parse_gpx` accepts a
+    # one-point file, so gating on `get_duration() is None` would store the exact zero
+    # this gate exists to prevent. `get_time_bounds().start_time` is `None` exactly when
+    # no point carried a `<time>`.
+    duration_seconds: float | None = None
+    if gpx.get_time_bounds().start_time is not None:
+        duration_seconds = gpx.get_duration()
+
+    return TrackStatistics(
+        distance_meters=distance_meters,
+        duration_seconds=duration_seconds,
+        elevation_gain_meters=elevation_gain_meters,
+        elevation_loss_meters=elevation_loss_meters,
+    )
+
+
+@dataclass(frozen=True)
 class ParsedTrack:
     """An ordered route and the box that contains it, derived once at upload time.
 
@@ -50,6 +113,22 @@ class ParsedTrack:
     min_longitude: float
     max_latitude: float
     max_longitude: float
+    distance_meters: float
+    """Horizontal track length in metres. Never `None`: an empty track is rejected."""
+    duration_seconds: float | None
+    """Recorded time in seconds — **not** wall-clock elapsed time.
+
+    gpxpy sums each *segment's* own first-to-last span and never counts the gaps between
+    segments. On a multi-day tour those gaps include every overnight, so for a
+    paused-and-resumed export this is riding time, not the span from the first point to
+    the last. The two coincide only for a single-segment file.
+
+    `None` when no point in the file carried a `<time>`.
+    """
+    elevation_gain_meters: float | None
+    """Total ascent in metres, or `None` when no point carried an `<ele>`."""
+    elevation_loss_meters: float | None
+    """Total descent in metres, or `None` when no point carried an `<ele>`."""
 
     def json_points(self) -> list[list[float]]:
         """Return the points in the shape `GpxTrack.points` stores and the map reads.
@@ -178,10 +257,20 @@ def parse_gpx(text: str) -> ParsedTrack:
     # so the four floats need no narrowing from `GPXBounds`' optional members.
     latitudes = [latitude for latitude, _ in points]
     longitudes = [longitude for _, longitude in points]
+
+    # Computed after both rejections, not before: a file that is about to be refused
+    # should not pay for a full-track distance walk, and the rejection messages above
+    # stay the first thing this function does.
+    statistics = track_statistics(gpx)
+
     return ParsedTrack(
         points=tuple(points),
         min_latitude=min(latitudes),
         min_longitude=min(longitudes),
         max_latitude=max(latitudes),
         max_longitude=max(longitudes),
+        distance_meters=statistics.distance_meters,
+        duration_seconds=statistics.duration_seconds,
+        elevation_gain_meters=statistics.elevation_gain_meters,
+        elevation_loss_meters=statistics.elevation_loss_meters,
     )

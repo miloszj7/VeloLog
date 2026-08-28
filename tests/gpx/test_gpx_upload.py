@@ -79,6 +79,45 @@ def test_a_valid_upload_stores_the_points_and_bounds_parsed_from_it(
 
 
 @pytest.mark.django_db
+def test_a_valid_upload_stores_the_statistics_parsed_from_it(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """The four stats columns have no form field, so only `clean_file` can fill them.
+
+    Re-read from the database rather than asserted on the in-memory instance, for the
+    same reason the points test above is: a value that only looks right before it
+    round-trips is what the render phase would inherit.
+    """
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("alps-day-1.gpx", gpx_bytes("timed-track.gpx"))},
+    )
+
+    track = GpxTrack.objects.get()
+
+    assert track.distance_meters == pytest.approx(3661.09, abs=0.01)
+    assert track.duration_seconds == 3600.0
+    assert track.elevation_gain_meters is not None
+    assert track.elevation_loss_meters is not None
+
+
+@pytest.mark.django_db
+def test_an_upload_with_no_timestamps_stores_no_duration_rather_than_zero(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """`is None`, not falsy — a stored `0.0` would render as a ride that took no time."""
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("alps-day-1.gpx", gpx_bytes("valid-track.gpx"))},
+    )
+
+    track = GpxTrack.objects.get()
+
+    assert track.distance_meters == pytest.approx(3661.09, abs=0.01)
+    assert track.duration_seconds is None
+
+
+@pytest.mark.django_db
 def test_a_valid_upload_returns_to_the_detail_page_with_a_confirmation(
     auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
 ) -> None:

@@ -12,13 +12,22 @@ from datetime import date
 import pytest
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from tests.conftest import TrackFactory
 from trips.models import Trip
 
 STATS_HEADING = "<h2>Stats</h2>"
+# Queries a detail render costs with one fully-populated track: the session, the user,
+# the trip, and the track. The four statistics are columns on that last row, so they add
+# nothing — which is the whole reason they are stored instead of re-parsed. Raise this
+# deliberately when the page really does gain a query; a jump of four means the track's
+# columns went deferred and are being refreshed one at a time.
+DETAIL_PAGE_QUERIES = 4
+
 RE_UPLOAD_SENTENCE = "These stats have not been worked out for this route."
 NO_TIMESTAMPS_NOTE = "Not recorded — the GPX file carried no usable timestamps."
 NO_ELEVATION_NOTE = "Not recorded — the GPX file carried no usable elevation data."
@@ -225,3 +234,37 @@ def test_a_stored_zero_renders_as_a_value_and_not_as_the_missing_note(
     assert NO_TIMESTAMPS_NOTE not in body
     assert NO_ELEVATION_NOTE not in body
     assert RE_UPLOAD_SENTENCE not in body
+
+
+@pytest.mark.django_db
+def test_rendering_the_stats_adds_no_query_beyond_fetching_the_track(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """The claim that stats are stored rather than re-derived, pinned as a query count.
+
+    "Four column reads on a row the page already fetches, and no new query" is the reason
+    these figures live in columns at all instead of being recomputed from the file on each
+    view. Three docstrings assert it in prose and nothing enforced it: a later `.only()` on
+    the track queryset, or any other deferral of the four columns, would turn those reads
+    into a refresh query apiece on every page view and every other test here would pass.
+
+    The count is absolute rather than a delta against a stats-free baseline, and it has to
+    be: a deferral costs the *null* render exactly as many refresh queries as the populated
+    one, so a delta cannot see it. That is why this number is worth updating by hand when
+    the page legitimately gains a query — the failure message says which queries ran.
+    """
+    make_gpx_track(
+        trip,
+        distance_meters=42195.0,
+        duration_seconds=8100.0,
+        elevation_gain_meters=1240.4,
+        elevation_loss_meters=1187.6,
+    )
+    url = detail_url(trip)
+    auth_client.get(url)  # Warm the session so its lookups are not counted as a surprise.
+
+    with CaptureQueriesContext(connection) as captured:
+        body = auth_client.get(url).content.decode()
+
+    assert "42.2 km" in body
+    assert len(captured.captured_queries) == DETAIL_PAGE_QUERIES

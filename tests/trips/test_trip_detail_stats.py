@@ -190,3 +190,38 @@ def test_a_rejected_upload_re_renders_the_stats_the_trip_already_had(
     assert "42.2 km" in body
     assert "2 h 15 min" in body
     assert RE_UPLOAD_SENTENCE not in body
+
+
+@pytest.mark.django_db
+def test_a_stored_zero_renders_as_a_value_and_not_as_the_missing_note(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """The other half of the zero-versus-null contract, asserted at the template.
+
+    `build_trip_stats` distinguishes a null column from a legitimate zero, and the page has
+    to preserve that distinction rather than re-collapse it. A one-point *timed* file
+    genuinely stores `duration_seconds = 0.0`, so the falsy value here is reachable from a
+    real upload and not a contrived one.
+
+    Note what this does and does not pin. It passes under a truthiness gate too, because
+    every zero formats to a non-empty string — that accident is precisely why the gate read
+    as safe. What it pins is that invariant: if a formatter is ever changed to return `""`
+    for a zero, this test fails, and the `is not None` gates in the template are what stop
+    that change from silently relabelling a real zero as "Not recorded".
+    """
+    make_gpx_track(
+        trip,
+        distance_meters=0.0,
+        duration_seconds=0.0,
+        elevation_gain_meters=0.0,
+        elevation_loss_meters=0.0,
+    )
+
+    body = auth_client.get(detail_url(trip)).content.decode()
+
+    assert "0.0 km" in body
+    assert "0 min" in body
+    assert "0 m" in body
+    assert NO_TIMESTAMPS_NOTE not in body
+    assert NO_ELEVATION_NOTE not in body
+    assert RE_UPLOAD_SENTENCE not in body

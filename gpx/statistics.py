@@ -201,7 +201,17 @@ def build_trip_stats(track: GpxTrack | None) -> TripStats | None:
     """
     if track is None:
         return None
-    stored = [getattr(track, field) for field in STATS_FIELDS]
+    # Spelled out rather than `getattr` over `STATS_FIELDS`: a `getattr` loop types as
+    # `list[Any]`, so `mypy --strict` would verify nothing about these four names matching
+    # real fields and a typo in the tuple would surface as an `AttributeError` on every
+    # detail page render. `STATS_FIELDS` still names the set for `update_fields` and the
+    # backfill filters, where the values are column names rather than attribute reads.
+    stored = (
+        track.distance_meters,
+        track.duration_seconds,
+        track.elevation_gain_meters,
+        track.elevation_loss_meters,
+    )
     if all(value is None for value in stored):
         return None
     return TripStats(

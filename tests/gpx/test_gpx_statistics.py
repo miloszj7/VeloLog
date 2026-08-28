@@ -1,4 +1,5 @@
-"""The backfill helper, and the command that re-runs it on demand.
+"""Both ends of the statistics columns: the backfill that fills them, and the display
+builder that shapes them for the detail page.
 
 Migration `0003` calls the same helper, but it cannot be tested through the migration:
 migrations run against an empty in-memory database in this suite, so the data operation is
@@ -16,7 +17,13 @@ import pytest
 from django.core.management import call_command
 
 from gpx.models import GpxTrack
-from gpx.statistics import backfill_track_statistics
+from gpx.statistics import (
+    backfill_track_statistics,
+    build_trip_stats,
+    format_distance,
+    format_duration,
+    format_elevation,
+)
 from tests.conftest import GPX_BOUNDS, GPX_POINTS, StoredTrackFactory, TrackFactory
 from tests.gpx.conftest import GpxBytesReader
 from trips.models import Trip
@@ -198,3 +205,125 @@ def test_the_command_reports_a_missing_file_and_keeps_going(
     assert readable.distance_meters == pytest.approx(FIXTURE_DISTANCE_METERS, abs=0.01)
     missing.refresh_from_db()
     assert missing.distance_meters is None
+
+
+def test_distance_reads_in_kilometres_to_one_decimal_place() -> None:
+    assert format_distance(3661.09) == "3.7 km"
+
+
+def test_a_zero_distance_formats_as_a_number_rather_than_disappearing() -> None:
+    """A track whose points are all identical has a real distance, and it is zero."""
+    assert format_distance(0.0) == "0.0 km"
+
+
+def test_a_missing_distance_formats_as_none() -> None:
+    assert format_distance(None) is None
+
+
+def test_a_sub_hour_duration_reads_in_minutes_alone() -> None:
+    """No `0 h` prefix under an hour — a 45-minute ride is not a zero-hour ride."""
+    assert format_duration(2700.0) == "45 min"
+
+
+def test_a_multi_hour_duration_reads_as_hours_and_minutes() -> None:
+    assert format_duration(8100.0) == "2 h 15 min"
+
+
+def test_a_duration_a_breath_under_an_hour_rounds_up_to_the_hour_form() -> None:
+    """Rounding happens before the hours/minutes split, never separately on each part.
+
+    Split first and 3599.9 seconds renders as `"60 min"` — arithmetically defensible and
+    obviously wrong on the page.
+    """
+    assert format_duration(3599.9) == "1 h 00 min"
+
+
+def test_a_missing_duration_formats_as_none() -> None:
+    assert format_duration(None) is None
+
+
+def test_elevation_reads_in_whole_metres() -> None:
+    assert format_elevation(1240.4) == "1240 m"
+
+
+def test_a_missing_elevation_formats_as_none() -> None:
+    assert format_elevation(None) is None
+
+
+def test_no_track_has_no_stats_to_build() -> None:
+    assert build_trip_stats(None) is None
+
+
+@pytest.mark.django_db
+def test_a_track_whose_every_statistic_is_null_builds_nothing(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """The legacy-row shape: uploaded before the columns existed, missed by the backfill.
+
+    `None` here is what makes the template render the re-upload sentence rather than four
+    "the file did not carry this" notes — a different failure, told apart deliberately.
+    """
+    assert build_trip_stats(make_gpx_track(trip)) is None
+
+
+@pytest.mark.django_db
+def test_a_track_whose_only_value_is_a_zero_distance_still_builds_stats(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """The falsy trap, pinned. `0.0` is stored, non-null and falsy all at once.
+
+    A `not any(...)` all-null check would discard this perfectly parsed track into the
+    re-upload sentence. Every other column is null here so that the zero is the *only*
+    thing standing between the row and that branch.
+    """
+    track = make_gpx_track(trip, distance_meters=0.0)
+
+    stats = build_trip_stats(track)
+
+    assert stats is not None
+    assert stats.distance == "0.0 km"
+    assert stats.recorded_time is None
+    assert stats.elevation_gain is None
+    assert stats.elevation_loss is None
+
+
+@pytest.mark.django_db
+def test_a_fully_populated_track_builds_all_four_strings(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    track = make_gpx_track(
+        trip,
+        distance_meters=42195.0,
+        duration_seconds=8100.0,
+        elevation_gain_meters=1240.4,
+        elevation_loss_meters=1187.6,
+    )
+
+    stats = build_trip_stats(track)
+
+    assert stats is not None
+    assert stats.distance == "42.2 km"
+    assert stats.recorded_time == "2 h 15 min"
+    assert stats.elevation_gain == "1240 m"
+    assert stats.elevation_loss == "1188 m"
+
+
+@pytest.mark.django_db
+def test_an_untimed_track_builds_the_other_three_and_leaves_recorded_time_none(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """`valid-track.gpx`'s shape: `<ele>` but no `<time>`, so one field stays absent."""
+    track = make_gpx_track(
+        trip,
+        distance_meters=3661.09,
+        elevation_gain_meters=120.0,
+        elevation_loss_meters=80.0,
+    )
+
+    stats = build_trip_stats(track)
+
+    assert stats is not None
+    assert stats.distance == "3.7 km"
+    assert stats.recorded_time is None
+    assert stats.elevation_gain == "120 m"
+    assert stats.elevation_loss == "80 m"

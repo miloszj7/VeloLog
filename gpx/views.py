@@ -12,6 +12,7 @@ from django.views.generic import CreateView, View
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
+from gpx.statistics import build_trip_stats
 from trips.models import Trip
 
 logger = logging.getLogger(__name__)
@@ -66,15 +67,17 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Supply what `trips/trip_detail.html` needs when re-rendering with errors.
 
-        Including the map blob: this path renders the same page as `TripDetailView`, so a
-        rider whose upload was rejected must still see the route they already had, not the
-        template's no-route-to-draw branch.
+        Including the map and stats blobs: this path renders the same page as
+        `TripDetailView`, so a rider whose upload was rejected must still see the route and
+        the figures they already had, not the template's no-route-to-draw branch and not
+        its "these were never computed" sentence.
         """
         context = super().get_context_data(**kwargs)
         track = self.trip.tracks.first()
         context["trip"] = self.trip
         context["track"] = track
         context["map_config"] = build_map_config(track)
+        context["stats"] = build_trip_stats(track)
         return context
 
     def get_success_url(self) -> str:

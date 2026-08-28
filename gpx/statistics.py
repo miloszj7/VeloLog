@@ -1,4 +1,11 @@
-"""Recomputes a stored track's statistics from the file it was parsed out of.
+"""The two ends of the four statistics columns: refilling them, and shaping them for display.
+
+One module rather than two because both halves are defined by the same column set, and the
+zero-versus-null distinction those columns exist to preserve has to be honoured identically
+at both ends. `STATS_FIELDS` below names the set once; `build_trip_stats` reads exactly it.
+
+Refilling
+---------
 
 The four statistics columns on `GpxTrack` are filled at upload by
 `GpxUploadForm.clean_file`, which has the parse result already in hand. Rows uploaded
@@ -16,10 +23,21 @@ that migration exists: a replay on a fresh database would degrade to one logged 
 leave every pre-existing row's statistics null. Renaming it is survivable — the
 migration's import sits under a guard, deliberately — but silent, which is worse than a
 break.
+
+Displaying
+----------
+
+`build_trip_stats` mirrors `gpx/map_config.py`'s `build_map_config` exactly — same
+`GpxTrack | None` in, same "or `None` when there is nothing to show" out — so the detail
+template is handed a finished blob and does no arithmetic of its own. That is the same
+reason the map blob is built outside the two views: two views render
+`trips/trip_detail.html`, and a value derived in a template would have to be derived twice.
 """
 
 import logging
+from dataclasses import dataclass
 
+from gpx.constants import METERS_PER_KILOMETER, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from gpx.models import GpxTrack
 from gpx.parsing import parse_gpx_bytes
 
@@ -85,3 +103,109 @@ def backfill_track_statistics(track: GpxTrack) -> bool:
     # was rendering perfectly well.
     track.save(update_fields=list(STATS_FIELDS))
     return True
+
+
+def format_distance(meters: float | None) -> str | None:
+    """Render a stored distance as kilometres to one decimal place, or `None` for `None`.
+
+    Args:
+        meters: The stored `distance_meters`, or `None` when the row has no value.
+
+    Returns:
+        A string such as `"36.6 km"`, or `None`. `0.0` metres formats as `"0.0 km"` — a
+        real answer for a track whose points are all identical, and deliberately not the
+        same outcome as an absent value.
+    """
+    if meters is None:
+        return None
+    return f"{meters / METERS_PER_KILOMETER:.1f} km"
+
+
+def format_duration(seconds: float | None) -> str | None:
+    """Render a stored recorded time as hours and minutes, or `None` for `None`.
+
+    Args:
+        seconds: The stored `duration_seconds`, or `None` when the file carried no
+            `<time>`. This is the sum of each segment's own span, so a multi-day tour's
+            overnight gaps are not in it — the template labels it "Recorded time" for that
+            reason, and this function is not the place the semantic is explained twice.
+
+    Returns:
+        A string such as `"2 h 15 min"`, or `"45 min"` under an hour, or `None`. Minutes
+        are zero-padded only in the two-part form, where the reading is a clock-like pair.
+    """
+    if seconds is None:
+        return None
+    # Rounded to whole minutes *before* the split, not after: rounding each part
+    # separately turns 3599.9 seconds into "60 min" rather than into "1 h 00 min".
+    rounded_seconds = round(seconds / SECONDS_PER_MINUTE) * SECONDS_PER_MINUTE
+    hours, remainder = divmod(rounded_seconds, SECONDS_PER_HOUR)
+    minutes = remainder // SECONDS_PER_MINUTE
+    if not hours:
+        return f"{minutes} min"
+    return f"{hours} h {minutes:02d} min"
+
+
+def format_elevation(meters: float | None) -> str | None:
+    """Render a stored elevation change as whole metres, or `None` for `None`.
+
+    Args:
+        meters: The stored `elevation_gain_meters` or `elevation_loss_meters`, or `None`
+            when the file carried no `<ele>`.
+
+    Returns:
+        A string such as `"1240 m"`, or `None`. Whole metres because the underlying figure
+        is a sum of noisy per-point deltas — a decimal place would advertise a precision
+        the input does not have.
+    """
+    if meters is None:
+        return None
+    return f"{round(meters)} m"
+
+
+@dataclass(frozen=True)
+class TripStats:
+    """The four statistics as the detail template renders them, already formatted.
+
+    Every field is `str | None`, and a `None` means one thing only: the stored column was
+    null, so the uploaded file did not carry what that stat is derived from. The template
+    turns each `None` into a sentence naming the file as the reason — never into a blank
+    cell, and never into a zero.
+    """
+
+    distance: str | None
+    recorded_time: str | None
+    elevation_gain: str | None
+    elevation_loss: str | None
+
+
+def build_trip_stats(track: GpxTrack | None) -> TripStats | None:
+    """Return the blob the detail template renders, or `None` if there are no stats to show.
+
+    Args:
+        track: The trip's current track, or `None` when nothing has been uploaded.
+
+    Returns:
+        Formatted statistics, or `None` when there is no track at all or when every stored
+        column is null. The second case is a row that predates the columns and whose
+        backfill never reached it; the template gives it its own sentence, because
+        "nobody has computed these" and "the file did not carry this" are different
+        failures and a bug report has to be able to tell them apart.
+
+    The all-null test is `all(value is None ...)`, never a falsy check. A track whose
+    points are all identical stores `distance_meters = 0.0` — legal, non-null and falsy —
+    and a falsy check would collapse that perfectly parsed track into the re-upload
+    sentence. Same zero-versus-null trap `gpx.parsing.track_statistics` guards at the parse
+    boundary, one layer up.
+    """
+    if track is None:
+        return None
+    stored = [getattr(track, field) for field in STATS_FIELDS]
+    if all(value is None for value in stored):
+        return None
+    return TripStats(
+        distance=format_distance(track.distance_meters),
+        recorded_time=format_duration(track.duration_seconds),
+        elevation_gain=format_elevation(track.elevation_gain_meters),
+        elevation_loss=format_elevation(track.elevation_loss_meters),
+    )

@@ -67,6 +67,45 @@
         <p>
             <a href="{% url 'gpx:download' pk=track.pk %}">Download {{ track.original_filename }}</a>
         </p>
+
+        {% comment %}
+        Inside the `{% if track %}` branch on purpose: a trip with no route has no
+        statistics to show either, so the section disappears with the map rather than
+        needing a condition of its own that could drift out of step with it.
+
+        A definition list and nothing else — no class, no styling. `static/css/style.css`
+        carries only what the map's container needs, and this section has to stay readable
+        with the stylesheet blocked, which a `<dl>` is and a table of bare `<div>`s is not.
+        {% endcomment %}
+        <h2>Stats</h2>
+        {% if stats %}
+            <dl>
+                <dt>Distance</dt>
+                <dd>{% if stats.distance %}{{ stats.distance }}{% else %}Not recorded — the GPX file carried no positions to measure.{% endif %}</dd>
+
+                {% comment %}
+                "Recorded time", not "Elapsed time". The stored figure is the sum of each
+                GPX segment's own span, so the gaps between segments — every overnight on
+                a multi-day tour — are not in it. See `GpxTrack.duration_seconds`.
+                {% endcomment %}
+                <dt>Recorded time</dt>
+                <dd>{% if stats.recorded_time %}{{ stats.recorded_time }}{% else %}Not recorded — the GPX file carried no timestamps.{% endif %}</dd>
+
+                <dt>Elevation gained</dt>
+                <dd>{% if stats.elevation_gain %}{{ stats.elevation_gain }}{% else %}Not recorded — the GPX file carried no elevation data.{% endif %}</dd>
+
+                <dt>Elevation lost</dt>
+                <dd>{% if stats.elevation_loss %}{{ stats.elevation_loss }}{% else %}Not recorded — the GPX file carried no elevation data.{% endif %}</dd>
+            </dl>
+        {% else %}
+            {% comment %}
+            A row whose statistics were never computed — uploaded before the columns
+            existed, and missed by the backfill. Worded deliberately unlike the per-stat
+            notes above: those say the *file* lacked the data, this says *nobody has
+            worked it out yet*, and a bug report has to be able to tell the two apart.
+            {% endcomment %}
+            <p>These stats have not been worked out for this route. Uploading the GPX file again will calculate them.</p>
+        {% endif %}
     {% else %}
         <p>No route yet — this trip has no GPX file uploaded, so there is nothing to map.</p>
     {% endif %}

@@ -748,36 +748,36 @@ corrected — the same helper, run on demand, with no re-upload required.
 
 #### Automated
 
-- [x] 2.1 Migrations apply cleanly on an empty database
-- [x] 2.2 No further migration is outstanding
-- [x] 2.3 Statistics tests pass
-- [x] 2.4 Full suite passes with no `.env`
-- [x] 2.5 Lint, format, import order and strict typing pass
+- [x] 2.1 Migrations apply cleanly on an empty database — 070ff11
+- [x] 2.2 No further migration is outstanding — 070ff11
+- [x] 2.3 Statistics tests pass — 070ff11
+- [x] 2.4 Full suite passes with no `.env` — 070ff11
+- [x] 2.5 Lint, format, import order and strict typing pass — 070ff11
 
 #### Manual
 
-- [x] 2.6 Running `migrate` against a copy of the local database fills stats on pre-existing tracks
-- [x] 2.7 A track whose file was deleted leaves `migrate` succeeding, with a log line naming the row
-- [x] 2.8 `manage.py backfill_gpx_stats` refills a hand-nulled track and reports its tally
+- [x] 2.6 Running `migrate` against a copy of the local database fills stats on pre-existing tracks — 070ff11
+- [x] 2.7 A track whose file was deleted leaves `migrate` succeeding, with a log line naming the row — 070ff11
+- [x] 2.8 `manage.py backfill_gpx_stats` refills a hand-nulled track and reports its tally — 070ff11
 
 ### Phase 3: Render stats on the trip detail page
 
 #### Automated
 
-- [ ] 3.1 Statistics tests pass
-- [ ] 3.2 Detail-page stats tests pass
-- [ ] 3.3 Existing detail and map tests still pass
-- [ ] 3.4 Static references still resolve
-- [ ] 3.5 Full suite passes with no `.env`
-- [ ] 3.6 Lint, format, import order and strict typing pass
+- [x] 3.1 Statistics tests pass
+- [x] 3.2 Detail-page stats tests pass
+- [x] 3.3 Existing detail and map tests still pass
+- [x] 3.4 Static references still resolve
+- [x] 3.5 Full suite passes with no `.env`
+- [x] 3.6 Lint, format, import order and strict typing pass
 
 #### Manual
 
-- [ ] 3.7 A trip with a timed GPX file shows all four stats, correctly formatted, labelled "Recorded time"
-- [ ] 3.8 A trip with `valid-track.gpx` shows distance and elevation, recorded time marked not recorded
-- [ ] 3.9 A trip with no GPX file shows no Stats section
-- [ ] 3.10 An invalid-file re-render keeps the stats intact
-- [ ] 3.11 The page is readable with the stylesheet blocked
+- [x] 3.7 A trip with a timed GPX file shows all four stats, correctly formatted, labelled "Recorded time"
+- [x] 3.8 A trip with `valid-track.gpx` shows distance and elevation, recorded time marked not recorded
+- [x] 3.9 A trip with no GPX file shows no Stats section
+- [x] 3.10 An invalid-file re-render keeps the stats intact
+- [x] 3.11 The page is readable with the stylesheet blocked
 
 ### Phase 4: Sync AGENTS.md and roadmap
 

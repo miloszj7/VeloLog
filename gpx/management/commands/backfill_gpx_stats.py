@@ -17,7 +17,7 @@ from typing import Any
 from django.core.management.base import BaseCommand, CommandParser
 
 from gpx.models import GpxTrack
-from gpx.statistics import backfill_track_statistics
+from gpx.statistics import STATS_FIELDS, backfill_track_statistics
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,12 @@ class Command(BaseCommand):
             # would select rows whose file simply carried no `<ele>` or `<time>` over and
             # over again.
             tracks = tracks.filter(distance_meters__isnull=True)
+
+        # Deferred for the same reason as in migration `0003`: the `points` blob is the
+        # largest thing on the row and no part of this command reads it. `original_filename`
+        # is in the list because the skip line below prints it — leaving it deferred would
+        # trade one big column for a refresh query per skipped row.
+        tracks = tracks.only("id", "file", "original_filename", *STATS_FIELDS)
 
         filled = 0
         skipped = 0

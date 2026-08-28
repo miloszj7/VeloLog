@@ -31,7 +31,7 @@ def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> 
     the triple break described above. `ImportError` alone would let all three through.
     """
     try:
-        from gpx.statistics import backfill_track_statistics
+        from gpx.statistics import STATS_FIELDS, backfill_track_statistics
     except Exception:
         logger.exception(
             "gpx.statistics is unavailable; leaving existing track statistics null. "
@@ -45,7 +45,14 @@ def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> 
     # rejected at upload. The other three are legitimately null for a file that carried
     # no `<ele>` or no `<time>`, so filtering on any of them would refill rows forever.
     tracks = gpx_track.objects.using(schema_editor.connection.alias)
-    for track in tracks.filter(distance_meters__isnull=True):
+    # `.only(...)` matters here more than anywhere else this queryset shape appears: this
+    # loop runs unattended at container boot on a memory-capped dyno, and a whole row
+    # carries the `points` blob — up to `MAX_GPX_POINTS` coordinate pairs, tens of
+    # megabytes once hydrated into Python lists — which nothing below reads.
+    # `save(update_fields=...)` is happy on a deferred instance, so this costs nothing, and
+    # `.iterator()` keeps the result set itself from being materialized in one go.
+    pending = tracks.filter(distance_meters__isnull=True).only("id", "file", *STATS_FIELDS)
+    for track in pending.iterator():
         try:
             # The inner `atomic()` is a savepoint, and it is what makes the broad catch
             # below mean what its comment says. `Model.save_base` wraps its write in

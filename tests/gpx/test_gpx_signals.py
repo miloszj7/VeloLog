@@ -13,9 +13,10 @@ from django.core.exceptions import SuspiciousFileOperation
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
-from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
+from pytest_django.fixtures import DjangoAssertNumQueries, DjangoCaptureOnCommitCallbacks
 
 from gpx.models import GpxTrack
+from gpx.signals import discard_superseded_file_of_saved_track
 from tests.conftest import StoredTrackFactory
 from trips.models import Trip
 
@@ -309,6 +310,41 @@ def test_a_save_whose_update_fields_exclude_the_file_removes_nothing(
     assert default_storage.exists(name)
     track.refresh_from_db()
     assert stored_name(track) == name
+
+
+@pytest.mark.django_db
+def test_the_insert_path_costs_the_receiver_no_query(
+    trip: Trip,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    """`signals.py:163` claims the insert path "costs the hot path zero queries".
+
+    `instance.pk is None` is checked before the predecessor lookup, so calling the
+    receiver directly on an unsaved instance must not touch the database at all.
+    """
+    unsaved = GpxTrack(trip=trip, file="gpx/1/1/new.gpx", original_filename="new.gpx")
+
+    with django_assert_num_queries(0):
+        discard_superseded_file_of_saved_track(GpxTrack, instance=unsaved)
+
+
+@pytest.mark.django_db
+def test_the_update_fields_guard_costs_the_receiver_no_query(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    """`signals.py:168` claims a save excluding `file` "is answered without a query".
+
+    The `update_fields` guard runs before the predecessor lookup, so calling the receiver
+    directly with `update_fields` excluding `file` must not touch the database at all.
+    """
+    track = make_stored_track(trip)
+
+    with django_assert_num_queries(0):
+        discard_superseded_file_of_saved_track(
+            GpxTrack, instance=track, update_fields=frozenset({"original_filename"})
+        )
 
 
 @pytest.mark.django_db

@@ -1,7 +1,8 @@
-"""The `post_delete` receiver that removes a track's file, on every path that deletes one.
+"""The two receivers that remove a track's file: on every path that deletes a row, and on
+every path that replaces the file on a row that stays.
 
-Every test here wraps the deleting call in `django_capture_on_commit_callbacks(execute=True)`.
-The receiver schedules the storage delete through `transaction.on_commit`, and
+Every test here wraps the mutating call in `django_capture_on_commit_callbacks(execute=True)`.
+Both receivers schedule the storage delete through `transaction.on_commit`, and
 pytest-django wraps each test in a transaction that never commits — so without the
 capture the deferred callback is silently skipped and the assertion passes while proving
 nothing about it.
@@ -9,11 +10,13 @@ nothing about it.
 
 import pytest
 from django.core.exceptions import SuspiciousFileOperation
+from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
-from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
+from pytest_django.fixtures import DjangoAssertNumQueries, DjangoCaptureOnCommitCallbacks
 
 from gpx.models import GpxTrack
+from gpx.signals import discard_superseded_file_of_saved_track
 from tests.conftest import StoredTrackFactory
 from trips.models import Trip
 
@@ -233,3 +236,231 @@ def test_a_rolled_back_delete_leaves_the_file_in_place(
     assert callbacks == []
     assert GpxTrack.objects.filter(pk=pk).exists()
     assert default_storage.exists(name)
+
+
+@pytest.mark.django_db
+def test_replacing_a_stored_file_removes_the_predecessor(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """The strand `post_delete` structurally cannot reach: the row survives the replacement.
+
+    `gpx_upload_path` mints fresh random bytes per write, so the successor can never
+    overwrite the predecessor in place — without the `pre_save` receiver the old file just
+    stays there, referenced by nothing, on every admin repair.
+    """
+    track = make_stored_track(trip)
+    predecessor = stored_name(track)
+    assert default_storage.exists(predecessor)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        track.file.save("day-2.gpx", ContentFile(b"<gpx>2</gpx>"), save=True)
+
+    successor = stored_name(track)
+    assert successor != predecessor
+    assert default_storage.exists(successor)
+    assert not default_storage.exists(predecessor)
+
+
+@pytest.mark.django_db
+def test_saving_a_track_without_touching_its_file_removes_nothing(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """The ordinary edit — and the shape a change form submitted with no new file takes.
+
+    `forms.FileField.clean` returns `initial` when the widget was left alone, i.e. the
+    already-committed `FieldFile`, so the stored key and `instance.file.name` are equal.
+    A receiver that skipped that comparison would delete the file on every save.
+    """
+    track = make_stored_track(trip)
+    name = stored_name(track)
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        track.original_filename = "renamed.gpx"
+        track.save()
+
+    assert callbacks == []
+    assert default_storage.exists(name)
+
+
+@pytest.mark.django_db
+def test_a_save_whose_update_fields_exclude_the_file_removes_nothing(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """`update_fields` is checked before the query, so a stats save costs nothing.
+
+    The in-memory field is deliberately pointed somewhere else first: that is what makes
+    this prove the `update_fields` guard rather than the key comparison further down. The
+    column named in `update_fields` is the only one the `UPDATE` can touch, so the
+    divergent `file` value never reaches the database either.
+    """
+    track = make_stored_track(trip)
+    name = stored_name(track)
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        track.file = "gpx/1/1/somewhere-else.gpx"
+        track.save(update_fields=["original_filename"])
+
+    assert callbacks == []
+    assert default_storage.exists(name)
+    track.refresh_from_db()
+    assert stored_name(track) == name
+
+
+@pytest.mark.django_db
+def test_the_insert_path_costs_the_receiver_no_query(
+    trip: Trip,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    """`signals.py:163` claims the insert path "costs the hot path zero queries".
+
+    `instance.pk is None` is checked before the predecessor lookup, so calling the
+    receiver directly on an unsaved instance must not touch the database at all.
+    """
+    unsaved = GpxTrack(trip=trip, file="gpx/1/1/new.gpx", original_filename="new.gpx")
+
+    with django_assert_num_queries(0):
+        discard_superseded_file_of_saved_track(GpxTrack, instance=unsaved)
+
+
+@pytest.mark.django_db
+def test_the_update_fields_guard_costs_the_receiver_no_query(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    """`signals.py:168` claims a save excluding `file` "is answered without a query".
+
+    The `update_fields` guard runs before the predecessor lookup, so calling the receiver
+    directly with `update_fields` excluding `file` must not touch the database at all.
+    """
+    track = make_stored_track(trip)
+
+    with django_assert_num_queries(0):
+        discard_superseded_file_of_saved_track(
+            GpxTrack, instance=track, update_fields=frozenset({"original_filename"})
+        )
+
+
+@pytest.mark.django_db
+def test_a_rolled_back_replacement_leaves_the_predecessor_in_place(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """The mirror of the rolled-back-delete case, and why this defers to commit too.
+
+    A receiver that deleted the predecessor where it stands would have destroyed it before
+    the block below raises — and the rollback then restores a row still pointing at that
+    file, turning a failed edit into a track whose download 404s.
+    """
+    track = make_stored_track(trip)
+    predecessor = stored_name(track)
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        with pytest.raises(RuntimeError):
+            with transaction.atomic():
+                track.file.save("day-2.gpx", ContentFile(b"<gpx>2</gpx>"), save=True)
+                raise RuntimeError("something later in the block failed")
+
+    assert callbacks == []
+    track.refresh_from_db()
+    assert stored_name(track) == predecessor
+    assert default_storage.exists(predecessor)
+
+
+@pytest.mark.django_db
+def test_a_first_save_onto_a_row_with_no_stored_file_schedules_nothing(
+    trip: Trip,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """An empty stored key is not a predecessor — and this is the `make_stored_track` idiom.
+
+    `GpxTrack.objects.create(...)` followed by `file.save(..., save=True)` is an `UPDATE`
+    on an existing row, so it reaches the replacement receiver with a pk set. Its stored
+    key is `""`, and asking storage to delete `""` raises `ValueError` rather than
+    shrugging, so the falsy guard is what keeps the fixture itself working.
+    """
+    track = GpxTrack.objects.create(
+        trip=trip,
+        file="",
+        points=[],
+        min_latitude=0.0,
+        min_longitude=0.0,
+        max_latitude=0.0,
+        max_longitude=0.0,
+        original_filename="first-upload.gpx",
+    )
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        track.file.save("first-upload.gpx", ContentFile(b"<gpx/>"), save=True)
+
+    assert callbacks == []
+    assert default_storage.exists(stored_name(track))
+
+
+@pytest.mark.django_db
+def test_a_raw_save_never_reclaims_anything(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """`loaddata` replays rows as serialized; that is a restore, not a replacement.
+
+    A raw save is the one case where a differing key means the opposite of what it means
+    everywhere else — the fixture is asserting what the row should point at, and the file
+    it names may well be the one already on the volume. Reclaiming there would delete part
+    of what the load is restoring, so the guard fires before the comparison ever runs.
+    `save_base(raw=True)` is what `loaddata` calls; nothing else in Django sets the flag.
+    """
+    track = make_stored_track(trip)
+    name = stored_name(track)
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        track.file = "gpx/1/1/from-a-fixture.gpx"
+        track.save_base(raw=True)
+
+    assert callbacks == []
+    assert default_storage.exists(name)
+
+
+@pytest.mark.django_db
+def test_a_cleanup_failure_does_not_fail_a_replacement_that_already_committed(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Same contract as the delete case: the row is committed, so the request cannot 500.
+
+    The log line is the whole remedy here — the predecessor stays on the volume and the
+    key named in `storage_key` is what an operator feeds back to `reconcile_media`. It has
+    to be the *superseded* key, not the one the row now points at, or the line names a
+    file that is still in use.
+    """
+
+    def refuse_delete(self: object, name: str) -> None:
+        raise PermissionError(name)
+
+    track = make_stored_track(trip)
+    predecessor = stored_name(track)
+    pk = track.pk
+    monkeypatch.setattr(
+        "django.core.files.storage.FileSystemStorage.delete", refuse_delete, raising=True
+    )
+
+    with caplog.at_level("ERROR", logger="gpx.signals"):
+        with django_capture_on_commit_callbacks(execute=True):
+            track.file.save("day-2.gpx", ContentFile(b"<gpx>2</gpx>"), save=True)
+
+    assert stored_name(track) != predecessor
+    assert default_storage.exists(predecessor)
+    (record,) = caplog.records
+    assert record.__dict__["track_id"] == pk
+    assert record.__dict__["storage_key"] == predecessor

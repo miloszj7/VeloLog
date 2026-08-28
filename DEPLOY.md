@@ -174,6 +174,100 @@ on the `service files` parent, before the subcommand, and is unnecessary when a 
 already linked. `MSYS_NO_PATHCONV=1` is required from Git Bash for the same reason it is
 everywhere else on this page.
 
+## Orphaned media files — detect and reclaim
+
+An orphan is a file under `MEDIA_ROOT` that no `GpxTrack` row points at. It costs Volume
+space and nothing else — no page breaks, no request fails — so this is housekeeping, not an
+incident. It is placed here, immediately after the restore material, because the two most
+likely ways to create a lot of orphans at once are both restore procedures: nesting the media
+upload under a wrapper directory (the drill's second defect, above), and restoring one half
+without the other.
+
+**Detect. This is read-only and always safe to run:**
+
+```bash
+railway ssh
+uv run python manage.py reconcile_media
+```
+
+It walks the whole of `MEDIA_ROOT` — not just `gpx/` — because restore nesting writes outside
+it by construction. Per-file lines go to stderr, the tally to stdout, so both land in
+`railway logs` as plain text. Report-only is the default: it removes nothing and says so.
+
+**Age threshold.** A file written seconds ago by a request still mid-save is
+indistinguishable from an orphan by set difference alone, so anything modified within
+`--min-age-minutes` (default 60) is reported as *spared*, not as an orphan. The same guard
+applies to directories, which is what keeps a prune off a directory an upload has just
+created and not yet written into. `--min-age-minutes 0` disables it — only on a service that
+is genuinely idle, never on live production taking uploads.
+
+### Before `--delete` — the precondition
+
+`--delete` is the only irreversible action on this page. There is no undo on the Volume.
+
+**Never reclaim while the database and the Volume may be from different points in time.**
+The command's answer is `walk(MEDIA_ROOT) - {referenced keys}`, which names orphans only if
+both halves describe the same moment. In practice that means:
+
+- **Not after restoring either half**, until both are restored and `/healthz/` returns
+  `"database": "ok"` and `"media": "ok"` — see the point-in-time warning that opens
+  *Restore*, above. A database restored ahead of its media makes every file on the Volume
+  look unreferenced.
+- **Not with a `MEDIA_ROOT` whose value has not been confirmed.** A misconfigured
+  `MEDIA_ROOT` (the failure this repo escalated to a Hard Rule) points the walk at a tree
+  this database does not describe, and every file in it looks orphaned.
+- **Never stage a backup, export, or scratch copy inside `MEDIA_ROOT`.** The referenced set
+  is `GpxTrack.file` alone and the walk is deliberately unscoped to the whole Volume, so any
+  file placed there that is not a `GpxTrack.file` looks exactly like an orphan — worse still
+  if it is a symlink, since `--delete` would then reclaim whatever it points at.
+
+The command catches the *complete* version of both states on its own: if it found files and
+**not one of them is referenced**, `--delete` refuses, names the two likely causes, removes
+nothing, and exits 0. `--allow-full-sweep` overrides that refusal and is correct only when
+the database really is empty — never as a way past a refusal you did not expect. A refusal
+you cannot explain means stop and find out why, not add the flag.
+
+**The refusal does not cover a partial restore.** Restore a stale database that still has
+*some* rows and the guard sees a referenced file, stays quiet, and offers to reclaim every
+file belonging to the rows that snapshot is missing. Nothing in the walk can detect that,
+which is why the precondition above is the operator's responsibility and not the command's.
+
+**Reclaim, once the precondition holds:**
+
+```bash
+railway ssh
+uv run python manage.py reconcile_media --delete
+```
+
+Files first, then the directories they emptied, deepest-first — `os.rmdir` refuses a
+non-empty directory, so the prune cannot over-reach, and `MEDIA_ROOT` itself is never a
+candidate. A per-file or per-directory failure is a counted skip in the tally, not an abort.
+Re-running is a clean no-op.
+
+### Why from inside the container, and not through the CLI
+
+`railway service files delete` is refused for non-human callers (see *Restore*, above), and
+`context/foundation/infrastructure.md` gates Volume changes made from outside the app. A
+management command running inside the container **is the app acting on its own storage**,
+which clears both — and unlike a hand-rolled `railway service files list` walk, it can see
+the database, so it can tell a referenced file from an orphan at all. That is the difference
+this command exists to make.
+
+### Baseline measurement — 2026-08-28
+
+Taken before any of this shipped, by a hand-rolled `railway service files list` walk plus a
+production database download:
+
+| | Rows | Files | Orphans |
+|---|---|---|---|
+| Production | 4 | 4 | 0 (exact in both directions) |
+| Local | 3 | 3 | 0 files; 4 empty `gpx/<owner>/<trip>/` directories |
+
+Production held **1.38 MiB on a 500 MB Volume**. That 500 MB is the only capacity figure
+recorded anywhere for this deployment — it is not in `railway.json`, the PRD, or any other
+document in this repo, so it lives here. At the measured rate, capacity is not what makes
+orphans worth reclaiming; knowing the number is.
+
 ## Production superuser (one-time)
 
 **Status: created (2026-08-23).** Django admin is reachable in production.

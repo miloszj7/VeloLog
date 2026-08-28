@@ -42,6 +42,20 @@ SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE
 # string the elevation gate exists to prevent.
 MIN_ELEVATED_POINTS = 2
 
+# The minimum age a file under `MEDIA_ROOT` must have before `manage.py reconcile_media`
+# will call it an orphan. This is the only thing separating a genuinely unreferenced file
+# from one a request is in the middle of writing: `FileField.pre_save` commits the upload to
+# storage *before* the INSERT it belongs to, so between those two moments the file is on
+# disk and no row names it — indistinguishable from an orphan by set difference alone. The
+# `/healthz/` probe writes and deletes its own file within one request for the same reason,
+# so the threshold is also what makes walking `healthz/` safe rather than racy.
+#
+# An hour, sized against the real upper bound on a request rather than on the parse: gunicorn's
+# default worker timeout is 30 s and the ~2 s parse is entirely upstream of the write, so this
+# is roughly two orders of magnitude of headroom. Reclamation is human-triggered and rare, so
+# the cost of being generous here is a file surviving one run — never a file deleted in flight.
+ORPHAN_MIN_AGE_MINUTES = 60
+
 # Paths of the Leaflet marker images `gpx/map_config.py` hands to the template, relative to
 # a static root. Resolved through `static()` at render — never written out as literal URLs —
 # because `CompressedManifestStaticFilesStorage` serves these under content-hashed names, so

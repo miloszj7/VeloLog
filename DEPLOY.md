@@ -216,6 +216,10 @@ both halves describe the same moment. In practice that means:
 - **Not with a `MEDIA_ROOT` whose value has not been confirmed.** A misconfigured
   `MEDIA_ROOT` (the failure this repo escalated to a Hard Rule) points the walk at a tree
   this database does not describe, and every file in it looks orphaned.
+- **Never stage a backup, export, or scratch copy inside `MEDIA_ROOT`.** The referenced set
+  is `GpxTrack.file` alone and the walk is deliberately unscoped to the whole Volume, so any
+  file placed there that is not a `GpxTrack.file` looks exactly like an orphan — worse still
+  if it is a symlink, since `--delete` would then reclaim whatever it points at.
 
 The command catches the *complete* version of both states on its own: if it found files and
 **not one of them is referenced**, `--delete` refuses, names the two likely causes, removes

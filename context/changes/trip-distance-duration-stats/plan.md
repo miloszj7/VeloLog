@@ -783,9 +783,9 @@ corrected — the same helper, run on demand, with no re-upload required.
 
 #### Automated
 
-- [x] 4.1 Full suite passes with no `.env`
+- [x] 4.1 Full suite passes with no `.env` — a376dbb
 
 #### Manual
 
-- [x] 4.2 The `gpx/` bullet reads accurately against the shipped code
-- [x] 4.3 Both S-05 roadmap rows read `done` / `Planned and implemented`, with no "Waiting on S-03" left
+- [x] 4.2 The `gpx/` bullet reads accurately against the shipped code — a376dbb
+- [x] 4.3 Both S-05 roadmap rows read `done` / `Planned and implemented`, with no "Waiting on S-03" left — a376dbb

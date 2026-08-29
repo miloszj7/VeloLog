@@ -584,7 +584,13 @@ changes shape.
 #### Manual
 
 - [x] 3.5 Adding a `static(MEDIA_URL, …)` route turns all three media cells red — 2efa865
+      (`static()` is itself a documented no-op at `DEBUG=False`, per test-plan.md §6.7; the
+      mutation actually run substituted a `document_root`-based `re_path`, the closer analogue
+      of a real platform static handler)
 - [x] 3.6 The media probe fails because bytes are served, not merely on a status change — 2efa865
+      (true only when the media test ran first in the process — `document_root` binds at
+      URLconf import time while `MEDIA_ROOT` is rebound per test; the resolver-level assertion
+      added in the impl review, `a7e3269`, is order-independent and supersedes this leg)
 - [x] 3.7 The admin cells' `?next=` carries the real object path — 2efa865
 
 ### Phase 4: Documentation and rollout state

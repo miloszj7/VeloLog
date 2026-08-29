@@ -561,31 +561,31 @@ changes shape.
 
 #### Automated
 
-- [x] 2.1 Every matrix cell passes
-- [x] 2.2 Cell count matches the declared inventory
-- [x] 2.3 Full suite green with coverage gate
-- [x] 2.4 `/python-quality-gates` passes
+- [x] 2.1 Every matrix cell passes — e7b684c
+- [x] 2.2 Cell count matches the declared inventory — e7b684c
+- [x] 2.3 Full suite green with coverage gate — e7b684c
+- [x] 2.4 `/python-quality-gates` passes — e7b684c
 
 #### Manual
 
-- [x] 2.5 Removing `filter(trip__owner=…)` turns the `gpx:download` foreign cells red
-- [x] 2.6 Dropping `http_method_names` turns the disallowed-verb cells red
-- [x] 2.7 Test IDs name the failing route and actor in `-v` output
+- [x] 2.5 Removing `filter(trip__owner=…)` turns the `gpx:download` foreign cells red — e7b684c
+- [x] 2.6 Dropping `http_method_names` turns the disallowed-verb cells red — e7b684c
+- [x] 2.7 Test IDs name the failing route and actor in `-v` output — e7b684c
 
 ### Phase 3: Boundary probes outside the view stack
 
 #### Automated
 
-- [ ] 3.1 Media probe and admin cells pass
-- [ ] 3.2 Full suite green
-- [ ] 3.3 CI-equivalence run passes with no `.env`
-- [ ] 3.4 `/python-quality-gates` passes
+- [x] 3.1 Media probe and admin cells pass
+- [x] 3.2 Full suite green
+- [x] 3.3 CI-equivalence run passes with no `.env`
+- [x] 3.4 `/python-quality-gates` passes
 
 #### Manual
 
-- [ ] 3.5 Adding a `static(MEDIA_URL, …)` route turns all three media cells red
-- [ ] 3.6 The media probe fails because bytes are served, not merely on a status change
-- [ ] 3.7 The admin cells' `?next=` carries the real object path
+- [x] 3.5 Adding a `static(MEDIA_URL, …)` route turns all three media cells red
+- [x] 3.6 The media probe fails because bytes are served, not merely on a status change
+- [x] 3.7 The admin cells' `?next=` carries the real object path
 
 ### Phase 4: Documentation and rollout state
 

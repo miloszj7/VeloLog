@@ -47,6 +47,7 @@ from datetime import date
 from typing import Any, Literal, cast
 
 import pytest
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse, HttpResponseBase, StreamingHttpResponse
@@ -86,6 +87,10 @@ class TargetObjects:
 Probe = Callable[[TargetObjects, HttpResponseBase], None]
 
 
+# Where a drained streaming body is memoized on the response itself. See `_body`.
+_DRAINED_BODY_ATTR = "_ownership_matrix_drained_body"
+
+
 def _body(response: HttpResponseBase) -> bytes:
     """Return a response's bytes, draining a streaming response rather than skipping it.
 
@@ -93,11 +98,21 @@ def _body(response: HttpResponseBase) -> bytes:
     actually leak a foreign rider's track is the streaming one. Reading `.content` on it
     raises; returning `b""` for it would turn the leak probe into a guaranteed pass.
 
+    The result is memoized on the response because `streaming_content` is a one-shot
+    iterator: drained once, every later read yields `b""`. That is the same guaranteed pass
+    by a different route — a cell that checks a status, then asks a probe to search the
+    body, would have the probe searching nothing. Memoizing makes a second read return what
+    the first one saw, so the number of times a body is consulted stops being load-bearing.
+
     `streaming_content` is typed as sync-or-async; the cast picks the sync half, which is
     what a `FileResponse` built by `GpxDownloadView` under the sync test client always is.
     """
     if isinstance(response, StreamingHttpResponse):
-        return b"".join(cast(Iterator[bytes], response.streaming_content))
+        cached = getattr(response, _DRAINED_BODY_ATTR, None)
+        if cached is None:
+            cached = b"".join(cast(Iterator[bytes], response.streaming_content))
+            setattr(response, _DRAINED_BODY_ATTR, cached)
+        return cast(bytes, cached)
     return cast(HttpResponse, response).content
 
 
@@ -721,3 +736,134 @@ def test_an_invalid_upload_against_a_foreign_trip_is_not_an_existence_oracle(
         f"file was"
     )
     route.probe(target, response)
+
+
+# --------------------------------------------------------------------------------------
+# Boundary probes: the two refusals no view in this project produces.
+# --------------------------------------------------------------------------------------
+#
+# Everything above is driven by `OBJECT_SCOPED_ROUTES`, because everything above is a route
+# this project wrote and can be reversed by name. These two are not. One is the *absence*
+# of a route, and the other belongs to `django.contrib.admin`. Neither can appear in the
+# inventory, so neither can be swept — which is exactly why they need writing out by hand:
+# a guard that only checks the tuple cannot notice a guarantee that lives outside it.
+
+# actor label -> (client fixture, fixture owning the track). Three actors for one URL, and
+# the **owner** is the load-bearing one: the guarantee is that nothing serves this prefix at
+# all, not that the prefix is owner-scoped. Drop the owner cell and this test keeps passing
+# against a media route that had been added and merely happened to be authenticated.
+MEDIA_PROBE_ACTORS: dict[str, tuple[str, str]] = {
+    "owner": ("auth_client", "rider"),
+    "second-rider": ("auth_client", "other_rider"),
+    "anonymous": ("client", "rider"),
+}
+
+# actor label -> client fixture. `auth_client` is a plain rider: `create_user` leaves
+# `is_staff` false, which is the whole population this cell speaks for.
+ADMIN_BOUNDARY_ACTORS: dict[str, str] = {
+    "non-staff-rider": "auth_client",
+    "anonymous": "client",
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("actor", tuple(MEDIA_PROBE_ACTORS))
+def test_no_url_under_media_url_serves_a_stored_track(
+    actor: str, request: pytest.FixtureRequest, make_stored_track: StoredTrackFactory
+) -> None:
+    """Nothing is served from `MEDIA_URL` — asserted as a request, not as a settings value.
+
+    Half of Risk #2 is "downloads their track file", and this project's entire defense on
+    that half is that **no route exists** under the media prefix. `gpx:download` is the only
+    way to a stored file, and it is `LoginRequiredMixin` plus a `trip__owner` traversal.
+
+    That defense is one line away from gone, in several directions: a
+    `urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)` added for
+    local convenience, a `WHITENOISE_ROOT` pointed at the volume, a platform-level static
+    handler mounted ahead of the app. Any of them serves every rider's GPX to anyone holding
+    the URL, and WhiteNoise in particular sits *ahead* of `AuthenticationMiddleware`
+    (`velo_log/settings.py:66,70`), so what it serves is outside authorization by
+    construction — there is no `request.user` yet when it answers.
+
+    Not one existing test would go red: they all go through `gpx:download`. The nearest
+    thing is `tests/test_media_storage.py:106-107`, which asserts a *settings value* — true
+    of a config that has since been overridden by a route, a middleware or a platform.
+
+    The URL comes from `track.file.url` rather than a literal because `gpx/models.py:8-17`
+    discards the user's filename and names the file with `secrets.token_hex(16)`. A
+    hardcoded `/media/gpx/1/1/x.gpx` would 404 because no such file exists, which is a pass
+    for the wrong reason — and would keep passing after a media route was added.
+    """
+    client_fixture, owner_fixture = MEDIA_PROBE_ACTORS[actor]
+    client = cast(Client, request.getfixturevalue(client_fixture))
+    owner = cast(User, request.getfixturevalue(owner_fixture))
+
+    trip = Trip.objects.create(name=TARGET_TRIP_NAME, date=TARGET_TRIP_DATE, owner=owner)
+    track = make_stored_track(trip, TARGET_TRACK_CONTENT)
+    url = track.file.url
+
+    # Without this the test silently becomes a probe of some unrelated path the moment
+    # `MEDIA_URL` changes, and a probe of an unrelated path passes for free.
+    assert url.startswith(settings.MEDIA_URL), (
+        f"{url!r} does not start with MEDIA_URL ({settings.MEDIA_URL!r}), so this test is no "
+        f"longer requesting the prefix it exists to prove is unserved"
+    )
+
+    response = client.get(url)
+
+    assert response.status_code == 404, (
+        f"{url} answered {response.status_code} to the {actor} — a URL under MEDIA_URL now "
+        f"resolves, so every rider's stored track is reachable by anyone holding its URL, "
+        f"outside AuthenticationMiddleware and outside the owner-scoped queryset entirely"
+    )
+    assert TARGET_TRACK_CONTENT not in _body(response), (
+        f"{url} returned the stored bytes of a track to the {actor} — the file is being "
+        f"served straight off the media volume"
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("actor", tuple(ADMIN_BOUNDARY_ACTORS))
+def test_the_admin_object_route_refuses_a_visitor_who_is_not_staff(
+    actor: str, request: pytest.FixtureRequest, other_rider: User
+) -> None:
+    """302 to the admin login — and 302 is the contract here, not the 404 above.
+
+    Both `ModelAdmin`s are deliberately unscoped (`trips/admin.py:13-22`,
+    `gpx/admin.py:13-29`): any `is_staff` user with model permissions reads every rider's
+    data, which is what an admin is for. The isolation guarantee therefore does not say
+    "the admin scopes by owner" — it reduces to **no non-staff visitor reaches it at all**,
+    and that is the boundary this pins. `test-plan.md` §7 excludes admin as a *product
+    surface*; the boundary of a guarantee is not the product surface, which is the same
+    reasoning §7 already uses to keep the admin file-replacement path tested under Risk #1.
+
+    Deliberately not asserted: that staff *can* read every user's data. That is admin as a
+    product surface, and asserting it here would turn a boundary check into a spec for a
+    behavior nobody has decided to keep.
+
+    Why not 404: `AdminSite.admin_view` checks `has_permission` and calls
+    `redirect_to_login` — it never reaches a queryset, so there is nothing to scope and no
+    404 to produce. A cell copied from the matrix above would assert the wrong contract and
+    then get "fixed" by someone making the admin lie about what exists. The `?next=` is
+    asserted for the same reason it is on the app's own routes: it carries the real object
+    path, which is what a staff member is returned to after signing in.
+    """
+    client = cast(Client, request.getfixturevalue(ADMIN_BOUNDARY_ACTORS[actor]))
+    trip = Trip.objects.create(name=TARGET_TRIP_NAME, date=TARGET_TRIP_DATE, owner=other_rider)
+    url = reverse("admin:trips_trip_change", args=[trip.pk])
+
+    response = client.get(url)
+
+    assert response.status_code == 302, (
+        f"{url} answered {response.status_code} to the {actor} — a visitor who is not staff "
+        f"reached an admin route onto another rider's trip, where nothing scopes by owner"
+    )
+    assert response.headers["Location"] == f"{reverse('admin:login')}?next={url}", (
+        f"the admin refusal for the {actor} points at {response.headers['Location']!r} rather "
+        f"than the admin login carrying {url} — either the refusal is no longer the login "
+        f"redirect, or it has stopped preserving which object was asked for"
+    )
+    assert TARGET_TRIP_NAME.encode() not in _body(response), (
+        f"the refusal shown to the {actor} names the trip it refused, which tells a visitor "
+        f"with no admin access that this pk belongs to a real trip"
+    )

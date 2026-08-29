@@ -52,7 +52,7 @@ from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse, HttpResponseBase, StreamingHttpResponse
 from django.test import Client
-from django.urls import URLPattern, URLResolver, get_resolver, reverse
+from django.urls import Resolver404, URLPattern, URLResolver, get_resolver, resolve, reverse
 
 from gpx.models import GpxTrack
 from tests.conftest import StoredTrackFactory
@@ -808,6 +808,15 @@ def test_no_url_under_media_url_serves_a_stored_track(
         f"{url!r} does not start with MEDIA_URL ({settings.MEDIA_URL!r}), so this test is no "
         f"longer requesting the prefix it exists to prove is unserved"
     )
+
+    # A request-only assertion can pass for the wrong reason: a `django.views.static.serve`
+    # route bound to `document_root=settings.MEDIA_ROOT` at URLconf import time 404s here
+    # anyway, because the autouse `_media_root_in_tmp_path` fixture (tests/conftest.py)
+    # gives *this test* a fresh MEDIA_ROOT the already-imported route never sees — a stale
+    # directory, not an absent route. Resolution happens before that binding is consulted,
+    # so this leg catches the route's mere existence regardless of ordering or DEBUG.
+    with pytest.raises(Resolver404):
+        resolve(url)
 
     response = client.get(url)
 

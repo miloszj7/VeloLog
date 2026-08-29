@@ -174,18 +174,31 @@ def _assert_no_track_was_attached(target: TargetObjects, response: HttpResponseB
 
 
 def _assert_track_bytes_were_not_served(target: TargetObjects, response: HttpResponseBase) -> None:
-    """The foreign track's stored bytes are absent from the response.
+    """The foreign track's stored bytes are absent from the response, and its row is untouched.
 
-    The load-bearing probe of the pair, because `gpx:download` answers 404 for three distinct
-    causes and a status-only cell cannot tell the working guard from a route that 404s for
-    an unrelated reason. Direct precedent: this route's original cross-user test was
-    status-code-only and was corrected to assert the bytes
+    The precondition — real bytes on disk via `make_stored_track` — is what is load-bearing
+    here, not the body search: `gpx:download` is read-only, so no cell in this route's sweep
+    can mutate or delete the track, which makes the leak assertion below the only one that
+    can fail. It still needs both legs the sibling probes carry, because `gpx:download`
+    answers 404 for three distinct causes and a status-only cell cannot tell the working
+    guard from a route that 404s for an unrelated reason (missing file included) — the state
+    leg is what rules that reason out. Direct precedent for the leak assertion: this route's
+    original cross-user test was status-code-only and was corrected to assert the bytes
     (`context/archive/2026-08-23-upload-gpx-and-view-map/reviews/impl-review-phase-4.md:200-216`).
     """
     assert target.track is not None and target.track_content is not None, (
         "this cell probes for served bytes, so it must be built with `make_stored_track` and "
         "the distinctive content passed on the descriptor — without both, the probe would "
         "pass against a route that served the file"
+    )
+    stored = GpxTrack.objects.filter(pk=target.track.pk).first()
+    assert stored is not None, (
+        f"track {target.track.pk}, owned by another rider, no longer exists — a request from "
+        f"a non-owner destroyed it"
+    )
+    assert stored.file.name == target.track.file.name, (
+        f"track {target.track.pk}, owned by another rider, now points at {stored.file.name!r} "
+        f"instead of {target.track.file.name!r} — a request from a non-owner replaced its file"
     )
     assert target.track_content not in _body(response), (
         f"the response body contains the stored bytes of track {target.track.pk}, owned by "

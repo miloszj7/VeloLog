@@ -829,28 +829,30 @@ def test_an_invalid_upload_against_a_foreign_trip_is_not_an_existence_oracle(
 # inventory, so neither can be swept — which is exactly why they need writing out by hand:
 # a guard that only checks the tuple cannot notice a guarantee that lives outside it.
 
-# actor label -> (client fixture, fixture owning the track). Three actors for one URL, and
-# the **owner** is the load-bearing one: the guarantee is that nothing serves this prefix at
-# all, not that the prefix is owner-scoped. Drop the owner cell and this test keeps passing
-# against a media route that had been added and merely happened to be authenticated.
-MEDIA_PROBE_ACTORS: dict[str, tuple[str, str]] = {
-    "owner": ("auth_client", "rider"),
-    "second-rider": ("auth_client", "other_rider"),
-    "anonymous": ("client", "rider"),
-}
+MediaProbeActor = Literal["owner", "second-rider", "anonymous"]
 
-# actor label -> client fixture. `auth_client` is a plain rider: `create_user` leaves
-# `is_staff` false, which is the whole population this cell speaks for.
-ADMIN_BOUNDARY_ACTORS: dict[str, str] = {
-    "non-staff-rider": "auth_client",
-    "anonymous": "client",
-}
+# Three actors for one URL, and the **owner** is the load-bearing one: the guarantee is that
+# nothing serves this prefix at all, not that the prefix is owner-scoped. Drop the owner cell
+# and this test keeps passing against a media route that had been added and merely happened
+# to be authenticated.
+MEDIA_PROBE_ACTORS: tuple[MediaProbeActor, ...] = ("owner", "second-rider", "anonymous")
+
+AdminBoundaryActor = Literal["non-staff-rider", "anonymous"]
+
+# `auth_client` is a plain rider: `create_user` leaves `is_staff` false, which is the whole
+# population this cell speaks for.
+ADMIN_BOUNDARY_ACTORS: tuple[AdminBoundaryActor, ...] = ("non-staff-rider", "anonymous")
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("actor", tuple(MEDIA_PROBE_ACTORS))
+@pytest.mark.parametrize("actor", MEDIA_PROBE_ACTORS)
 def test_no_url_under_media_url_serves_a_stored_track(
-    actor: str, request: pytest.FixtureRequest, make_stored_track: StoredTrackFactory
+    actor: MediaProbeActor,
+    auth_client: Client,
+    client: Client,
+    rider: User,
+    other_rider: User,
+    make_stored_track: StoredTrackFactory,
 ) -> None:
     """Nothing is served from `MEDIA_URL` — asserted as a request, not as a settings value.
 
@@ -875,9 +877,12 @@ def test_no_url_under_media_url_serves_a_stored_track(
     hardcoded `/media/gpx/1/1/x.gpx` would 404 because no such file exists, which is a pass
     for the wrong reason — and would keep passing after a media route was added.
     """
-    client_fixture, owner_fixture = MEDIA_PROBE_ACTORS[actor]
-    client = cast(Client, request.getfixturevalue(client_fixture))
-    owner = cast(User, request.getfixturevalue(owner_fixture))
+    if actor == "owner":
+        requesting_client, owner = auth_client, rider
+    elif actor == "second-rider":
+        requesting_client, owner = auth_client, other_rider
+    else:
+        requesting_client, owner = client, rider
 
     trip = Trip.objects.create(name=TARGET_TRIP_NAME, date=TARGET_TRIP_DATE, owner=owner)
     track = make_stored_track(trip, TARGET_TRACK_CONTENT)
@@ -899,7 +904,7 @@ def test_no_url_under_media_url_serves_a_stored_track(
     with pytest.raises(Resolver404):
         resolve(url)
 
-    response = client.get(url)
+    response = requesting_client.get(url)
 
     assert response.status_code == 404, (
         f"{url} answered {response.status_code} to the {actor} — a URL under MEDIA_URL now "
@@ -913,9 +918,12 @@ def test_no_url_under_media_url_serves_a_stored_track(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("actor", tuple(ADMIN_BOUNDARY_ACTORS))
+@pytest.mark.parametrize("actor", ADMIN_BOUNDARY_ACTORS)
 def test_the_admin_object_route_refuses_a_visitor_who_is_not_staff(
-    actor: str, request: pytest.FixtureRequest, other_rider: User
+    actor: AdminBoundaryActor,
+    auth_client: Client,
+    client: Client,
+    other_rider: User,
 ) -> None:
     """302 to the admin login — and 302 is the contract here, not the 404 above.
 
@@ -938,11 +946,11 @@ def test_the_admin_object_route_refuses_a_visitor_who_is_not_staff(
     asserted for the same reason it is on the app's own routes: it carries the real object
     path, which is what a staff member is returned to after signing in.
     """
-    client = cast(Client, request.getfixturevalue(ADMIN_BOUNDARY_ACTORS[actor]))
+    requesting_client = auth_client if actor == "non-staff-rider" else client
     trip = Trip.objects.create(name=TARGET_TRIP_NAME, date=TARGET_TRIP_DATE, owner=other_rider)
     url = reverse("admin:trips_trip_change", args=[trip.pk])
 
-    response = client.get(url)
+    response = requesting_client.get(url)
 
     assert response.status_code == 302, (
         f"{url} answered {response.status_code} to the {actor} — a visitor who is not staff "

@@ -547,30 +547,30 @@ changes shape.
 
 #### Automated
 
-- [x] 1.1 New file imports and collects
-- [x] 1.2 Guard test passes against the current URLconf
-- [x] 1.3 Full suite still green
-- [x] 1.4 Strict typing, lint, format, import order pass
+- [x] 1.1 New file imports and collects — 50b6abf
+- [x] 1.2 Guard test passes against the current URLconf — 50b6abf
+- [x] 1.3 Full suite still green — 50b6abf
+- [x] 1.4 Strict typing, lint, format, import order pass — 50b6abf
 
 #### Manual
 
-- [x] 1.5 Temporary pk route makes the guard fail with an actionable message, then reverted
-- [x] 1.6 The tuple reads as an inventory a contributor would extend
+- [x] 1.5 Temporary pk route makes the guard fail with an actionable message, then reverted — 50b6abf
+- [x] 1.6 The tuple reads as an inventory a contributor would extend — 50b6abf
 
 ### Phase 2: The route × actor × verb matrix
 
 #### Automated
 
-- [ ] 2.1 Every matrix cell passes
-- [ ] 2.2 Cell count matches the declared inventory
-- [ ] 2.3 Full suite green with coverage gate
-- [ ] 2.4 `/python-quality-gates` passes
+- [x] 2.1 Every matrix cell passes
+- [x] 2.2 Cell count matches the declared inventory
+- [x] 2.3 Full suite green with coverage gate
+- [x] 2.4 `/python-quality-gates` passes
 
 #### Manual
 
-- [ ] 2.5 Removing `filter(trip__owner=…)` turns the `gpx:download` foreign cells red
-- [ ] 2.6 Dropping `http_method_names` turns the disallowed-verb cells red
-- [ ] 2.7 Test IDs name the failing route and actor in `-v` output
+- [x] 2.5 Removing `filter(trip__owner=…)` turns the `gpx:download` foreign cells red
+- [x] 2.6 Dropping `http_method_names` turns the disallowed-verb cells red
+- [x] 2.7 Test IDs name the failing route and actor in `-v` output
 
 ### Phase 3: Boundary probes outside the view stack
 

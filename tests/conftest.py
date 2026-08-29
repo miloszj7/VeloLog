@@ -102,6 +102,23 @@ def auth_client(client: Client, rider: User) -> Client:
 
 
 @pytest.fixture
+def other_auth_client(other_rider: User) -> Client:
+    """The mirror of `auth_client` above: the *second* rider, logged in, in its own session.
+
+    `other_rider` existed only ever as the owner of data somebody else requested, so every
+    cross-user assertion in the suite ran in one direction — `rider` as the intruder — and
+    silently assumed the owner-scoped queryset is symmetric. It is, by construction, but
+    that was an assumption rather than an assertion.
+
+    A fresh `Client()` rather than the shared `client` fixture: a test requesting both this
+    and `auth_client` needs two independent sessions, not one client logged in twice.
+    """
+    other_client = Client()
+    assert other_client.login(username="other-rider", password="correct-horse-battery-staple")
+    return other_client
+
+
+@pytest.fixture
 def make_gpx_track() -> TrackFactory:
     """Return a factory that persists a `GpxTrack` against a given trip.
 

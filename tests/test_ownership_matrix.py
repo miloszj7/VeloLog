@@ -41,6 +41,7 @@ against what the URLconf actually exposes. A sixth route added without the idiom
 module red instead of shipping green.
 """
 
+import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import date
@@ -58,10 +59,10 @@ from gpx.models import GpxTrack
 from tests.conftest import StoredTrackFactory
 from trips.models import Trip
 
-# The converter string every object-scoped pattern in this project uses. Matched as a
-# substring of the route rather than by parsing, because the route is what a contributor
-# writes and what a reviewer reads.
-PK_CONVERTER = "<int:pk>"
+# Matches any converter naming a `pk` or `id`-shaped kwarg — `<int:pk>` today, but also
+# `<uuid:pk>`, `<slug:pk>` or a differently-named kwarg such as `<int:track_id>`, none of
+# which the previous single-string match (`"<int:pk>" in pattern`) would have caught.
+PK_CONVERTER_RE = re.compile(r"<\w+:\w*(pk|id)>")
 
 # The only namespace this guard does not descend into. `admin` is deliberately cross-user —
 # both `ModelAdmin`s are unscoped by design (see the admin cells, added in Phase 3) — and is
@@ -293,7 +294,11 @@ def _pk_routes_under(resolver: URLResolver, prefix: str) -> set[str]:
             else:
                 nested = entry.namespace
             routes |= _pk_routes_under(entry, nested)
-        elif isinstance(entry, URLPattern) and entry.name and PK_CONVERTER in str(entry.pattern):
+        elif (
+            isinstance(entry, URLPattern)
+            and entry.name
+            and PK_CONVERTER_RE.search(str(entry.pattern))
+        ):
             routes.add(f"{prefix}:{entry.name}" if prefix else entry.name)
     return routes
 

@@ -591,12 +591,12 @@ changes shape.
 
 #### Automated
 
-- [x] 4.1 Full suite green
-- [x] 4.2 `/python-quality-gates` passes
-- [x] 4.3 No `TBD` remains in test-plan §6.2
+- [x] 4.1 Full suite green — 1f6857c
+- [x] 4.2 `/python-quality-gates` passes — 1f6857c
+- [x] 4.3 No `TBD` remains in test-plan §6.2 — 1f6857c
 
 #### Manual
 
-- [x] 4.4 The `AGENTS.md` bullet reads as a rule, not a change summary
-- [x] 4.5 §6.2 answers "how do I add an isolation test for a new route?" standalone
-- [x] 4.6 The FR-009 caveat is present
+- [x] 4.4 The `AGENTS.md` bullet reads as a rule, not a change summary — 1f6857c
+- [x] 4.5 §6.2 answers "how do I add an isolation test for a new route?" standalone — 1f6857c
+- [x] 4.6 The FR-009 caveat is present — 1f6857c

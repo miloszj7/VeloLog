@@ -1,7 +1,7 @@
 ---
 change_id: testing-data-isolation-contract
 title: Prove cross-user data isolation on trip and track routes
-status: implemented
+status: impl_reviewed
 created: 2026-08-29
 updated: 2026-08-29
 archived_at: null

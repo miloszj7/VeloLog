@@ -76,7 +76,7 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Data-isolation contract | Prove no route lets one user read, modify, or delete another user's trip or track | #2 | integration (route × actor matrix) | implementing | `context/changes/testing-data-isolation-contract/` |
+| 1 | Data-isolation contract | Prove no route lets one user read, modify, or delete another user's trip or track | #2 | integration (route × actor matrix) | complete | `context/changes/testing-data-isolation-contract/` |
 | 2 | File lifecycle and storage/row consistency | Prove every delete and replace path reclaims exactly what it should — asserted after commit, not before | #1, #3 | integration (commit-callback aware), management-command | not started | — |
 | 3 | Rejection and degradation | Prove bad input and absent data produce deliberate states, never a server error or a blank page | #5, #6 | unit (parsing) + integration (view/template) | not started | — |
 | 4 | Environment guard | Prove a media-root misconfiguration is refused rather than silently accepted | #7 | unit + integration on the health probe | not started | — |
@@ -124,7 +124,7 @@ phase lands; before that, the gate is planned.
 | migration guard | CI | required | a model change shipped without its migration — invisible to every other gate |
 | collectstatic | CI | required | an unresolvable static reference; must precede the test step, which skips itself without a manifest |
 | unit + integration | local + CI | required | logic regressions |
-| ownership/isolation matrix | CI | required after §3 Phase 1 | one user reaching another user's data |
+| ownership/isolation matrix | CI | required | one user reaching another user's data. Satisfied by `tests/test_ownership_matrix.py` existing in the suite — `.github/workflows/deploy.yml` already runs `pytest --cov` on every PR to `master` and every push to it, so no new CI job was needed or added — this row means "the matrix exists in the suite", not a separate job. The gate has teeth because the module asserts its own inventory against the URLconf: a new `<int:pk>` route under `trips` or `gpx` fails the suite until it is classified |
 | post-commit side-effect assertions | CI | required after §3 Phase 2 | file-lifecycle regressions that a pre-commit assertion cannot see |
 | environment-guard check | CI | required after §3 Phase 4 | a media-root misconfiguration reaching a deploy |
 | suite credibility gate | CI on PR | required after §3 Phase 5 | tests that stay green when the behavior they name is broken |
@@ -146,7 +146,24 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 ### 6.2 Adding an integration test through the request cycle
 
-- TBD — see §3 Phase 1 for the ownership-denial pattern (a second logged-in user is refused on every route).
+- **Location**: `tests/test_ownership_matrix.py` for anything the route inventory drives — a new object-scoped route belongs in `OBJECT_SCOPED_ROUTES` there, and every actor × verb cell then covers it for free. `tests/<app>/` for a route's own behavior (what it renders, what it saves, what it says when input is bad).
+- **Naming**: `test_<actor>_<outcome>_<on_what>` — the actor is part of the name because each actor is a different mechanism: `test_a_second_rider_is_refused_on_every_verb_that_reaches_the_object`, `test_an_anonymous_visitor_is_sent_to_login_on_every_verb_a_route_accepts`.
+- **Reference test**: `test_a_second_rider_is_refused_on_every_verb_that_reaches_the_object` in `tests/test_ownership_matrix.py`. For a one-off (non-inventory) route, `tests/trips/test_trip_delete.py::test_another_users_trip_post_returns_404_and_the_trip_survives`.
+- **Run locally**: `uv run pytest tests/test_ownership_matrix.py -v`.
+
+**The pattern: a status code plus a state or no-leak probe, always.** A bare `assert response.status_code == 404` passes against a view that read, wrote or deleted the object and refused afterwards, and it cannot tell `gpx:download`'s three distinct 404 causes apart (not yours / does not exist / file missing from storage). So every cell pairs its status with an assertion about what did *not* happen: the foreign object's name absent from the body, the row still present, its stored fields unchanged, no new row created, the stored bytes absent from the response. Needles must be escape-free — `"Other Rider Trip"`, never an apostrophe, which Django autoescapes into a form the raw needle no longer matches.
+
+**What the contract actually is**, so a new cell asserts the right thing rather than a copied one:
+
+| Actor | Verb | Expected | Produced by |
+|---|---|---|---|
+| second logged-in rider | any verb that reaches the object | `404` | the owner-scoped queryset |
+| second logged-in rider | `OPTIONS` | `200` + `Allow`, empty body | `View.options`, before `get_queryset` — assert non-disclosure by comparing against a nonexistent pk, not a refusal |
+| second logged-in rider | a verb outside `http_method_names` | `405` | `View.dispatch`'s method lookup, before `get_queryset` |
+| anonymous | any accepted verb, `OPTIONS` included | `302` to `reverse("login")` with an exact `?next=` | `LoginRequiredMixin.dispatch`, which runs first |
+| non-staff or anonymous | an admin object route | `302` to `reverse("admin:login")` with `?next=` | `AdminSite.admin_view` — **not** 404; nothing scopes a queryset there |
+
+**Prove the test bites before trusting it.** Break the production line it guards, confirm the cell goes red for the right reason, revert. `lessons.md` #1, #3 and #4 all record a green gate concealing a real regression.
 
 ### 6.3 Adding a test for a post-commit side effect
 
@@ -168,6 +185,13 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 (Filled in by each phase's final sub-phase — anything surprising the phase
 taught that the entries above do not already carry.)
+
+**Phase 1 — Data-isolation contract.**
+
+- *The brief's premise was already false.* The phase was opened to prove routes refuse a second logged-in user; research found all five object-scoped routes already had a foreign-actor test asserting 404 plus a leak or persistence assertion, and `grep 403 tests/` returned nothing. What was missing was structural, not per-route: no assertion of the route *inventory*, no coverage of verbs beyond GET/POST, no request ever issued at a `/media/` path, no admin boundary cell, and `other_rider` never once logged in. Worth remembering when opening the remaining phases — verify the gap before building for it.
+- *`static(MEDIA_URL, …)` is a no-op under test.* `django.conf.urls.static.static()` opens with `if not settings.DEBUG: return []`, and the suite runs at `DEBUG=False`. Mutation-checking the media probe with that line therefore passes green against a config that would genuinely leak. Use an explicit `re_path(r"^media/(?P<path>.*)$", …)` serving from `settings.MEDIA_ROOT` — which is also the closer analogue of the real threat (a platform static handler or `WHITENOISE_ROOT`, neither of which consults `DEBUG`).
+- *A drained streaming response reads as empty forever.* `FileResponse.streaming_content` is a one-shot iterator, so a helper that joins it without memoizing returns `b""` on every later call — and a leak assertion searching that empty body passes. Any body helper used by more than one assertion must cache what it drained.
+- *Assert the absence of a route as a request, not as a settings value.* The whole defense on "downloads their track file" is that nothing serves `MEDIA_URL`. A settings assertion stays true after a route, a middleware or a platform handler has overridden it; only a request at a real `file.url` notices. Build the URL from the model — `gpx/models.py` names files with `secrets.token_hex(16)`, so a hardcoded path 404s for the wrong reason and keeps passing after the leak is introduced.
 
 ## 7. What We Deliberately Don't Test
 

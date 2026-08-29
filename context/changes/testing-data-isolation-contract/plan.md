@@ -576,27 +576,27 @@ changes shape.
 
 #### Automated
 
-- [x] 3.1 Media probe and admin cells pass
-- [x] 3.2 Full suite green
-- [x] 3.3 CI-equivalence run passes with no `.env`
-- [x] 3.4 `/python-quality-gates` passes
+- [x] 3.1 Media probe and admin cells pass — 2efa865
+- [x] 3.2 Full suite green — 2efa865
+- [x] 3.3 CI-equivalence run passes with no `.env` — 2efa865
+- [x] 3.4 `/python-quality-gates` passes — 2efa865
 
 #### Manual
 
-- [x] 3.5 Adding a `static(MEDIA_URL, …)` route turns all three media cells red
-- [x] 3.6 The media probe fails because bytes are served, not merely on a status change
-- [x] 3.7 The admin cells' `?next=` carries the real object path
+- [x] 3.5 Adding a `static(MEDIA_URL, …)` route turns all three media cells red — 2efa865
+- [x] 3.6 The media probe fails because bytes are served, not merely on a status change — 2efa865
+- [x] 3.7 The admin cells' `?next=` carries the real object path — 2efa865
 
 ### Phase 4: Documentation and rollout state
 
 #### Automated
 
-- [ ] 4.1 Full suite green
-- [ ] 4.2 `/python-quality-gates` passes
-- [ ] 4.3 No `TBD` remains in test-plan §6.2
+- [x] 4.1 Full suite green
+- [x] 4.2 `/python-quality-gates` passes
+- [x] 4.3 No `TBD` remains in test-plan §6.2
 
 #### Manual
 
-- [ ] 4.4 The `AGENTS.md` bullet reads as a rule, not a change summary
-- [ ] 4.5 §6.2 answers "how do I add an isolation test for a new route?" standalone
-- [ ] 4.6 The FR-009 caveat is present
+- [x] 4.4 The `AGENTS.md` bullet reads as a rule, not a change summary
+- [x] 4.5 §6.2 answers "how do I add an isolation test for a new route?" standalone
+- [x] 4.6 The FR-009 caveat is present

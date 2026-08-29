@@ -76,7 +76,7 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Data-isolation contract | Prove no route lets one user read, modify, or delete another user's trip or track | #2 | integration (route × actor matrix) | change opened | `context/changes/testing-data-isolation-contract/` |
+| 1 | Data-isolation contract | Prove no route lets one user read, modify, or delete another user's trip or track | #2 | integration (route × actor matrix) | implementing | `context/changes/testing-data-isolation-contract/` |
 | 2 | File lifecycle and storage/row consistency | Prove every delete and replace path reclaims exactly what it should — asserted after commit, not before | #1, #3 | integration (commit-callback aware), management-command | not started | — |
 | 3 | Rejection and degradation | Prove bad input and absent data produce deliberate states, never a server error or a blank page | #5, #6 | unit (parsing) + integration (view/template) | not started | — |
 | 4 | Environment guard | Prove a media-root misconfiguration is refused rather than silently accepted | #7 | unit + integration on the health probe | not started | — |

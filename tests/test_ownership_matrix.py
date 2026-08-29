@@ -63,9 +63,13 @@ from trips.models import Trip
 # writes and what a reviewer reads.
 PK_CONVERTER = "<int:pk>"
 
-# The two namespaces that own user data. `accounts` and the project-level routes carry no
-# object pk, and `admin` is deliberately cross-user (see the admin cells, added in Phase 3).
-GUARDED_NAMESPACES = ("trips", "gpx")
+# The only namespace this guard does not descend into. `admin` is deliberately cross-user —
+# both `ModelAdmin`s are unscoped by design (see the admin cells, added in Phase 3) — and is
+# proven refused-to-non-staff separately, not by the owner-scoping contract this module
+# guards. Every other namespace, present or future, is walked: a new object-scoped app
+# registered at the repo root per `AGENTS.md` is exactly the case a fixed two-namespace list
+# could not see, so the guard fails closed instead of trusting a name to be added here too.
+UNGUARDED_NAMESPACES = ("admin",)
 
 
 @dataclass(frozen=True)
@@ -259,27 +263,31 @@ OBJECT_SCOPED_ROUTES = (
 def _pk_routes_under(resolver: URLResolver, prefix: str) -> set[str]:
     """Collect the namespaced names of every pk-bearing pattern below one resolver.
 
-    Recursive rather than a single flat pass over `trips.urls` and `gpx.urls`: neither
-    includes another URLconf today, and a nested include added later must not be able to
-    hide an object-scoped route from the guard by being one level deeper than it looked for.
+    Recursive over the *entire* URLconf, including bare top-level patterns (`prefix=""`),
+    so a route registered without a namespace cannot escape the walk by sitting one level
+    above where a namespace-scoped walk would look. `UNGUARDED_NAMESPACES` is the only
+    deliberate exclusion; every other resolver, present or future, is descended into.
     """
     routes: set[str] = set()
     for entry in resolver.url_patterns:
         if isinstance(entry, URLResolver):
-            nested = f"{prefix}:{entry.namespace}" if entry.namespace else prefix
+            if entry.namespace in UNGUARDED_NAMESPACES:
+                continue
+            if not entry.namespace:
+                nested = prefix
+            elif prefix:
+                nested = f"{prefix}:{entry.namespace}"
+            else:
+                nested = entry.namespace
             routes |= _pk_routes_under(entry, nested)
         elif isinstance(entry, URLPattern) and entry.name and PK_CONVERTER in str(entry.pattern):
-            routes.add(f"{prefix}:{entry.name}")
+            routes.add(f"{prefix}:{entry.name}" if prefix else entry.name)
     return routes
 
 
 def _routes_exposed_by_the_urlconf() -> set[str]:
-    """Every `<int:pk>` route the project actually serves under `trips` or `gpx`."""
-    routes: set[str] = set()
-    for entry in get_resolver().url_patterns:
-        if isinstance(entry, URLResolver) and entry.namespace in GUARDED_NAMESPACES:
-            routes |= _pk_routes_under(entry, entry.namespace)
-    return routes
+    """Every `<int:pk>` route the project actually serves, outside `UNGUARDED_NAMESPACES`."""
+    return _pk_routes_under(get_resolver(), "")
 
 
 def test_every_object_scoped_route_is_classified() -> None:
@@ -301,7 +309,7 @@ def test_every_object_scoped_route_is_classified() -> None:
     stale = declared - exposed
 
     assert not unclassified, (
-        f"{sorted(unclassified)} expose an object by pk under {GUARDED_NAMESPACES} but are "
+        f"{sorted(unclassified)} expose an object by pk outside {UNGUARDED_NAMESPACES} but are "
         f"absent from OBJECT_SCOPED_ROUTES, so nothing proves they scope their queryset by "
         f"owner — one user could read, modify or delete another's data through them. Add a "
         f"row (with the probe that says what a refusal means for the route), or, if the route "

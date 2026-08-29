@@ -419,6 +419,31 @@ def _primary_verb(route: ObjectScopedRoute) -> str:
     return route.accepted_verbs[0]
 
 
+def _write_verb(route: ObjectScopedRoute) -> str | None:
+    """The route's mutating verb, if it accepts one distinct from its primary (read) verb.
+
+    `None` for `trips:detail` and `gpx:download` (read-only) and for `gpx:upload` (whose
+    only accepted verb already is its primary, so the reverse-direction sweep above already
+    covers it). Named explicitly rather than derived from `PROBED_VERBS` order, because
+    "mutating" is a property of the verb, not of its position in `accepted_verbs`.
+    """
+    mutating = {"post", "put", "patch", "delete"}
+    primary = _primary_verb(route)
+    for verb in route.accepted_verbs:
+        if verb != primary and verb in mutating:
+            return verb
+    return None
+
+
+# The routes whose reverse-direction proof (above) only exercised a read. `trips:edit` and
+# `trips:delete` both accept `post` as a second verb; pinning it symmetrically is what F6 of
+# the Phase-1 impl review asked for — the plan itself called a second full matrix unnecessary,
+# so this stays scoped to the one verb per route rather than growing into one.
+WRITE_VERB_ROUTES: tuple[ObjectScopedRoute, ...] = tuple(
+    route for route in OBJECT_SCOPED_ROUTES if _write_verb(route) is not None
+)
+
+
 def _route_named(name: str) -> ObjectScopedRoute:
     """Look one descriptor up by route name, for the cells that are not a full sweep."""
     matches = [route for route in OBJECT_SCOPED_ROUTES if route.name == name]
@@ -703,6 +728,36 @@ def test_the_first_riders_objects_are_equally_unreachable_from_the_second(
         f"{_primary_verb(route).upper()} {url} answered {response.status_code} to the second "
         f"rider — isolation holds in one direction only, so the owner-scoped queryset is not "
         f"the thing deciding it"
+    )
+    route.probe(target, response)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("route", WRITE_VERB_ROUTES, ids=_cell_id)
+def test_the_first_riders_objects_resist_the_second_riders_write(
+    route: ObjectScopedRoute,
+    other_auth_client: Client,
+    rider: User,
+    make_stored_track: StoredTrackFactory,
+) -> None:
+    """The reverse-direction refusal, pinned on the mutating verb rather than the read.
+
+    The primary-verb sweep above proves symmetry only on `get` for `trips:edit` and
+    `trips:delete` — the two routes where a write actually risks something. This is the
+    verb that risks it: a raw `POST` under the queryset-first idiom must still 404 and
+    must still leave the trip untouched, the exact write `trips/views.py:151`'s dropped
+    `DELETE` handler would otherwise let through unconfirmed.
+    """
+    target = _build_target(route, rider, make_stored_track)
+    url = _url_for(route, target)
+    verb = _write_verb(route)
+    assert verb is not None, f"{route.name} is not in WRITE_VERB_ROUTES without one"
+
+    response = _issue(other_auth_client, verb, url)
+
+    assert response.status_code == 404, (
+        f"{verb.upper()} {url} answered {response.status_code} to the second rider — a write "
+        f"aimed at another rider's object is no longer refused before it takes effect"
     )
     route.probe(target, response)
 

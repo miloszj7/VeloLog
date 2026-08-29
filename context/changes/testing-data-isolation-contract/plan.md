@@ -547,15 +547,15 @@ changes shape.
 
 #### Automated
 
-- [ ] 1.1 New file imports and collects
-- [ ] 1.2 Guard test passes against the current URLconf
-- [ ] 1.3 Full suite still green
-- [ ] 1.4 Strict typing, lint, format, import order pass
+- [x] 1.1 New file imports and collects
+- [x] 1.2 Guard test passes against the current URLconf
+- [x] 1.3 Full suite still green
+- [x] 1.4 Strict typing, lint, format, import order pass
 
 #### Manual
 
-- [ ] 1.5 Temporary pk route makes the guard fail with an actionable message, then reverted
-- [ ] 1.6 The tuple reads as an inventory a contributor would extend
+- [x] 1.5 Temporary pk route makes the guard fail with an actionable message, then reverted
+- [x] 1.6 The tuple reads as an inventory a contributor would extend
 
 ### Phase 2: The route × actor × verb matrix
 

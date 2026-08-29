@@ -1,10 +1,10 @@
 ---
 change_id: gpx-upload-orphan-file
 title: Detect and reclaim unreferenced GPX files in MEDIA_ROOT
-status: impl_reviewed
+status: archived
 created: 2026-08-28
-updated: 2026-08-28
-archived_at: null
+updated: 2026-08-29
+archived_at: 2026-08-29T22:03:43Z
 ---
 
 ## Notes

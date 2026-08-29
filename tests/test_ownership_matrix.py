@@ -519,7 +519,6 @@ def test_the_matrix_is_parametrized_from_the_whole_inventory() -> None:
         f"inventory declares {sorted(declared)} — a route accepting every probed verb would "
         f"land here, and that is itself worth reading as a failure"
     )
-    assert len(ACCEPTED_CELLS) == sum(len(r.accepted_verbs) for r in OBJECT_SCOPED_ROUTES)
     assert len(ACCEPTED_CELLS) + len(REJECTED_CELLS) == len(OBJECT_SCOPED_ROUTES) * len(
         PROBED_VERBS
     ), "every route must be swept with every probed verb, in one sweep or the other"

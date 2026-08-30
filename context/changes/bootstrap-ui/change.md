@@ -1,7 +1,7 @@
 ---
 change_id: bootstrap-ui
 title: Vendor Bootstrap 5 and restyle existing templates
-status: implemented
+status: impl_reviewed
 created: 2026-08-30
 updated: 2026-08-30
 archived_at: null

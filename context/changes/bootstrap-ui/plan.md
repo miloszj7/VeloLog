@@ -911,29 +911,29 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 5.1 `pytest tests/trips/test_trip_creation.py tests/trips/test_trip_delete.py tests/trips/test_trip_edit.py tests/trips/test_trip_list.py --cov` passes with updated assertions
-- [x] 5.2 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
+- [x] 5.1 `pytest tests/trips/test_trip_creation.py tests/trips/test_trip_delete.py tests/trips/test_trip_edit.py tests/trips/test_trip_list.py --cov` passes with updated assertions — 87b785a
+- [x] 5.2 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass — 87b785a
 
 #### Manual
 
-- [x] 5.3 Trip list renders as a styled list-group with a visible "New trip" CTA
-- [x] 5.4 Create/edit forms render styled, date picker works, help text visible
-- [x] 5.5 Cancel navigates to the same destination as before in both flows
+- [x] 5.3 Trip list renders as a styled list-group with a visible "New trip" CTA — 87b785a
+- [x] 5.4 Create/edit forms render styled, date picker works, help text visible — 87b785a
+- [x] 5.5 Cancel navigates to the same destination as before in both flows — 87b785a
 
 ### Phase 6: Trip detail, GPX upload form, and delete confirmation
 
 #### Automated
 
-- [ ] 6.1 `pytest tests/trips/test_trip_detail.py tests/trips/test_trip_detail_map.py tests/trips/test_trip_detail_stats.py tests/trips/test_trip_delete.py --cov` passes
-- [ ] 6.2 `pytest tests/gpx --cov` passes unchanged
-- [ ] 6.3 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
+- [x] 6.1 `pytest tests/trips/test_trip_detail.py tests/trips/test_trip_detail_map.py tests/trips/test_trip_detail_stats.py tests/trips/test_trip_delete.py --cov` passes
+- [x] 6.2 `pytest tests/gpx --cov` passes unchanged
+- [x] 6.3 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
 
 #### Manual
 
-- [ ] 6.4 Leaflet map still renders and sizes correctly on a trip with a route
-- [ ] 6.5 Map/track/stats fallback messages still render with exact existing copy
-- [ ] 6.6 Delete confirmation clearly reads as a destructive action
-- [ ] 6.7 Rewritten zero-vs-null stats assertions still go red when a real `0` value
+- [x] 6.4 Leaflet map still renders and sizes correctly on a trip with a route
+- [x] 6.5 Map/track/stats fallback messages still render with exact existing copy
+- [x] 6.6 Delete confirmation clearly reads as a destructive action
+- [x] 6.7 Rewritten zero-vs-null stats assertions still go red when a real `0` value
       is made to render as the not-recorded fallback (verified by temporary revert)
 
 ### Phase 7: Full-suite verification and cross-page visual QA

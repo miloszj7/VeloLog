@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load form_widgets %}
 
 {% block title %}{{ trip.name }} — VeloLog{% endblock %}
 
@@ -10,149 +11,170 @@
 {% endblock %}
 
 {% block content %}
-    <p><a href="{% url 'trips:list' %}">Back to your trips</a></p>
+    <p><a href="{% url 'trips:list' %}" class="link-secondary">Back to your trips</a></p>
 
-    <h1>{{ trip.name }}</h1>
-    <p>{{ trip.date }}</p>
-    {% if trip.description %}
-        <p>{{ trip.description }}</p>
-    {% endif %}
-    {% comment %}
-    The trip's own controls sit with the trip's own fields, above the route. `trip.pk` is
-    already in the context on both render paths — this page's own and `GpxUploadView`'s
-    re-render — so the link needs no new context key, which is what keeps the two paths
-    from drifting apart the way `trips/views.py` warns about.
-    {% endcomment %}
-    <p><a href="{% url 'trips:edit' pk=trip.pk %}">Edit trip</a></p>
-    {% comment %}
-    A link, not a form. What guards the destruction is the confirmation page it leads to,
-    plus `TripDeleteView.http_method_names`, which is what keeps the deletion itself
-    reachable by POST only.
-    {% endcomment %}
-    <p><a href="{% url 'trips:delete' pk=trip.pk %}">Delete trip</a></p>
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="mb-1">{{ trip.name }}</h1>
+            <p class="text-muted mb-1">{{ trip.date }}</p>
+            {% if trip.description %}
+                <p class="mb-0">{{ trip.description }}</p>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            {% comment %}
+            The trip's own controls sit with the trip's own fields, above the route. `trip.pk` is
+            already in the context on both render paths — this page's own and `GpxUploadView`'s
+            re-render — so the link needs no new context key, which is what keeps the two paths
+            from drifting apart the way `trips/views.py` warns about.
+            {% endcomment %}
+            <a href="{% url 'trips:edit' pk=trip.pk %}" class="btn btn-outline-secondary">Edit trip</a>
+            {% comment %}
+            A link, not a form. What guards the destruction is the confirmation page it leads to,
+            plus `TripDeleteView.http_method_names`, which is what keeps the deletion itself
+            reachable by POST only.
+            {% endcomment %}
+            <a href="{% url 'trips:delete' pk=trip.pk %}" class="btn btn-outline-danger">Delete trip</a>
+        </div>
+    </div>
 
-    <h2>Route</h2>
     {% if track %}
-        {% if map_config %}
-            {% comment %}
-            The paragraph inside the container is not decoration. `gpx/map.js` removes
-            it as its last successful step, so it is what a reader is left with on every
-            path that never reaches that step: JavaScript off, a Leaflet or stylesheet
-            that failed to load, or stored points the client cannot draw. Being *inside*
-            `#map` is what makes it survive the stylesheet's absence — the one failure
-            `static/css/style.css` documents in prose and cannot itself guard, since a
-            container with no height collapses to an invisible gap. Worded differently
-            from the server-side branch below so a report tells the two apart.
-            {% endcomment %}
-            <div id="map">
-                <p class="map-fallback">The map could not be loaded. The file is still attached and can be downloaded below.</p>
-            </div>
-            {% comment %}
-            `json_script` and nothing else. The coordinates are parsed out of a file a
-            user uploaded, and this tag escapes them into a data element the script
-            reads with `JSON.parse` — `|safe` or `mark_safe` here would put untrusted
-            content back into an executable position. The repo has zero occurrences of
-            either, and this slice does not break that.
-            {% endcomment %}
-            {{ map_config|json_script:"map-config" }}
-        {% else %}
-            {% comment %}
-            Unreachable through upload — `parse_gpx` rejects a track with no points —
-            but the PRD's one NFR forbids a blank page, so a stored track that somehow
-            has nothing to draw gets a deliberate message rather than an empty frame.
-            {% endcomment %}
-            <p>This route could not be displayed. The file is still attached and can be downloaded below.</p>
-        {% endif %}
-        {% if track_file_available %}
-            <p>Track: {{ track.original_filename }}</p>
-            <p>
-                <a href="{% url 'gpx:download' pk=track.pk %}">Download {{ track.original_filename }}</a>
-            </p>
-        {% else %}
-            {% comment %}
-            Worded to name its own cause, like the map-fallback and stats-not-computed
-            branches above and below: the row survived but the file behind it is gone, so
-            the link is replaced with plain text rather than one that would only 404.
-            {% endcomment %}
-            <p>Track file unavailable — the stored file could not be found.</p>
-            <p>{{ track.original_filename }} (download unavailable)</p>
-        {% endif %}
+        <div class="mb-4">
+            <h2>Route</h2>
+            {% if map_config %}
+                {% comment %}
+                The paragraph inside the container is not decoration. `gpx/map.js` removes
+                it as its last successful step, so it is what a reader is left with on every
+                path that never reaches that step: JavaScript off, a Leaflet or stylesheet
+                that failed to load, or stored points the client cannot draw. Being *inside*
+                `#map` is what makes it survive the stylesheet's absence — the one failure
+                `static/css/style.css` documents in prose and cannot itself guard, since a
+                container with no height collapses to an invisible gap. Worded differently
+                from the server-side branch below so a report tells the two apart.
+
+                `#map` and its fallback `<p>` stay completely unclassed — only this
+                surrounding wrapper gains Bootstrap spacing, so the byte-exact container the
+                map/test assertions pin is untouched.
+                {% endcomment %}
+                <div id="map">
+                    <p class="map-fallback">The map could not be loaded. The file is still attached and can be downloaded below.</p>
+                </div>
+                {% comment %}
+                `json_script` and nothing else. The coordinates are parsed out of a file a
+                user uploaded, and this tag escapes them into a data element the script
+                reads with `JSON.parse` — `|safe` or `mark_safe` here would put untrusted
+                content back into an executable position. The repo has zero occurrences of
+                either, and this slice does not break that.
+                {% endcomment %}
+                {{ map_config|json_script:"map-config" }}
+            {% else %}
+                {% comment %}
+                Unreachable through upload — `parse_gpx` rejects a track with no points —
+                but the PRD's one NFR forbids a blank page, so a stored track that somehow
+                has nothing to draw gets a deliberate message rather than an empty frame.
+                {% endcomment %}
+                <p>This route could not be displayed. The file is still attached and can be downloaded below.</p>
+            {% endif %}
+            {% if track_file_available %}
+                <p class="mb-1">Track: {{ track.original_filename }}</p>
+                <p>
+                    <a href="{% url 'gpx:download' pk=track.pk %}" class="btn btn-outline-secondary btn-sm">Download {{ track.original_filename }}</a>
+                </p>
+            {% else %}
+                {% comment %}
+                Worded to name its own cause, like the map-fallback and stats-not-computed
+                branches above and below: the row survived but the file behind it is gone, so
+                the link is replaced with plain text rather than one that would only 404.
+                {% endcomment %}
+                <p class="mb-1">Track file unavailable — the stored file could not be found.</p>
+                <p>{{ track.original_filename }} (download unavailable)</p>
+            {% endif %}
+        </div>
 
         {% comment %}
         Inside the `{% if track %}` branch on purpose: a trip with no route has no
         statistics to show either, so the section disappears with the map rather than
         needing a condition of its own that could drift out of step with it.
 
-        A definition list and nothing else — no class, no styling. `static/css/style.css`
-        carries only what the map's container needs, and this section has to stay readable
-        with the stylesheet blocked, which a `<dl>` is and a table of bare `<div>`s is not.
+        Now styled — Bootstrap's `dl.row`/`col` grid, relying on the stylesheet loading
+        rather than staying stylesheet-independent (a deliberate reversal, confirmed with
+        the user; every other page in the app already depends on Bootstrap loading).
         {% endcomment %}
-        <h2>Stats</h2>
-        {% comment %}
-        Each stat gates on `is not None`, never on truthiness. `TripStats` guarantees that
-        a `None` means one thing — the stored column was null — and every legitimate zero
-        formats to a non-empty string, so a falsy gate happens to agree today. It agrees by
-        accident: `duration_seconds = 0.0` is reachable from a real one-point timed file,
-        and one edit to a formatter would collapse that into "Not recorded", which is the
-        exact zero-versus-null confusion this whole slice was written to avoid.
-        {% endcomment %}
-        {% if stats %}
-            <dl>
-                {% comment %}
-                This branch names no cause in the file, unlike the three below it. A file
-                with no positions is refused at upload, and a row with every column null
-                takes the `{% templatetag openblock %} else {% templatetag closeblock %}`
-                at the bottom instead — so a null distance beside a non-null anything else
-                is reachable only by hand-editing a row, and any sentence blaming the GPX
-                would be false.
-                {% endcomment %}
-                <dt>Distance</dt>
-                <dd>{% if stats.distance is not None %}{{ stats.distance }}{% else %}Not recorded — this route's distance has not been worked out.{% endif %}</dd>
-
-                {% comment %}
-                "Recorded time", not "Elapsed time". The stored figure is the sum of each
-                GPX segment's own span, so the gaps between segments — every overnight on
-                a multi-day tour — are not in it. See `GpxTrack.duration_seconds`.
-                {% endcomment %}
-                <dt>Recorded time</dt>
-                <dd>{% if stats.recorded_time is not None %}{{ stats.recorded_time }}{% else %}Not recorded — the GPX file carried no usable timestamps.{% endif %}</dd>
-
-                <dt>Elevation gained</dt>
-                <dd>{% if stats.elevation_gain is not None %}{{ stats.elevation_gain }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
-
-                <dt>Elevation lost</dt>
-                <dd>{% if stats.elevation_loss is not None %}{{ stats.elevation_loss }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
-            </dl>
-        {% else %}
+        <div class="mb-4">
+            <h2>Stats</h2>
             {% comment %}
-            A row whose statistics were never computed — uploaded before the columns
-            existed, and missed by the backfill. Worded deliberately unlike the per-stat
-            notes above: those say the *file* lacked the data, this says *nobody has
-            worked it out yet*, and a bug report has to be able to tell the two apart.
+            Each stat gates on `is not None`, never on truthiness. `TripStats` guarantees that
+            a `None` means one thing — the stored column was null — and every legitimate zero
+            formats to a non-empty string, so a falsy gate happens to agree today. It agrees by
+            accident: `duration_seconds = 0.0` is reachable from a real one-point timed file,
+            and one edit to a formatter would collapse that into "Not recorded", which is the
+            exact zero-versus-null confusion this whole slice was written to avoid.
             {% endcomment %}
-            <p>These stats have not been worked out for this route. Uploading the GPX file again will calculate them.</p>
-        {% endif %}
+            {% if stats %}
+                <dl class="row mb-0">
+                    {% comment %}
+                    This branch names no cause in the file, unlike the three below it. A file
+                    with no positions is refused at upload, and a row with every column null
+                    takes the `{% templatetag openblock %} else {% templatetag closeblock %}`
+                    at the bottom instead — so a null distance beside a non-null anything else
+                    is reachable only by hand-editing a row, and any sentence blaming the GPX
+                    would be false.
+                    {% endcomment %}
+                    <dt class="col-sm-4 col-md-3">Distance</dt>
+                    <dd class="col-sm-8 col-md-9">{% if stats.distance is not None %}{{ stats.distance }}{% else %}Not recorded — this route's distance has not been worked out.{% endif %}</dd>
+
+                    {% comment %}
+                    "Recorded time", not "Elapsed time". The stored figure is the sum of each
+                    GPX segment's own span, so the gaps between segments — every overnight on
+                    a multi-day tour — are not in it. See `GpxTrack.duration_seconds`.
+                    {% endcomment %}
+                    <dt class="col-sm-4 col-md-3">Recorded time</dt>
+                    <dd class="col-sm-8 col-md-9">{% if stats.recorded_time is not None %}{{ stats.recorded_time }}{% else %}Not recorded — the GPX file carried no usable timestamps.{% endif %}</dd>
+
+                    <dt class="col-sm-4 col-md-3">Elevation gained</dt>
+                    <dd class="col-sm-8 col-md-9">{% if stats.elevation_gain is not None %}{{ stats.elevation_gain }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
+
+                    <dt class="col-sm-4 col-md-3">Elevation lost</dt>
+                    <dd class="col-sm-8 col-md-9">{% if stats.elevation_loss is not None %}{{ stats.elevation_loss }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
+                </dl>
+            {% else %}
+                {% comment %}
+                A row whose statistics were never computed — uploaded before the columns
+                existed, and missed by the backfill. Worded deliberately unlike the per-stat
+                notes above: those say the *file* lacked the data, this says *nobody has
+                worked it out yet*, and a bug report has to be able to tell the two apart.
+                {% endcomment %}
+                <p>These stats have not been worked out for this route. Uploading the GPX file again will calculate them.</p>
+            {% endif %}
+        </div>
     {% else %}
-        <p>No route yet — this trip has no GPX file uploaded, so there is nothing to map.</p>
+        <div class="mb-4">
+            <h2>Route</h2>
+            <p>No route yet — this trip has no GPX file uploaded, so there is nothing to map.</p>
+        </div>
     {% endif %}
 
-    <h3>{% if track %}Replace the route{% else %}Add a route{% endif %}</h3>
-    {% comment %}
-    `enctype` is not optional: without it the browser posts filenames only, the form
-    sees an empty `request.FILES`, and the upload fails as "this field is required".
-    {% endcomment %}
-    <form method="post" action="{% url 'gpx:upload' pk=trip.pk %}" enctype="multipart/form-data">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
-        {% for field in form %}
-            <p>
-                {{ field.label_tag }}
-                {{ field }}
-                {{ field.errors }}
-            </p>
-        {% endfor %}
-        <button type="submit">{% if track %}Replace GPX file{% else %}Upload GPX file{% endif %}</button>
-    </form>
+    <div class="card">
+        <div class="card-body">
+            <h3 class="h5 card-title">{% if track %}Replace the route{% else %}Add a route{% endif %}</h3>
+            {% comment %}
+            `enctype` is not optional: without it the browser posts filenames only, the form
+            sees an empty `request.FILES`, and the upload fails as "this field is required".
+            {% endcomment %}
+            <form method="post" action="{% url 'gpx:upload' pk=trip.pk %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                {% for field in form %}
+                    <div class="mb-3">
+                        {{ field|bootstrap_label }}
+                        {{ field|bootstrap_widget }}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">{% if track %}Replace GPX file{% else %}Upload GPX file{% endif %}</button>
+            </form>
+        </div>
+    </div>
 {% endblock %}
 
 {% block scripts %}

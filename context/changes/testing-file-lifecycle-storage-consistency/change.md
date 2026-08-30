@@ -1,7 +1,7 @@
 ---
 change_id: testing-file-lifecycle-storage-consistency
 title: File lifecycle and storage/row consistency test coverage
-status: new
+status: planned
 created: 2026-08-30
 updated: 2026-08-30
 archived_at: null

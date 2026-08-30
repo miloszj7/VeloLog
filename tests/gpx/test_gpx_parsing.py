@@ -239,7 +239,7 @@ def test_an_empty_upload_is_a_syntax_error() -> None:
 
 
 def test_a_truncated_document_is_a_syntax_error() -> None:
-    """Cut off mid-tag, distinct from the fully-malformed fixture above.
+    """Cut off mid-attribute-value, distinct from the fully-malformed fixture above.
 
     Pinned by name for the same reason as the empty-upload test above: today it shares
     the syntax-error branch, but the phase's own intent names "truncated" as its own

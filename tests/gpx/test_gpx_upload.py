@@ -308,6 +308,34 @@ def test_a_rejected_upload_leaves_an_existing_track_untouched(
 
 
 @pytest.mark.django_db
+def test_a_rejected_uploads_rerender_still_shows_the_existing_tracks_live_download_link(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """A rejected upload must not render the surviving track as if its file were gone.
+
+    `GpxUploadView` re-renders `trips/trip_detail.html` on a rejected upload, the same
+    template `TripDetailView` renders on a normal visit. Missing `track_file_available`
+    from this path's context would render the "file unavailable" branch over a track
+    whose file was never touched by the rejection — a false negative, not a true one.
+    """
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("alps-day-1.gpx", gpx_bytes("valid-track.gpx"))},
+    )
+    existing = GpxTrack.objects.get()
+
+    response = auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("broken.gpx", gpx_bytes("malformed.gpx"))},
+    )
+    body = response.content.decode()
+
+    assert response.context["track_file_available"] is True
+    assert "Track file unavailable" not in body
+    assert f'href="{reverse("gpx:download", kwargs={"pk": existing.pk})}"' in body
+
+
+@pytest.mark.django_db
 def test_a_second_upload_replaces_the_first_and_removes_its_file(
     auth_client: Client,
     trip: Trip,

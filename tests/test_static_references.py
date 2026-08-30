@@ -47,6 +47,7 @@ STATIC_REFERENCES = (
     MARKER_ICON_RETINA,
     MARKER_SHADOW,
     "css/style.css",
+    "css/theme.css",
     "gpx/map.js",
     "gpx/vendor/leaflet/leaflet.css",
     "gpx/vendor/leaflet/leaflet.js",

@@ -1,0 +1,73 @@
+/* Design-system theme layer — loaded after static/vendor/bootstrap/bootstrap.min.css
+ * and before static/css/style.css (see templates/base.html <head> order).
+ *
+ * This file redefines Bootstrap's own CSS custom properties so the project's palette
+ * (context/foundation/design-system.md) applies without a Sass build or a forked
+ * vendored copy of Bootstrap. Not every Bootstrap variable that visually involves
+ * "primary" is a runtime derivative of --bs-primary: Bootstrap 5.3 bakes
+ * -rgb/-text-emphasis/-bg-subtle/-border-subtle and component-local variables
+ * (e.g. .btn-primary's --bs-btn-bg) as independent Sass-compile-time literals, so a
+ * bare --bs-primary override alone would leave links, headings, the focus ring and
+ * .btn-primary all showing Bootstrap's stock blue. Each variable below is therefore
+ * listed because it either genuinely cascades at runtime (border-radius, box-shadow,
+ * font-family) or is set explicitly because nothing else reaches it (link colors,
+ * heading color, focus ring, primary's own -rgb pair). -text-emphasis/-bg-subtle/
+ * -border-subtle for primary are deliberately left at Bootstrap's stock values — no
+ * template in this project renders .text-bg-primary/.bg-primary-subtle/
+ * .border-primary-subtle, and design-system.md does not specify tint/shade values for
+ * them.
+ */
+
+:root {
+  /* Primary — outdoor-inspired green (design-system.md > Color Palette > Primary) */
+  --bs-primary: #2f5d50;
+  --bs-primary-rgb: 47, 93, 80;
+
+  /* Links and headings read their own variables, not --bs-primary */
+  --bs-link-color: #2f5d50;
+  --bs-link-color-rgb: 47, 93, 80;
+  --bs-link-hover-color: #23463c;
+  --bs-link-hover-color-rgb: 35, 70, 60;
+  --bs-heading-color: var(--bs-primary);
+
+  /* Bootstrap's default is a hardcoded rgba(13, 110, 253, .25) tied to its stock blue */
+  --bs-focus-ring-color: rgba(47, 93, 80, 0.25);
+
+  /* Typography — system font stack only, no external/vendored font */
+  --bs-body-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Border radius — design-system.md specifies three distinct values (Cards: 12px,
+   * Buttons: 10px, Map: 16px). Bootstrap's scale has three matching slots; the map's
+   * own radius is not Bootstrap-governed (Leaflet's container), but its 16px value is
+   * reused for the -lg slot so all three design-system numbers are represented without
+   * inventing a fourth. */
+  --bs-border-radius: 12px;
+  --bs-border-radius-sm: 10px;
+  --bs-border-radius-lg: 16px;
+
+  /* Shadows — design-system.md's Default shadow; no distinct "sm" value is specified,
+   * so the same value is reused rather than inventing one. */
+  --bs-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --bs-box-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  /* Project-only tokens with no Bootstrap built-in equivalent */
+  --color-secondary: #5f6b6d;
+  --color-accent: #f97316;
+  --color-bg: #f8fafb;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+}
+
+/* .btn-primary bakes its colors into component-local variables at Sass compile time
+ * (design-system.md > Buttons > Primary / Primary > Hover) — a :root override alone
+ * never reaches them. */
+.btn-primary {
+  --bs-btn-bg: var(--bs-primary);
+  --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-bg: #23463c;
+  --bs-btn-hover-border-color: #23463c;
+  --bs-btn-active-bg: #23463c;
+  --bs-btn-active-border-color: #23463c;
+}

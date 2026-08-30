@@ -852,30 +852,30 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 1.1 `sha256sum -c SHA256SUMS` passes in both vendor directories
-- [x] 1.2 `collectstatic --noinput` completes with no MissingFileError
-- [x] 1.3 `pytest tests/test_static_references.py --cov` passes
+- [x] 1.1 `sha256sum -c SHA256SUMS` passes in both vendor directories — 1868314
+- [x] 1.2 `collectstatic --noinput` completes with no MissingFileError — 1868314
+- [x] 1.3 `pytest tests/test_static_references.py --cov` passes — 1868314
 
 #### Manual
 
-- [x] 1.4 Bootstrap vendor README reads as a faithful parallel to the Leaflet one
-- [x] 1.5 New CI step's name makes a failure's origin unambiguous
-- [x] 1.6 `git check-attr text -- static/vendor/bootstrap/bootstrap.min.css` reports `unset`
+- [x] 1.4 Bootstrap vendor README reads as a faithful parallel to the Leaflet one — 1868314
+- [x] 1.5 New CI step's name makes a failure's origin unambiguous — 1868314
+- [x] 1.6 `git check-attr text -- static/vendor/bootstrap/bootstrap.min.css` reports `unset` — 1868314
 
 ### Phase 2: Design-system theme layer
 
 #### Automated
 
-- [ ] 2.1 `collectstatic --noinput` completes with no MissingFileError (theme.css resolves)
-- [ ] 2.2 `pytest tests/test_static_references.py --cov` passes with `theme.css` added
-- [ ] 2.3 `black --check .`, `ruff check .`, `isort --check-only .` pass
+- [x] 2.1 `collectstatic --noinput` completes with no MissingFileError (theme.css resolves)
+- [x] 2.2 `pytest tests/test_static_references.py --cov` passes with `theme.css` added
+- [x] 2.3 `black --check .`, `ruff check .`, `isort --check-only .` pass
 
 #### Manual
 
-- [ ] 2.4 Links/headings already render in design-system green, not Bootstrap blue
-- [ ] 2.5 `theme.css` contains the `.btn-primary` override block with the correct hex values
-- [ ] 2.6 `#map`'s sizing is unaffected by the new stylesheet load order
-- [ ] 2.7 `manage.py check` passes
+- [x] 2.4 Links/headings already render in design-system green, not Bootstrap blue
+- [x] 2.5 `theme.css` contains the `.btn-primary` override block with the correct hex values
+- [x] 2.6 `#map`'s sizing is unaffected by the new stylesheet load order
+- [x] 2.7 `manage.py check` passes
 
 ### Phase 3: Base layout, navbar, and shared form-styling filter
 

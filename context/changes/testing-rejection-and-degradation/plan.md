@@ -294,13 +294,13 @@ Not applicable — test-only phase.
 
 #### Automated
 
-- [ ] 1.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v`
-- [ ] 1.2 Full suite still passes: `uv run pytest --cov`
-- [ ] 1.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
+- [x] 1.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v`
+- [x] 1.2 Full suite still passes: `uv run pytest --cov`
+- [x] 1.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
 
 #### Manual
 
-- [ ] 1.4 Break the claim deliberately, confirm the new assertion goes red, then revert
+- [x] 1.4 Break the claim deliberately, confirm the new assertion goes red, then revert
 
 ### Phase 2: Empty and truncated upload rejection (Risk #5)
 

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
@@ -140,7 +142,7 @@ def test_a_valid_upload_returns_to_the_detail_page_with_a_confirmation(
 
 @pytest.mark.django_db
 def test_a_file_over_the_size_cap_is_rejected_with_a_visible_message(
-    auth_client: Client, trip: Trip
+    auth_client: Client, trip: Trip, tmp_path: Path
 ) -> None:
     oversized = SimpleUploadedFile("huge.gpx", b"x" * (MAX_GPX_FILE_BYTES + 1))
 
@@ -149,11 +151,12 @@ def test_a_file_over_the_size_cap_is_rejected_with_a_visible_message(
     assert response.status_code == 200
     assert "larger than 10 MB" in response.content.decode()
     assert GpxTrack.objects.count() == 0
+    assert not (tmp_path / "media").exists()
 
 
 @pytest.mark.django_db
 def test_a_non_gpx_extension_is_rejected_with_a_visible_message(
-    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader, tmp_path: Path
 ) -> None:
     """The contents are a perfectly good track — only the extension is wrong.
 
@@ -167,6 +170,7 @@ def test_a_non_gpx_extension_is_rejected_with_a_visible_message(
     assert response.status_code == 200
     assert "not a .gpx file" in response.content.decode()
     assert GpxTrack.objects.count() == 0
+    assert not (tmp_path / "media").exists()
 
 
 @pytest.mark.django_db
@@ -184,7 +188,7 @@ def test_an_uppercase_gpx_extension_is_accepted(
 
 @pytest.mark.django_db
 def test_malformed_xml_is_rejected_with_the_error_shown_on_the_page(
-    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader, tmp_path: Path
 ) -> None:
     """Assert the message, not just the 200 — a blank re-rendered form is also a 200."""
     response = auth_client.post(
@@ -197,11 +201,12 @@ def test_malformed_xml_is_rejected_with_the_error_shown_on_the_page(
     assert "could not be read as XML" in body
     assert "No route yet" in body
     assert GpxTrack.objects.count() == 0
+    assert not (tmp_path / "media").exists()
 
 
 @pytest.mark.django_db
 def test_a_valid_xml_file_that_is_not_a_track_is_rejected_with_its_own_message(
-    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader, tmp_path: Path
 ) -> None:
     """Not-XML and not-GPX are two different failures and get two different messages."""
     response = auth_client.post(
@@ -213,6 +218,7 @@ def test_a_valid_xml_file_that_is_not_a_track_is_rejected_with_its_own_message(
     assert response.status_code == 200
     assert "not a usable GPX track" in body
     assert GpxTrack.objects.count() == 0
+    assert not (tmp_path / "media").exists()
 
 
 @pytest.mark.django_db
@@ -221,6 +227,7 @@ def test_a_track_over_the_point_cap_is_rejected_with_the_limit_named(
     trip: Trip,
     gpx_bytes: GpxBytesReader,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """The rejection has to name the limit, the way the size rejection does.
 
@@ -238,6 +245,7 @@ def test_a_track_over_the_point_cap_is_rejected_with_the_limit_named(
     assert response.status_code == 200
     assert "more than 100,000 track points" in body
     assert GpxTrack.objects.count() == 0
+    assert not (tmp_path / "media").exists()
 
 
 @pytest.mark.django_db
@@ -256,7 +264,7 @@ def test_a_latin1_declared_file_uploads_like_any_other(
 
 @pytest.mark.django_db
 def test_an_undecodable_file_is_rejected_for_its_encoding_not_its_xml(
-    auth_client: Client, trip: Trip
+    auth_client: Client, trip: Trip, tmp_path: Path
 ) -> None:
     """A file nothing can decode gets a message about encoding, not about XML."""
     response = auth_client.post(
@@ -268,11 +276,12 @@ def test_an_undecodable_file_is_rejected_for_its_encoding_not_its_xml(
     assert response.status_code == 200
     assert "text encoding could not be read" in body
     assert GpxTrack.objects.count() == 0
+    assert not (tmp_path / "media").exists()
 
 
 @pytest.mark.django_db
 def test_a_post_with_no_file_is_rejected_without_reaching_the_parser(
-    auth_client: Client, trip: Trip
+    auth_client: Client, trip: Trip, tmp_path: Path
 ) -> None:
     """clean_file never runs when the field is empty, so the required-field message
     is the whole answer here. Worth pinning: the view resolves the trip before the
@@ -285,6 +294,7 @@ def test_a_post_with_no_file_is_rejected_without_reaching_the_parser(
     assert response.status_code == 200
     assert "This field is required." in body
     assert GpxTrack.objects.count() == 0
+    assert not (tmp_path / "media").exists()
 
 
 @pytest.mark.django_db

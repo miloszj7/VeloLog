@@ -227,6 +227,28 @@ def test_malformed_xml_is_a_syntax_error(gpx_bytes: GpxBytesReader) -> None:
         parse_gpx_bytes(gpx_bytes("malformed.gpx"))
 
 
+def test_an_empty_upload_is_a_syntax_error() -> None:
+    """A genuinely 0-byte upload, not `empty-track.gpx`'s well-formed-but-pointless GPX.
+
+    Pinned by name even though it resolves via the same `GpxSyntaxError` branch as
+    `test_malformed_xml_is_a_syntax_error` above, so a future change that splits that
+    branch is caught rather than silently passing on this scenario.
+    """
+    with pytest.raises(GpxSyntaxError):
+        parse_gpx_bytes(b"")
+
+
+def test_a_truncated_document_is_a_syntax_error() -> None:
+    """Cut off mid-attribute-value, distinct from the fully-malformed fixture above.
+
+    Pinned by name for the same reason as the empty-upload test above: today it shares
+    the syntax-error branch, but the phase's own intent names "truncated" as its own
+    scenario and a future split of that branch should be caught here too.
+    """
+    with pytest.raises(GpxSyntaxError):
+        parse_gpx_bytes(b'<?xml version="1.0"?><gpx><trk><trkseg><trkpt lat="50.06" lon=')
+
+
 def test_well_formed_xml_that_is_not_gpx_is_a_content_error(gpx_bytes: GpxBytesReader) -> None:
     with pytest.raises(GpxContentError):
         parse_gpx_bytes(gpx_bytes("not-gpx.gpx"))

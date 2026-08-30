@@ -322,3 +322,89 @@ Do not re-litigate these — each was checked against source:
   `style.css` aliasing `.errorlist` to `.invalid-feedback`'s appearance. Either is fine —
   decide it now rather than mid-Phase-3.
 - **Decision**: FIXED — added a Phase 2 CSS-alias sub-phase for `errorlist`, and reworded criterion 3.4/Progress 3.4 to assert the styled error text.
+
+---
+
+## Review Round 2: Design-system theme layer (2026-08-30)
+
+After the round above, `change.md` recorded a second planning decision: a new Phase 2
+("Design-system theme layer") was inserted before the (renumbered) template-restyling
+phases, applying `context/foundation/design-system.md` as a CSS-variable override on top
+of vendored Bootstrap. Status was reset to `planned` pending re-review of that addition.
+This round reviews only that addition (the new Phase 2 and its knock-on effects on
+Phase 4), against the plan as it now stands (7 phases).
+
+- **Mode**: Deep (focused)
+- **Verdict**: REVISE (pre-triage) → SOUND (post-triage — finding fixed)
+- **Findings**: 1 critical — FIXED
+
+### Grounding
+
+6/6 paths ✓ (`trips/forms.py` date attrs, `trip_detail.html`'s "no class, no styling"
+comment + `<dl>`, `templates/base.html`, `static/css/style.css`, `.gitattributes`,
+`accounts/templatetags/`/`static/vendor/bootstrap/` correctly absent pre-implementation),
+brief↔plan ✓, Progress↔Phase contract ✓ (7 phases, every criteria bullet 1:1 mapped,
+exactly one `## Progress` section). Bootstrap 5.3's theming mechanics were verified
+against the official docs (getbootstrap.com/docs/5.3 — customize/css-variables,
+components/buttons, content/reboot) via Context7, not assumed.
+
+### F10 — Overriding --bs-primary alone will not retheme buttons, links, headings, or focus rings — Phase 2's core premise is wrong
+
+- **Severity**: ❌ CRITICAL
+- **Impact**: 🔬 HIGH — architectural stakes; think carefully before deciding
+- **Dimension**: End-State Alignment / Plan Completeness
+- **Location**: Phase 2 (theme override stylesheet contract), criterion 2.4, Key Discoveries
+- **Detail**: Phase 2's contract claimed `theme.css` should redefine "`--bs-primary`
+  (and the `-rgb`/`-text-emphasis`/`-bg-subtle`/`-border-subtle` derivatives Bootstrap
+  computes from it)". Verified against Bootstrap 5.3's own docs: those are *not*
+  computed from `--bs-primary` at runtime. Each is an independent, Sass-compile-time-
+  baked literal in the shipped CSS (`--bs-primary-rgb: 13, 110, 253;`,
+  `--bs-primary-text-emphasis: #052c65;`, etc.). Same one level deeper: `--bs-link-color`
+  (`#0d6efd`), `--bs-heading-color` (`inherit` — headings are never colored from
+  `--bs-primary` at all by default), and `--bs-focus-ring-color`
+  (`rgba(13, 110, 253, 0.25)`, a hardcoded literal) are each their own independent
+  variable. `.btn-primary` gets its background from Sass's `button-variant` mixin,
+  which bakes literal hex into component-local variables (`--bs-btn-bg`, ...) — not
+  `var(--bs-primary)`. Only `--bs-border-radius`/`--bs-box-shadow` (and their `-sm`/
+  `-lg` variants) genuinely cascade at runtime, and only utility classes that read
+  `var(--bs-primary-rgb, ...)` directly (`.bg-primary`, `.text-primary`,
+  `.border-primary`) retheme from a bare override — none of which this project uses.
+  Consequence: criterion 2.4 as originally worded ("links/headings... render in the
+  design-system green... confirms theme.css is winning the cascade") would not pass —
+  headings never turn any Bootstrap-derived color at all (making "not stock blue"
+  vacuously true), and links stay stock blue without an explicit `--bs-link-color`
+  override. Every `.btn-primary` submit button in Phases 4-6 would ship Bootstrap
+  default blue, not the design system's green, unless fixed.
+- **Fix A ⭐ Recommended (applied)**: Kept the no-Sass-build CSS-variable-override
+  approach, but corrected and completed the actual override list: `--bs-link-color`/
+  `--bs-link-hover-color` (+`-rgb` pairs), `--bs-heading-color`, `--bs-focus-ring-color`,
+  `--bs-primary-rgb`, plus one named component exception — a `.btn-primary { ... }`
+  block using the exact hex `design-system.md` already specifies (`#2f5d50` / hover
+  `#23463c`), since that's the one Bootstrap component this project's own design system
+  gives an explicit color contract for. Explicitly scoped `-text-emphasis`/`-bg-subtle`/
+  `-border-subtle` for `primary` out of the work — nothing in this plan's phases renders
+  `.text-bg-primary`/`.bg-primary-subtle`/`.border-primary-subtle`, so overriding them
+  would mean inventing tint/shade values `design-system.md` doesn't specify for surfaces
+  nothing shows. Reworded Phase 2's manual criteria (2.4 became verifiable via link/
+  heading color; added 2.5, a code-read check that `theme.css` carries the correct
+  `.btn-primary` hex) and Phase 4's manual criterion (submit button color now explicitly
+  checked against the design-system green). Progress renumbered 2.5/2.6 → 2.6/2.7 to
+  keep the Progress↔Phase 1:1 contract intact.
+  - Strength: Stays inside the plan's existing "no build step, no new vendored asset"
+    posture — purely additive to `theme.css` and two criteria, not a strategy change.
+  - Tradeoff: More CSS to hand-write and more values to get right without Sass tooling;
+    any future component that needs primary-derived subtle/emphasis colors will need
+    its own override added when it's introduced.
+  - Confidence: HIGH — every claim is quoted from Bootstrap 5.3's own documentation.
+  - Blind spot: Whether `design-system.md`'s single accent/primary values will need
+    additional hand-derived tones later (e.g. if `.text-bg-primary` is ever introduced)
+    is not yet decided — deferred by design, not overlooked.
+- **Fix B (not applied)**: Switch to vendoring Bootstrap's Sass source and compiling
+  locally with `$primary`/`$link-color` etc. overridden, so every component retheme
+  correctly and automatically. Rejected because it reopens Phase 1's "byte-identical to
+  upstream" integrity story and the "no build step" scope boundary recorded in
+  `change.md`/`plan-brief.md`, and adds a new Sass toolchain dependency this project
+  doesn't otherwise need.
+- **Decision**: FIXED — via Fix A. Applied directly to `plan.md` (Phase 2 contract,
+  Phase 2 and Phase 4 success criteria, Progress renumbering) and recorded as a planning
+  decision in `change.md`.

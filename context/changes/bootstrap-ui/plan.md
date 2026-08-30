@@ -7,7 +7,11 @@ same way Leaflet is already vendored, wire it into `templates/base.html`, and re
 all 8 existing templates (login, signup, trip list, trip create/edit, trip detail +
 map, delete confirm) with Bootstrap classes. This is a UI polish pass — no new routes,
 models, or business logic — over a project where every roadmap slice (S-01–S-05) is
-already shipped.
+already shipped. A CSS variable override layer applies the project's design system
+(`context/foundation/design-system.md`) — custom color palette, system-font typography,
+spacing/radius/shadow tokens — on top of vendored Bootstrap defaults, before any
+template is restyled, so every later phase styles against final themed values, not
+Bootstrap's stock blue.
 
 ## Current State Analysis
 
@@ -67,16 +71,23 @@ already shipped.
   integrity-check step is added for the vendored Bootstrap bytes, mirroring the existing
   Leaflet one. `change.md` is updated to record this as a conscious decision, not an
   oversight.
+- `context/foundation/design-system.md` specifies a full palette (custom `--bs-primary`
+  green, `--color-accent` orange, background/surface/border/text tokens), a system-font
+  typography stack (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif` — no
+  external or vendored font), spacing/radius/shadow scales, and an explicit "no icon
+  library" rule — all of it expressible as a small CSS file overriding Bootstrap's own
+  CSS variables, with no new vendored asset, no CDN link, and no icon font.
 
 ## Desired End State
 
 Every page in the app (login, signup, trip list, trip create/edit, trip detail, delete
-confirm) renders through Bootstrap 5.3.8 — a navbar, a `.container`-wrapped content
-area, styled forms, a list-group trip list, and dismissible alerts for Django messages —
-while the Leaflet map keeps rendering exactly as before (same `#map` sizing rule, same
-fallback markup, same `map_config`/`stats` gating logic, untouched). The full test suite
-passes, `collectstatic` completes cleanly, and the new vendored assets pass their own
-CI integrity check.
+confirm) renders through Bootstrap 5.3.8 themed to `context/foundation/design-system.md`'s
+palette and typography — not Bootstrap's stock blue/system defaults — with a navbar, a
+`.container`-wrapped content area, styled forms, a list-group trip list, and dismissible
+alerts for Django messages, while the Leaflet map keeps rendering exactly as before
+(same `#map` sizing rule, same fallback markup, same `map_config`/`stats` gating logic,
+untouched). The full test suite passes, `collectstatic` completes cleanly, and the new
+vendored assets pass their own CI integrity check.
 
 **Verification**: `uv run pytest --cov` is green; `uv run python manage.py
 collectstatic --noinput` completes with no `MissingFileError`; a manual pass at desktop
@@ -91,9 +102,9 @@ and ~375px mobile width shows sane layout on all 8 pages with no console errors.
   functionality while every other page keeps it.
 - `#map`'s CSS (`static/css/style.css`) uses `vh`/`min-height`/`max-height`, none of
   which Bootstrap's utility classes touch — a wrapping `<div class="mb-4">` around the
-  existing `#map` div is purely additive. (Not `<div class="container ...">` — Phase 2
+  existing `#map` div is purely additive. (Not `<div class="container ...">` — Phase 3
   already wraps all of `{% block content %}` in `.container`, so a nested `.container`
-  here would double the gutter padding; `mb-4` is spacing-only and matches Phase 5's
+  here would double the gutter padding; `mb-4` is spacing-only and matches Phase 6's
   own example.)
 - `trip_form.html`'s create/edit branching (`form.instance.pk`) and the exact-string
   Cancel anchor test already document that this template's markup is asserted
@@ -102,6 +113,12 @@ and ~375px mobile width shows sane layout on all 8 pages with no console errors.
   `SUCCESS`, tag `"success"`); no `messages.error(...)` call exists anywhere. Bootstrap's
   `alert-success` class matches Django's default `"success"` tag directly, so no
   `MESSAGE_TAGS` settings override is needed for current usage.
+- `templates/base.html`'s `<head>` today only links `style.css` — Bootstrap's own
+  `<link>` was originally slated for the phase that also builds the navbar/container.
+  Splitting CSS-link wiring (Phase 2, the theme layer) from structural/JS wiring
+  (Phase 3) means `base.html` is edited in two consecutive, independently-committable
+  phases rather than one — deliberate, so every template phase from Phase 3 onward
+  already sees themed Bootstrap variables instead of defaults.
 
 ## What We're NOT Doing
 
@@ -110,20 +127,25 @@ and ~375px mobile width shows sane layout on all 8 pages with no console errors.
   (add a CSS class).
 - No changes to `forms.py` in any app, no changes to views, no changes to URLs.
 - No changes to `#map`'s own CSS rule or to `gpx/map.js`/`gpx/map_config.py`.
-- No dark mode, no custom Sass build, no CSS variable theming beyond Bootstrap's
-  defaults — this is a "wire it in and apply classes" pass, not a design system.
+- No dark mode, no custom Sass build — theming is a plain CSS variable override layer
+  (Phase 2) applied on top of vendored Bootstrap, following
+  `context/foundation/design-system.md` exactly; nothing beyond what that document
+  specifies (no new colors, no icon library, no external fonts).
 - No `MESSAGE_TAGS` override — deferred until an `ERROR`-level message actually exists.
 - No changes to `railway.json`, `manage.py`, or any settings file.
 
 ## Implementation Approach
 
 Vendor Bootstrap first (Phase 1) so every later phase has real classes to reach for.
-Build the shared form-styling filter alongside the base layout (Phase 2), since three
-of the remaining four template phases depend on it. Then restyle template-by-template
-in the order a rider actually moves through the app (auth → list/create → detail/delete),
-updating the exact-markup test assertions in the same phase as the template that breaks
-them — never batched separately, so each phase stays independently committable and
-green.
+Apply the design-system theme as its own CSS-only phase immediately after (Phase 2), so
+the palette, typography, and spacing/radius/shadow tokens are live before any template
+is touched — no phase styles against Bootstrap's stock defaults only to be re-themed
+later. Build the shared form-styling filter alongside the base layout (Phase 3), since
+three of the remaining four template phases depend on it. Then restyle
+template-by-template in the order a rider actually moves through the app (auth →
+list/create → detail/delete), updating the exact-markup test assertions in the same
+phase as the template that breaks them — never batched separately, so each phase stays
+independently committable and green.
 
 ## Critical Implementation Details
 
@@ -136,6 +158,11 @@ green.
   (`{{ field|bootstrap_widget }}` replacing bare `{{ field }}`) that merges a `class`
   attribute into the widget's existing `attrs` — this must preserve `TripForm`'s
   `date` field's `attrs={"type": "date"}` and not clobber it.
+- **Stylesheet load order**: `theme.css` must load after `bootstrap.min.css` and before
+  `style.css` in every page's `<head>` — it works by overriding Bootstrap's own CSS
+  custom properties (`--bs-primary`, etc.), which only takes effect if it cascades
+  after Bootstrap's definitions; loading it before `bootstrap.min.css` would have
+  Bootstrap's stylesheet silently win and restore default colors.
 
 ## Phase 1: Vendor Bootstrap 5.3.8
 
@@ -257,12 +284,149 @@ unconverted files.
 
 ---
 
-## Phase 2: Base layout, navbar, and shared form-styling filter
+## Phase 2: Design-system theme layer
 
 ### Overview
 
-Wire Bootstrap into `base.html` (navbar, container, styled messages) and add the
-template filter every later form-styling phase depends on.
+Apply `context/foundation/design-system.md`'s palette, typography, and spacing/radius/
+shadow tokens as a CSS-only override layer on top of vendored Bootstrap, and wire the
+two new `<head>` links (Bootstrap's own stylesheet, then the theme override) into
+`base.html` — before any template gets restyled, so every later phase renders against
+final themed values, not Bootstrap's stock defaults.
+
+### Changes Required:
+
+#### 1. Theme override stylesheet
+
+**File**: `static/css/theme.css`
+
+**Intent**: A project-level (not vendored, not app-owned) stylesheet that redefines
+Bootstrap's own CSS custom properties to match `design-system.md`. **Correction from
+plan review (F1, 2026-08-30)**: `-rgb`/`-text-emphasis`/`-bg-subtle`/`-border-subtle`
+are *not* runtime derivatives Bootstrap computes from `--bs-primary` — verified against
+Bootstrap 5.3's own docs, each is an independent Sass-compile-time-baked literal in the
+shipped CSS (`--bs-primary-rgb: 13, 110, 253;` etc.), so a bare `--bs-primary` override
+never reaches them. The same is true one level deeper: `--bs-link-color`,
+`--bs-heading-color`, and `--bs-focus-ring-color` are each their *own* independent
+variable (not derived from `--bs-primary` either), and component classes like
+`.btn-primary` bake their background/border into component-local variables
+(`--bs-btn-bg`, `--bs-btn-border-color`, ...) via Sass's `button-variant` mixin at
+build time — untouched by any `:root` override. Only `--bs-border-radius`/
+`--bs-box-shadow` and their `-sm`/`-lg` variants genuinely cascade at runtime (Bootstrap
+5.3 nests these as `var(--bs-border-radius)`), and only utility classes that read
+`var(--bs-primary-rgb, ...)` directly (`.bg-primary`, `.text-primary`, `.border-primary`)
+retheme from a bare `--bs-primary` override — none of which this project's templates use.
+
+The corrected, complete override list — everything needed for what this project's
+templates actually render, no more:
+
+- `--bs-primary` and `--bs-primary-rgb` (`47, 93, 80` — the RGB triplet of `#2f5d50`)
+- `--bs-link-color` and `--bs-link-hover-color` (plus their `-rgb` pairs) — every plain
+  `<a>` (nav brand, "Sign up", Cancel links) reads these directly, not `--bs-primary`
+- `--bs-heading-color` — set to `var(--bs-primary)`; Bootstrap's own default is
+  `inherit` (headings are never colored from `--bs-primary` out of the box), so this is
+  additive, not a correction of a wrong default
+- `--bs-focus-ring-color` — an rgba literal derived from the new primary, replacing
+  Bootstrap's hardcoded `rgba(13, 110, 253, 0.25)`
+- `--bs-body-font-family`, `--bs-border-radius` (+ `-sm`/`-lg`), `--bs-box-shadow`
+  (+ `-sm`) — unaffected by this correction; these already cascade correctly as
+  described in the original Intent
+- new custom properties Bootstrap has no built-in variable for (`--color-secondary`,
+  `--color-accent`, `--color-bg`, `--color-surface`, `--color-border`,
+  `--color-text`, `--color-text-muted`)
+
+**Explicitly out of scope, by decision, not oversight**: `-text-emphasis`/`-bg-subtle`/
+`-border-subtle` for `primary` stay at Bootstrap's stock blue-tinted values. No phase in
+this plan renders `.text-bg-primary`, `.bg-primary-subtle`, or `.border-primary-subtle`
+— overriding them would mean hand-deriving tint/shade values `design-system.md` doesn't
+specify, for surfaces nothing in this project shows. If a future template introduces one
+of those classes, derive and add the matching override then.
+
+**One named component exception**: `.btn-primary` is the one Bootstrap component this
+project's own `design-system.md` gives an explicit, exact color contract for (`Buttons >
+Primary` / `Primary > Hover`: `background: #2f5d50` / hover `#23463c`) and it appears in
+`btn btn-primary` submit buttons across Phases 4-6. Since its colors cannot be reached
+via `:root` alone (see correction above), `theme.css` also carries one small,
+already-fully-specified override:
+
+```css
+.btn-primary {
+  --bs-btn-bg: var(--bs-primary);
+  --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-bg: #23463c;
+  --bs-btn-hover-border-color: #23463c;
+  --bs-btn-active-bg: #23463c;
+  --bs-btn-active-border-color: #23463c;
+}
+```
+
+No other component selector is added — `btn-danger`/`btn-outline-secondary`/
+`list-group-item` etc. stay Bootstrap's stock colors, since `design-system.md` does not
+give them a design-system-specific color (danger reads as "destructive" regardless of
+exact shade; Cancel links/secondary buttons are explicitly meant to look secondary).
+
+No Sass, no build step — plain CSS custom-property overrides on `:root`, plus the one
+named component exception above, matching the "wire it in" posture of the rest of this
+plan.
+
+**Contract**: A `:root { ... }` block, plus the single `.btn-primary { ... }` block
+above — no other selectors, no other component rules (all other component styling
+stays in the per-template phases below, using Bootstrap's stock colors). Every value
+traces to a named line in `design-system.md`, except the RGB/rgba conversions and the
+one `--bs-heading-color` addition, which are mechanical derivations of values already
+in `design-system.md`, not invented ones. Must not touch `#map`'s own rule in
+`style.css` (a different file, loaded after this one).
+
+#### 2. Base template — theme `<head>` links
+
+**File**: `templates/base.html`
+
+**Intent**: Add two `<link>` tags to `<head>`: Bootstrap's own stylesheet
+(`vendor/bootstrap/bootstrap.min.css`, vendored in Phase 1) and this phase's
+`theme.css`, in that exact order, both before the existing `style.css` link — so
+`theme.css`'s variable overrides cascade after Bootstrap's own definitions and before
+the project's `#map` rule. This is the only change to `base.html` in this phase; the
+navbar, container wrap, message-alert styling, JS bundle script tag, and everything
+else originally scoped to the "base layout" work are untouched here and land in
+Phase 3 instead.
+
+**Contract**: `<head>` link order becomes `bootstrap.min.css` → `theme.css` →
+`style.css` → `{% block extra_head %}`. No other line in `base.html` changes in this
+phase — the `<body>`, header, messages block, and `{% block content %}`/
+`{% block scripts %}` structure stay exactly as they are today until Phase 3.
+
+### Success Criteria:
+
+#### Automated Verification:
+
+- `uv run python manage.py collectstatic --noinput` completes with no
+  `MissingFileError` (new `theme.css` reference resolves)
+- `uv run pytest tests/test_static_references.py --cov` passes with `theme.css` added
+  to `STATIC_REFERENCES`
+- `uv run black --check .`, `uv run ruff check .`, `uv run isort --check-only .` pass
+  (no Python changes in this phase, but the gate still runs)
+
+#### Manual Verification:
+
+- With no template yet restyled, links (e.g. the "Sign up" link on the login page) and
+  headings (e.g. `<h1>` on any form page) already render in the design-system green
+  (`#2f5d50`), not Bootstrap's stock blue — confirms `--bs-link-color` and
+  `--bs-heading-color` are set, not just `--bs-primary`
+- `theme.css` contains the `.btn-primary` override block with the exact hex values from
+  `design-system.md`'s Buttons section (`#2f5d50` / hover `#23463c`) — code-read check,
+  since no page renders a `.btn-primary` button until Phase 4
+- No visual regression on `#map`'s sizing (still governed by `style.css`, loaded after
+  `theme.css`)
+- `uv run python manage.py check` passes
+
+---
+
+## Phase 3: Base layout, navbar, and shared form-styling filter
+
+### Overview
+
+Wire Bootstrap's navbar/container/JS bundle into `base.html` (CSS links already added
+in Phase 2) and add the template filter every later form-styling phase depends on.
 
 ### Changes Required:
 
@@ -270,25 +434,26 @@ template filter every later form-styling phase depends on.
 
 **File**: `templates/base.html`
 
-**Intent**: Load Bootstrap's CSS in `<head>` (before `style.css`, preserving the
-existing override-order comment), add a Bootstrap navbar replacing the bare `<header>`.
-The navbar and brand (linking to the trip list) render on every page, authenticated or
-not — this is a behavior change from today, where the whole `<header>` is gated on
-`user.is_authenticated`. Only the logout button stays gated on `user.is_authenticated`,
-preserving today's behavior for the control that actually matters (an anonymous user
-must never see or be able to trigger logout). Wrap `{% block content %}` in a
-`.container my-4`, and move the Django messages block inside that container (so alerts
-aren't full-bleed) rendering them as dismissible Bootstrap alerts
-(`alert alert-{{ message.tags }} alert-dismissible fade show`, with a `btn-close`
-button). Load `bootstrap.bundle.min.js` as a plain `<script>` tag placed before
-`{% block scripts %}` — see Critical Implementation Details above for why it cannot go
-inside that block.
+**Intent**: Add a Bootstrap navbar replacing the bare `<header>` — Bootstrap's own CSS
+and the theme override are already linked in `<head>` from Phase 2, so this phase only
+adds structure and behavior, not stylesheet links. The navbar and brand (linking to the
+trip list) render on every page, authenticated or not — this is a behavior change from
+today, where the whole `<header>` is gated on `user.is_authenticated`. Only the logout
+button stays gated on `user.is_authenticated`, preserving today's behavior for the
+control that actually matters (an anonymous user must never see or be able to trigger
+logout). Wrap `{% block content %}` in a `.container my-4`, and move the Django
+messages block inside that container (so alerts aren't full-bleed) rendering them as
+dismissible Bootstrap alerts (`alert alert-{{ message.tags }} alert-dismissible fade
+show`, with a `btn-close` button). Load `bootstrap.bundle.min.js` as a plain `<script>`
+tag placed before `{% block scripts %}` — see Critical Implementation Details above for
+why it cannot go inside that block.
 
 **Contract**: `{% block content %}` and `{% block scripts %}` keep their existing
 names/positions relative to each other so no child template needs to change its
-`{% block %}` declarations; only what wraps them changes. The Bootstrap script tag
-must be a plain `src=`-external `<script>` with an empty body — no inline
-initializer (tooltip/popover bootstrapper, theme toggle, etc.) anywhere in
+`{% block %}` declarations; only what wraps them changes. `<head>`'s link order
+(`bootstrap.min.css` → `theme.css` → `style.css`) from Phase 2 is untouched here. The
+Bootstrap script tag must be a plain `src=`-external `<script>` with an empty body — no
+inline initializer (tooltip/popover bootstrapper, theme toggle, etc.) anywhere in
 `base.html`. `tests/trips/test_trip_detail_map.py:106-131` asserts, page-wide, that
 every `<script>` is either `src=`-external or `type="application/json"` with no body;
 an inline `<script>` block added here fails that test on the trip-detail page even
@@ -384,11 +549,11 @@ error-rendering mechanism.
 
 ---
 
-## Phase 3: Auth templates (login, signup)
+## Phase 4: Auth templates (login, signup)
 
 ### Overview
 
-Restyle the two auth templates using the Phase 2 filter and Bootstrap form/card
+Restyle the two auth templates using the Phase 3 filter and Bootstrap form/card
 markup.
 
 ### Changes Required:
@@ -425,15 +590,17 @@ applied to label/widget/wrapper change.
 #### Manual Verification:
 
 - Login and signup forms render as centered Bootstrap cards with visible labels,
-  `form-control` inputs, and a styled submit button
+  `form-control` inputs, and a `btn btn-primary` submit button in the design-system
+  green (`#2f5d50`, hover `#23463c`) via Phase 2's `.btn-primary` override — not
+  Bootstrap's stock blue
 - An invalid login attempt shows `is-invalid` styling on the affected field(s) and the
   error text itself is styled to match Bootstrap's `.invalid-feedback` look (via the
-  Phase 2 `errorlist` alias), not left as unstyled default text
+  Phase 3 `errorlist` alias), not left as unstyled default text
 - Both pages are usable at ~375px width with no horizontal scroll
 
 ---
 
-## Phase 4: Trip list and trip create/edit form
+## Phase 5: Trip list and trip create/edit form
 
 ### Overview
 
@@ -507,7 +674,7 @@ being proven.
 
 ---
 
-## Phase 5: Trip detail, GPX upload form, and delete confirmation
+## Phase 6: Trip detail, GPX upload form, and delete confirmation
 
 ### Overview
 
@@ -527,7 +694,7 @@ gains Bootstrap classes (e.g. `<div class="mb-4">` around the existing `<h2>Rout
 and its sibling `#map`/fallback block). Style the stats `<dl>` with Bootstrap's `row`/
 `col` grid (implementer's choice of exact grid classes, as long as each `<dt>`/`<dd>`
 pair's existing conditional text is unchanged) and the GPX upload form with the Phase
-2 filter. Edit/Delete links become styled buttons.
+3 filter. Edit/Delete links become styled buttons.
 
 This deliberately reverses the "no class, no styling" decision recorded in
 `trip_detail.html:86-88` (kept there so the stats section stays readable with the
@@ -538,7 +705,7 @@ Confirmed with the user as an intentional reversal, not an oversight.
 **Contract**: Every existing `{% if %}` branch (`map_config`, `track`,
 `track_file_available`, `stats`) keeps its exact condition and exact fallback copy —
 this phase adds wrapping/classes only, never new conditions or reworded copy. The
-`{% block scripts %}` Leaflet script tags are untouched (Phase 2 already accounted for
+`{% block scripts %}` Leaflet script tags are untouched (Phase 3 already accounted for
 Bootstrap's JS loading outside this block). This is load-bearing, not incidental:
 `tests/trips/test_trip_detail_map.py:29,60,223` byte-match `<div id="map">` with no
 attributes, and `:85-88`'s non-greedy `MAP_CONTAINER` regex breaks if the fallback
@@ -600,12 +767,12 @@ it).
 
 ---
 
-## Phase 6: Full-suite verification and cross-page visual QA
+## Phase 7: Full-suite verification and cross-page visual QA
 
 ### Overview
 
-Confirm the whole app is consistent after 5 template-touching phases, at both desktop
-and mobile widths, with every gate green.
+Confirm the whole app is consistent after 6 template/theme-touching phases, at both
+desktop and mobile widths, with every gate green.
 
 ### Changes Required:
 
@@ -639,13 +806,14 @@ template it belongs to and re-run that phase's automated checks before proceedin
 ### Unit Tests:
 
 - No new unit tests are added for pure styling changes; existing tests are updated
-  only where they assert exact markup that styling necessarily changes (Phases 4–5).
+  only where they assert exact markup that styling necessarily changes (Phases 5–6).
 
 ### Integration Tests:
 
 - The existing `test_the_trip_detail_page_renders_under_the_production_static_storage`
   manifest-render test (in `tests/test_static_references.py`) continues to exercise the
-  one page with every kind of static reference, now including Bootstrap's.
+  one page with every kind of static reference, now including Bootstrap's and the theme
+  layer's.
 
 ### Manual Testing Steps:
 
@@ -661,7 +829,9 @@ template it belongs to and re-run that phase's automated checks before proceedin
 Bootstrap's minified CSS/JS adds a fixed, cacheable payload (~230KB combined,
 uncompressed) on top of the existing Leaflet vendor bundle — served with the same
 content-hashed, long-cache manifest storage as every other static asset, so this is a
-one-time cost per browser, not a per-page-load one.
+one-time cost per browser, not a per-page-load one. `theme.css` is a small,
+project-authored file (a `:root` variable block, no selectors) and adds a negligible
+byte count on top of that.
 
 ## Migration Notes
 
@@ -672,6 +842,7 @@ Not applicable — no data model or schema changes.
 - Vendoring precedent: `gpx/static/gpx/vendor/README.md`, `gpx/static/gpx/vendor/SHA256SUMS`
 - CI precedent: `.github/workflows/deploy.yml` "Vendored asset integrity" step
 - Change identity: `context/changes/bootstrap-ui/change.md`
+- Design system: `context/foundation/design-system.md`
 
 ## Progress
 
@@ -691,77 +862,92 @@ Not applicable — no data model or schema changes.
 - [ ] 1.5 New CI step's name makes a failure's origin unambiguous
 - [ ] 1.6 `git check-attr text -- static/vendor/bootstrap/bootstrap.min.css` reports `unset`
 
-### Phase 2: Base layout, navbar, and shared form-styling filter
+### Phase 2: Design-system theme layer
 
 #### Automated
 
-- [ ] 2.1 `mypy .` passes with the new templatetags module typed
-- [ ] 2.2 `pytest tests/accounts/test_form_widgets.py --cov` passes, both filters' branches covered
-- [ ] 2.3 `collectstatic --noinput` succeeds
+- [ ] 2.1 `collectstatic --noinput` completes with no MissingFileError (theme.css resolves)
+- [ ] 2.2 `pytest tests/test_static_references.py --cov` passes with `theme.css` added
+- [ ] 2.3 `black --check .`, `ruff check .`, `isort --check-only .` pass
 
 #### Manual
 
-- [ ] 2.4 Every page shows the new navbar and container spacing
-- [ ] 2.5 A success message renders as a dismissible alert with a working close button
-- [ ] 2.6 Logout still only shows for authenticated users and still logs out via POST
-- [ ] 2.7 `#map`'s existing sizing rule in `style.css` is unaffected by the new
+- [ ] 2.4 Links/headings already render in design-system green, not Bootstrap blue
+- [ ] 2.5 `theme.css` contains the `.btn-primary` override block with the correct hex values
+- [ ] 2.6 `#map`'s sizing is unaffected by the new stylesheet load order
+- [ ] 2.7 `manage.py check` passes
+
+### Phase 3: Base layout, navbar, and shared form-styling filter
+
+#### Automated
+
+- [ ] 3.1 `mypy .` passes with the new templatetags module typed
+- [ ] 3.2 `pytest tests/accounts/test_form_widgets.py --cov` passes, both filters' branches covered
+- [ ] 3.3 `collectstatic --noinput` succeeds
+
+#### Manual
+
+- [ ] 3.4 Every page shows the new navbar and container spacing
+- [ ] 3.5 A success message renders as a dismissible alert with a working close button
+- [ ] 3.6 Logout still only shows for authenticated users and still logs out via POST
+- [ ] 3.7 `#map`'s existing sizing rule in `style.css` is unaffected by the new
       `errorlist` alias rule
 
-### Phase 3: Auth templates (login, signup)
+### Phase 4: Auth templates (login, signup)
 
 #### Automated
 
-- [ ] 3.1 `pytest tests/accounts --cov` passes unchanged
-- [ ] 3.2 `black --check .`, `ruff check .`, `isort --check-only .` pass
+- [ ] 4.1 `pytest tests/accounts --cov` passes unchanged
+- [ ] 4.2 `black --check .`, `ruff check .`, `isort --check-only .` pass
 
 #### Manual
 
-- [ ] 3.3 Login/signup render as styled Bootstrap cards with visible labels
-- [ ] 3.4 Invalid login shows `is-invalid` field styling and the error text itself
+- [ ] 4.3 Login/signup render as styled Bootstrap cards with visible labels
+- [ ] 4.4 Invalid login shows `is-invalid` field styling and the error text itself
       is styled via the `errorlist` alias, not left as unstyled default text
-- [ ] 3.5 Both pages usable at ~375px width with no horizontal scroll
+- [ ] 4.5 Both pages usable at ~375px width with no horizontal scroll
 
-### Phase 4: Trip list and trip create/edit form
-
-#### Automated
-
-- [ ] 4.1 `pytest tests/trips/test_trip_creation.py tests/trips/test_trip_delete.py tests/trips/test_trip_edit.py tests/trips/test_trip_list.py --cov` passes with updated assertions
-- [ ] 4.2 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
-
-#### Manual
-
-- [ ] 4.3 Trip list renders as a styled list-group with a visible "New trip" CTA
-- [ ] 4.4 Create/edit forms render styled, date picker works, help text visible
-- [ ] 4.5 Cancel navigates to the same destination as before in both flows
-
-### Phase 5: Trip detail, GPX upload form, and delete confirmation
+### Phase 5: Trip list and trip create/edit form
 
 #### Automated
 
-- [ ] 5.1 `pytest tests/trips/test_trip_detail.py tests/trips/test_trip_detail_map.py tests/trips/test_trip_detail_stats.py tests/trips/test_trip_delete.py --cov` passes
-- [ ] 5.2 `pytest tests/gpx --cov` passes unchanged
-- [ ] 5.3 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
+- [ ] 5.1 `pytest tests/trips/test_trip_creation.py tests/trips/test_trip_delete.py tests/trips/test_trip_edit.py tests/trips/test_trip_list.py --cov` passes with updated assertions
+- [ ] 5.2 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
 
 #### Manual
 
-- [ ] 5.4 Leaflet map still renders and sizes correctly on a trip with a route
-- [ ] 5.5 Map/track/stats fallback messages still render with exact existing copy
-- [ ] 5.6 Delete confirmation clearly reads as a destructive action
-- [ ] 5.7 Rewritten zero-vs-null stats assertions still go red when a real `0` value
+- [ ] 5.3 Trip list renders as a styled list-group with a visible "New trip" CTA
+- [ ] 5.4 Create/edit forms render styled, date picker works, help text visible
+- [ ] 5.5 Cancel navigates to the same destination as before in both flows
+
+### Phase 6: Trip detail, GPX upload form, and delete confirmation
+
+#### Automated
+
+- [ ] 6.1 `pytest tests/trips/test_trip_detail.py tests/trips/test_trip_detail_map.py tests/trips/test_trip_detail_stats.py tests/trips/test_trip_delete.py --cov` passes
+- [ ] 6.2 `pytest tests/gpx --cov` passes unchanged
+- [ ] 6.3 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
+
+#### Manual
+
+- [ ] 6.4 Leaflet map still renders and sizes correctly on a trip with a route
+- [ ] 6.5 Map/track/stats fallback messages still render with exact existing copy
+- [ ] 6.6 Delete confirmation clearly reads as a destructive action
+- [ ] 6.7 Rewritten zero-vs-null stats assertions still go red when a real `0` value
       is made to render as the not-recorded fallback (verified by temporary revert)
 
-### Phase 6: Full-suite verification and cross-page visual QA
+### Phase 7: Full-suite verification and cross-page visual QA
 
 #### Automated
 
-- [ ] 6.1 `pytest --cov` passes in full (fail_under = 80 maintained)
-- [ ] 6.2 `collectstatic --noinput` succeeds
-- [ ] 6.3 `manage.py check` passes
-- [ ] 6.4 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` all pass
-- [ ] 6.5 `sha256sum -c SHA256SUMS` passes in both vendor directories
+- [ ] 7.1 `pytest --cov` passes in full (fail_under = 80 maintained)
+- [ ] 7.2 `collectstatic --noinput` succeeds
+- [ ] 7.3 `manage.py check` passes
+- [ ] 7.4 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` all pass
+- [ ] 7.5 `sha256sum -c SHA256SUMS` passes in both vendor directories
 
 #### Manual
 
-- [ ] 6.6 All 8 pages reviewed at desktop and ~375px width, no horizontal scroll/broken layout
-- [ ] 6.7 No browser console JS errors on any page
-- [ ] 6.8 Full golden path works end-to-end through the restyled UI
+- [ ] 7.6 All 8 pages reviewed at desktop and ~375px width, no horizontal scroll/broken layout
+- [ ] 7.7 No browser console JS errors on any page
+- [ ] 7.8 Full golden path works end-to-end through the restyled UI

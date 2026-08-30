@@ -45,10 +45,11 @@ def test_edit_page_is_headed_for_editing_and_cancels_back_to_the_trip(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert "<h1>Edit trip</h1>" in body
+    assert "<h1" in body and "Edit trip</h1>" in body
     assert "New trip" not in body
     assert "Save changes" in body
-    assert f'<a href="{trip.get_absolute_url()}">Cancel</a>' in body
+    assert f'href="{trip.get_absolute_url()}"' in body
+    assert ">Cancel<" in body
 
 
 @pytest.mark.django_db

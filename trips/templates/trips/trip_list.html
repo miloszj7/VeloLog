@@ -3,16 +3,23 @@
 {% block title %}Your trips — VeloLog{% endblock %}
 
 {% block content %}
-    <h1>Your trips</h1>
-    <p><a href="{% url 'trips:create' %}">New trip</a></p>
-    <ul>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="mb-0">Your trips</h1>
+        <a href="{% url 'trips:create' %}" class="btn btn-primary">New trip</a>
+    </div>
+    <div class="list-group">
         {% for trip in object_list %}
-            <li>
-                <strong><a href="{{ trip.get_absolute_url }}">{{ trip.name }}</a></strong> — {{ trip.date }}
-                <p>{{ trip.description }}</p>
-            </li>
+            <a href="{{ trip.get_absolute_url }}" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <strong>{{ trip.name }}</strong>
+                    <small class="text-muted">{{ trip.date }}</small>
+                </div>
+                <p class="mb-0 text-muted">{{ trip.description }}</p>
+            </a>
         {% empty %}
-            <li>You haven't logged any trips yet. Create your first one to get started.</li>
+            <div class="list-group-item">
+                You haven't logged any trips yet. Create your first one to get started.
+            </div>
         {% endfor %}
-    </ul>
+    </div>
 {% endblock %}

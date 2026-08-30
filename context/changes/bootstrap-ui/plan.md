@@ -897,28 +897,28 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 4.1 `pytest tests/accounts --cov` passes unchanged
-- [x] 4.2 `black --check .`, `ruff check .`, `isort --check-only .` pass
+- [x] 4.1 `pytest tests/accounts --cov` passes unchanged — 360537c
+- [x] 4.2 `black --check .`, `ruff check .`, `isort --check-only .` pass — 360537c
 
 #### Manual
 
-- [x] 4.3 Login/signup render as styled Bootstrap cards with visible labels
+- [x] 4.3 Login/signup render as styled Bootstrap cards with visible labels — 360537c
 - [x] 4.4 Invalid login shows `is-invalid` field styling and the error text itself
-      is styled via the `errorlist` alias, not left as unstyled default text
-- [x] 4.5 Both pages usable at ~375px width with no horizontal scroll
+      is styled via the `errorlist` alias, not left as unstyled default text — 360537c
+- [x] 4.5 Both pages usable at ~375px width with no horizontal scroll — 360537c
 
 ### Phase 5: Trip list and trip create/edit form
 
 #### Automated
 
-- [ ] 5.1 `pytest tests/trips/test_trip_creation.py tests/trips/test_trip_delete.py tests/trips/test_trip_edit.py tests/trips/test_trip_list.py --cov` passes with updated assertions
-- [ ] 5.2 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
+- [x] 5.1 `pytest tests/trips/test_trip_creation.py tests/trips/test_trip_delete.py tests/trips/test_trip_edit.py tests/trips/test_trip_list.py --cov` passes with updated assertions
+- [x] 5.2 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
 
 #### Manual
 
-- [ ] 5.3 Trip list renders as a styled list-group with a visible "New trip" CTA
-- [ ] 5.4 Create/edit forms render styled, date picker works, help text visible
-- [ ] 5.5 Cancel navigates to the same destination as before in both flows
+- [x] 5.3 Trip list renders as a styled list-group with a visible "New trip" CTA
+- [x] 5.4 Create/edit forms render styled, date picker works, help text visible
+- [x] 5.5 Cancel navigates to the same destination as before in both flows
 
 ### Phase 6: Trip detail, GPX upload form, and delete confirmation
 

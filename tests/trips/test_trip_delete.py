@@ -65,8 +65,10 @@ def test_confirmation_page_cancels_back_to_the_trip(auth_client: Client, rider: 
     trip = Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
 
     response = auth_client.get(reverse("trips:delete", kwargs={"pk": trip.pk}))
+    body = response.content.decode()
 
-    assert f'<a href="{trip.get_absolute_url()}">Cancel</a>' in response.content.decode()
+    assert f'href="{trip.get_absolute_url()}"' in body
+    assert ">Cancel<" in body
 
 
 @pytest.mark.django_db

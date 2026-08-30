@@ -167,7 +167,11 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 ### 6.3 Adding a test for a post-commit side effect
 
-- TBD — see §3 Phase 2 for the file-reclamation pattern (a storage effect asserted *after* the commit that triggers it, never before).
+- **Location**: `tests/gpx/test_gpx_signals.py`.
+- **Naming**: `test_<trigger>_removes_<what>` — the trigger names the path (a model delete, a queryset delete, a cascade, a replace), because each one reaches the receiver through a different mechanism and a name that only says "removes the file" hides which one is under test.
+- **Reference test**: `test_a_trip_queryset_cascade_removes_the_track_files_it_never_loaded` (one-level cascade) and its sibling `test_a_user_queryset_cascade_removes_the_track_files_two_levels_down` (two-level cascade, added in Phase 2) — the second is the pattern to copy for any new cascade depth: build the stored track, assert the file exists, delete from the *top* of the chain inside `django_capture_on_commit_callbacks(execute=True)`, then assert both the row count and `default_storage.exists()` afterward.
+- **Run locally**: `uv run pytest tests/gpx/test_gpx_signals.py -v`.
+- **Restated from the file's own module docstring**: both receivers schedule their storage delete through `transaction.on_commit`, and pytest-django wraps each test in a transaction that never commits — so every test here must wrap the mutating call in `django_capture_on_commit_callbacks(execute=True)`, or the deferred callback is silently skipped and the assertion passes while proving nothing about it.
 
 ### 6.4 Adding a test for an empty or degraded page state
 
@@ -175,7 +179,11 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 ### 6.5 Adding a test for a management command
 
-- TBD — see §3 Phase 2 for the destructive-path pattern (a reclamation command's refusal conditions and age threshold, proven before its delete path).
+- **Location**: `tests/gpx/test_reconcile_media.py`.
+- **Naming**: `test_a_<condition>_is_<outcome>`, following the file's existing convention (e.g. `test_a_referenced_file_is_never_reported`).
+- **Reference test**: `test_a_file_aged_to_exactly_the_cutoff_is_treated_as_an_orphan` (added in Phase 2) — the pattern for a boundary condition tied to a computed cutoff.
+- **Run locally**: `uv run pytest tests/gpx/test_reconcile_media.py -v`.
+- **Note learned in Phase 2**: a boundary tied to `timezone.now()` cannot be hit reliably with a real-clock helper like `back_date` (`os.utime`, moving a file's actual mtime) — the cutoff is computed inside `handle()` at call time, so a wall-clock race separates the two. Freeze both sides instead: monkeypatch `django.utils.timezone.now` to a fixed instant for the command's cutoff, and monkeypatch `default_storage.get_modified_time` for the specific key under test to return exactly that instant minus the age threshold. Freezing only one side leaves the other still driven by the real clock and the boundary is no longer exact.
 
 ### 6.6 Adding a test for a settings or environment guard
 
@@ -192,6 +200,10 @@ taught that the entries above do not already carry.)
 - *`static(MEDIA_URL, …)` is a no-op under test.* `django.conf.urls.static.static()` opens with `if not settings.DEBUG: return []`, and the suite runs at `DEBUG=False`. Mutation-checking the media probe with that line therefore passes green against a config that would genuinely leak. Use an explicit `re_path(r"^media/(?P<path>.*)$", …)` serving from `settings.MEDIA_ROOT` — which is also the closer analogue of the real threat (a platform static handler or `WHITENOISE_ROOT`, neither of which consults `DEBUG`).
 - *A drained streaming response reads as empty forever.* `FileResponse.streaming_content` is a one-shot iterator, so a helper that joins it without memoizing returns `b""` on every later call — and a leak assertion searching that empty body passes. Any body helper used by more than one assertion must cache what it drained.
 - *Assert the absence of a route as a request, not as a settings value.* The whole defense on "downloads their track file" is that nothing serves `MEDIA_URL`. A settings assertion stays true after a route, a middleware or a platform handler has overridden it; only a request at a real `file.url` notices. Build the URL from the model — `gpx/models.py` names files with `secrets.token_hex(16)`, so a hardcoded path 404s for the wrong reason and keeps passing after the leak is introduced.
+
+**Phase 2 — File lifecycle and storage/row consistency.**
+
+- *Statistics and map data are stored columns, deliberately decoupled from file presence — proving Risk #3 meant adding a read, not fixing a bug.* `build_map_config` and `build_trip_stats` already read only stored columns and never touch storage, so a trip whose file vanished rendered identically to a healthy one — not because of a defect, but because nothing on the render path had ever needed to check. Closing the gap meant adding the one storage read (`track.file.storage.exists(track.file.name)`) the detail view did not previously have, and a template branch to show what it found — not repairing the existing decoupling, which stays exactly as designed.
 
 ## 7. What We Deliberately Don't Test
 

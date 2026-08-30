@@ -353,20 +353,20 @@ time, never persisted.
 
 #### Automated
 
-- [x] 2.1 New test(s) pass: `uv run pytest tests/trips/test_trip_detail.py`
-- [x] 2.2 Full suite passes with coverage: `uv run pytest --cov`
-- [x] 2.3 Lint, format, import order, strict typing: `/python-quality-gates`
+- [x] 2.1 New test(s) pass: `uv run pytest tests/trips/test_trip_detail.py` — 4ae92ed
+- [x] 2.2 Full suite passes with coverage: `uv run pytest --cov` — 4ae92ed
+- [x] 2.3 Lint, format, import order, strict typing: `/python-quality-gates` — 4ae92ed
 
 #### Manual
 
-- [x] 2.4 Delete a stored track's file on disk, reload the trip detail page, confirm the marker renders and the download link is no longer live
+- [x] 2.4 Delete a stored track's file on disk, reload the trip detail page, confirm the marker renders and the download link is no longer live — 4ae92ed
 
 ### Phase 3: Cookbook update
 
 #### Automated
 
-- [ ] 3.1 `test-plan.md` still parses as valid Markdown with no broken table/section structure
+- [x] 3.1 `test-plan.md` still parses as valid Markdown with no broken table/section structure
 
 #### Manual
 
-- [ ] 3.2 A reader following only §6.3/§6.5 can find the right file, naming convention, and run command to add a similar test
+- [x] 3.2 A reader following only §6.3/§6.5 can find the right file, naming convention, and run command to add a similar test

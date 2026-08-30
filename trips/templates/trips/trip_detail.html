@@ -63,10 +63,20 @@
             {% endcomment %}
             <p>This route could not be displayed. The file is still attached and can be downloaded below.</p>
         {% endif %}
-        <p>Track: {{ track.original_filename }}</p>
-        <p>
-            <a href="{% url 'gpx:download' pk=track.pk %}">Download {{ track.original_filename }}</a>
-        </p>
+        {% if track_file_available %}
+            <p>Track: {{ track.original_filename }}</p>
+            <p>
+                <a href="{% url 'gpx:download' pk=track.pk %}">Download {{ track.original_filename }}</a>
+            </p>
+        {% else %}
+            {% comment %}
+            Worded to name its own cause, like the map-fallback and stats-not-computed
+            branches above and below: the row survived but the file behind it is gone, so
+            the link is replaced with plain text rather than one that would only 404.
+            {% endcomment %}
+            <p>Track file unavailable — the stored file could not be found.</p>
+            <p>{{ track.original_filename }} (download unavailable)</p>
+        {% endif %}
 
         {% comment %}
         Inside the `{% if track %}` branch on purpose: a trip with no route has no

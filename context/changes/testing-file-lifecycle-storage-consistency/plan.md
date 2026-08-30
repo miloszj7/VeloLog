@@ -341,25 +341,25 @@ time, never persisted.
 
 #### Automated
 
-- [x] 1.1 New tests pass: `uv run pytest tests/gpx/test_gpx_signals.py tests/gpx/test_reconcile_media.py`
-- [x] 1.2 Full suite passes with coverage: `uv run pytest --cov`
-- [x] 1.3 Lint, format, import order, strict typing: `/python-quality-gates`
+- [x] 1.1 New tests pass: `uv run pytest tests/gpx/test_gpx_signals.py tests/gpx/test_reconcile_media.py` — 7eaf08a
+- [x] 1.2 Full suite passes with coverage: `uv run pytest --cov` — 7eaf08a
+- [x] 1.3 Lint, format, import order, strict typing: `/python-quality-gates` — 7eaf08a
 
 #### Manual
 
-- [x] 1.4 Invert the `>` to `>=` in `reconcile_media.py:218`, confirm the new boundary test goes red, then revert
+- [x] 1.4 Invert the `>` to `>=` in `reconcile_media.py:218`, confirm the new boundary test goes red, then revert — 7eaf08a
 
 ### Phase 2: Deliberate storage-miss marker on the trip detail page
 
 #### Automated
 
-- [ ] 2.1 New test(s) pass: `uv run pytest tests/trips/test_trip_detail.py`
-- [ ] 2.2 Full suite passes with coverage: `uv run pytest --cov`
-- [ ] 2.3 Lint, format, import order, strict typing: `/python-quality-gates`
+- [x] 2.1 New test(s) pass: `uv run pytest tests/trips/test_trip_detail.py`
+- [x] 2.2 Full suite passes with coverage: `uv run pytest --cov`
+- [x] 2.3 Lint, format, import order, strict typing: `/python-quality-gates`
 
 #### Manual
 
-- [ ] 2.4 Delete a stored track's file on disk, reload the trip detail page, confirm the marker renders and the download link is no longer live
+- [x] 2.4 Delete a stored track's file on disk, reload the trip detail page, confirm the marker renders and the download link is no longer live
 
 ### Phase 3: Cookbook update
 

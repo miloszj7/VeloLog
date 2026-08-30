@@ -96,6 +96,11 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         context["track"] = track
         context["map_config"] = build_map_config(track)
         context["stats"] = build_trip_stats(track)
+        if track is None or not track.file.name:
+            track_file_available = False
+        else:
+            track_file_available = track.file.storage.exists(track.file.name)
+        context["track_file_available"] = track_file_available
         context["form"] = GpxUploadForm()
         return context
 

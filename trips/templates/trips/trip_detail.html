@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-    <p><a href="{% url 'trips:list' %}" class="link-secondary">Back to your trips</a></p>
+    <p><a href="{% url 'trips:list' %}" class="btn btn-outline-secondary btn-sm">&larr; Back to your trips</a></p>
 
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
         <div>
@@ -28,13 +28,13 @@
             re-render — so the link needs no new context key, which is what keeps the two paths
             from drifting apart the way `trips/views.py` warns about.
             {% endcomment %}
-            <a href="{% url 'trips:edit' pk=trip.pk %}" class="btn btn-outline-secondary">Edit trip</a>
+            <a href="{% url 'trips:edit' pk=trip.pk %}" class="btn btn-outline-secondary">&#128393; Edit trip</a>
             {% comment %}
             A link, not a form. What guards the destruction is the confirmation page it leads to,
             plus `TripDeleteView.http_method_names`, which is what keeps the deletion itself
             reachable by POST only.
             {% endcomment %}
-            <a href="{% url 'trips:delete' pk=trip.pk %}" class="btn btn-outline-danger">Delete trip</a>
+            <a href="{% url 'trips:delete' pk=trip.pk %}" class="btn btn-outline-danger">&#128465; Delete trip</a>
         </div>
     </div>
 
@@ -78,7 +78,7 @@
             {% if track_file_available %}
                 <p class="mb-1">Track: {{ track.original_filename }}</p>
                 <p>
-                    <a href="{% url 'gpx:download' pk=track.pk %}" class="btn btn-outline-secondary btn-sm">Download {{ track.original_filename }}</a>
+                    <a href="{% url 'gpx:download' pk=track.pk %}" class="btn btn-outline-secondary btn-sm">&#8595; Download {{ track.original_filename }}</a>
                 </p>
             {% else %}
                 {% comment %}

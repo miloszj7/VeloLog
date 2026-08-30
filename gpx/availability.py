@@ -23,4 +23,10 @@ def track_file_is_available(track: GpxTrack | None) -> bool:
     """
     if track is None or not track.file.name:
         return False
-    return track.file.storage.exists(track.file.name)
+    try:
+        return track.file.storage.exists(track.file.name)
+    except OSError:
+        # Matches `GpxDownloadView.get`'s guard on the equivalent check: a storage
+        # backend that cannot even answer "does this exist" is an operational fault,
+        # not grounds to fail the whole page render.
+        return False

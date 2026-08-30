@@ -881,31 +881,31 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 3.1 `mypy .` passes with the new templatetags module typed
-- [x] 3.2 `pytest tests/accounts/test_form_widgets.py --cov` passes, both filters' branches covered
-- [x] 3.3 `collectstatic --noinput` succeeds
+- [x] 3.1 `mypy .` passes with the new templatetags module typed — 5088695
+- [x] 3.2 `pytest tests/accounts/test_form_widgets.py --cov` passes, both filters' branches covered — 5088695
+- [x] 3.3 `collectstatic --noinput` succeeds — 5088695
 
 #### Manual
 
-- [x] 3.4 Every page shows the new navbar and container spacing
-- [x] 3.5 A success message renders as a dismissible alert with a working close button
-- [x] 3.6 Logout still only shows for authenticated users and still logs out via POST
+- [x] 3.4 Every page shows the new navbar and container spacing — 5088695
+- [x] 3.5 A success message renders as a dismissible alert with a working close button — 5088695
+- [x] 3.6 Logout still only shows for authenticated users and still logs out via POST — 5088695
 - [x] 3.7 `#map`'s existing sizing rule in `style.css` is unaffected by the new
-      `errorlist` alias rule
+      `errorlist` alias rule — 5088695
 
 ### Phase 4: Auth templates (login, signup)
 
 #### Automated
 
-- [ ] 4.1 `pytest tests/accounts --cov` passes unchanged
-- [ ] 4.2 `black --check .`, `ruff check .`, `isort --check-only .` pass
+- [x] 4.1 `pytest tests/accounts --cov` passes unchanged
+- [x] 4.2 `black --check .`, `ruff check .`, `isort --check-only .` pass
 
 #### Manual
 
-- [ ] 4.3 Login/signup render as styled Bootstrap cards with visible labels
-- [ ] 4.4 Invalid login shows `is-invalid` field styling and the error text itself
+- [x] 4.3 Login/signup render as styled Bootstrap cards with visible labels
+- [x] 4.4 Invalid login shows `is-invalid` field styling and the error text itself
       is styled via the `errorlist` alias, not left as unstyled default text
-- [ ] 4.5 Both pages usable at ~375px width with no horizontal scroll
+- [x] 4.5 Both pages usable at ~375px width with no horizontal scroll
 
 ### Phase 5: Trip list and trip create/edit form
 

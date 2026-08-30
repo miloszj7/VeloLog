@@ -141,7 +141,7 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 - **Location**: `tests/<app>/`, mirroring the app package under test.
 - **Naming**: `test_<behavior>.py`.
-- **Reference test**: TBD — see §3 Phase 3 for the parse-rejection pattern (malformed input yields a named error, not a server error).
+- **Reference test**: `test_an_empty_upload_is_a_syntax_error` in `tests/gpx/test_gpx_parsing.py` — the parse-rejection pattern (malformed or edge-case input yields a named error, not a server error).
 - **Run locally**: `uv run pytest tests/<app>/test_<name>.py`.
 
 ### 6.2 Adding an integration test through the request cycle
@@ -175,7 +175,10 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 ### 6.4 Adding a test for an empty or degraded page state
 
-- TBD — see §3 Phase 3 for the deliberate-empty-state pattern (absent track or absent statistics renders a marker, asserted as content rather than as a status code).
+- **Location**: `tests/trips/test_trip_detail.py` for a single degradation dimension or a combination; `tests/trips/test_trip_detail_stats.py` / `test_trip_detail_map.py` for a dimension's own field-level detail.
+- **Naming**: `test_a_<condition>_<outcome>` for a single dimension; `test_a_<condition_1>_and_<condition_2>_both_render_together` when proving two degradation branches compose without one suppressing the other.
+- **Reference test**: `test_a_rider_sees_a_deliberate_marker_when_the_track_file_is_missing` in `tests/trips/test_trip_detail.py` for the single-dimension pattern (deliberate empty-state marker, asserted as content); `test_a_missing_file_and_unbackfilled_stats_both_render_together` (added in Phase 3) for the combined-dimension pattern — build the degraded state each single-dimension test builds on its own, on the same track, and assert both markers are present in the same response body.
+- **Run locally**: `uv run pytest tests/trips/test_trip_detail.py -v`.
 
 ### 6.5 Adding a test for a management command
 
@@ -204,6 +207,12 @@ taught that the entries above do not already carry.)
 **Phase 2 — File lifecycle and storage/row consistency.**
 
 - *Statistics and map data are stored columns, deliberately decoupled from file presence — proving Risk #3 meant adding a read, not fixing a bug.* `build_map_config` and `build_trip_stats` already read only stored columns and never touch storage, so a trip whose file vanished rendered identically to a healthy one — not because of a defect, but because nothing on the render path had ever needed to check. Closing the gap meant adding the one storage read (`track.file.storage.exists(track.file.name)`) the detail view did not previously have, and a template branch to show what it found — not repairing the existing decoupling, which stays exactly as designed.
+
+**Phase 3 — Rejection and degradation.**
+
+- *The brief's premise was largely already true, the same shape Phase 1's research found.* Both Risk #5 (upload rejection) and Risk #6 (trip detail degradation) were already substantially implemented and tested with content-level assertions before this phase opened — every rejection path had its own distinct message, and every degradation branch had its own distinct sentence. The actual gap was narrow and named: a storage-side debris assertion missing from every rejection test, and one untested combination of two already-tested degradation dimensions.
+- *The storage-emptiness idiom generalizes cleanly across risk areas.* `assert not (tmp_path / "media").exists()`, first established for `reconcile_media`'s empty-volume case in Phase 2, reused verbatim as the "no debris on rejection" assertion for Risk #5 — the same per-test `MEDIA_ROOT` fixture makes the idiom portable with no new fixture required.
+- *Two of the phase's four named scenarios shared one code branch with an existing test — worth pinning explicitly rather than treating as already covered.* "Empty" (0-byte) and "truncated" (cut off mid-tag) uploads both resolve via the same `GpxSyntaxError` branch `test_malformed_xml_is_a_syntax_error` already exercised — a true fact, but not one any test asserted by name before this phase. Naming them individually pins today's shared-branch behavior so a future change that splits that branch is caught by name, not silently passed because a different-looking input happened to land in the same except clause.
 
 ## 7. What We Deliberately Don't Test
 

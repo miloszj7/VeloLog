@@ -134,3 +134,28 @@ def test_a_rider_sees_a_deliberate_marker_when_the_track_file_is_missing(
     assert response.context["track_file_available"] is False
     assert "Track file unavailable" in body
     assert f'href="{reverse("gpx:download", kwargs={"pk": track.pk})}"' not in body
+
+
+@pytest.mark.django_db
+def test_a_missing_file_and_unbackfilled_stats_both_render_together(
+    auth_client: Client, rider: User, make_stored_track: StoredTrackFactory
+) -> None:
+    """The one combination the isolated file and stats tests do not exercise together.
+
+    `make_stored_track` leaves stats null by not setting them, so combining it with the
+    same `default_storage.delete(name)` step the file-missing test above performs gives a
+    track that is simultaneously degraded on both dimensions — proving neither template
+    branch suppresses or corrupts the other.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
+    track = make_stored_track(trip)
+    name = track.file.name
+    assert name is not None
+    default_storage.delete(name)
+
+    response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "Track file unavailable" in body
+    assert "These stats have not been worked out for this route." in body

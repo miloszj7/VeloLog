@@ -306,23 +306,23 @@ Not applicable — test-only phase.
 
 #### Automated
 
-- [x] 2.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_parsing.py -v`
-- [x] 2.2 Full suite still passes: `uv run pytest --cov`
-- [x] 2.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
+- [x] 2.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_parsing.py -v` — 4e712b7
+- [x] 2.2 Full suite still passes: `uv run pytest --cov` — 4e712b7
+- [x] 2.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`) — 4e712b7
 
 #### Manual
 
-- [x] 2.4 Confirm both new tests fail under a deliberately broken exception mapping, then revert
+- [x] 2.4 Confirm both new tests fail under a deliberately broken exception mapping, then revert — 4e712b7
 
 ### Phase 3: Combined degradation coverage (Risk #6) and cookbook update
 
 #### Automated
 
-- [ ] 3.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail.py -v`
-- [ ] 3.2 Full suite still passes: `uv run pytest --cov`
-- [ ] 3.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
+- [x] 3.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail.py -v`
+- [x] 3.2 Full suite still passes: `uv run pytest --cov`
+- [x] 3.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
 
 #### Manual
 
-- [ ] 3.4 Confirm the combined test fails if one branch is made to short-circuit the other, then revert
-- [ ] 3.5 Confirm test-plan.md §6.1, §6.4, §6.7 updated correctly with no other `TBD` touched
+- [x] 3.4 Confirm the combined test fails if one branch is made to short-circuit the other, then revert
+- [x] 3.5 Confirm test-plan.md §6.1, §6.4, §6.7 updated correctly with no other `TBD` touched

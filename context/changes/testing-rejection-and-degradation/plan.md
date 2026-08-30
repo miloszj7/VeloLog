@@ -294,25 +294,25 @@ Not applicable — test-only phase.
 
 #### Automated
 
-- [x] 1.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v`
-- [x] 1.2 Full suite still passes: `uv run pytest --cov`
-- [x] 1.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
+- [x] 1.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v` — 00d31a3
+- [x] 1.2 Full suite still passes: `uv run pytest --cov` — 00d31a3
+- [x] 1.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`) — 00d31a3
 
 #### Manual
 
-- [x] 1.4 Break the claim deliberately, confirm the new assertion goes red, then revert
+- [x] 1.4 Break the claim deliberately, confirm the new assertion goes red, then revert — 00d31a3
 
 ### Phase 2: Empty and truncated upload rejection (Risk #5)
 
 #### Automated
 
-- [ ] 2.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_parsing.py -v`
-- [ ] 2.2 Full suite still passes: `uv run pytest --cov`
-- [ ] 2.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
+- [x] 2.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_parsing.py -v`
+- [x] 2.2 Full suite still passes: `uv run pytest --cov`
+- [x] 2.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
 
 #### Manual
 
-- [ ] 2.4 Confirm both new tests fail under a deliberately broken exception mapping, then revert
+- [x] 2.4 Confirm both new tests fail under a deliberately broken exception mapping, then revert
 
 ### Phase 3: Combined degradation coverage (Risk #6) and cookbook update
 

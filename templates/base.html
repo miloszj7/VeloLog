@@ -20,22 +20,35 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    {% if user.is_authenticated %}
-        <header>
-            <form method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button type="submit">Log out</button>
-            </form>
-        </header>
-    {% endif %}
-    {% if messages %}
-        <ul>
+    <nav class="navbar navbar-expand navbar-light bg-white border-bottom">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'trips:list' %}">VeloLog</a>
+            {% if user.is_authenticated %}
+                <form method="post" action="{% url 'logout' %}" class="ms-auto">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-secondary">Log out</button>
+                </form>
+            {% endif %}
+        </div>
+    </nav>
+    <div class="container my-4">
+        {% if messages %}
             {% for message in messages %}
-                <li>{{ message }}</li>
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             {% endfor %}
-        </ul>
-    {% endif %}
-    {% block content %}{% endblock %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </div>
+    {% comment %}
+    The Bootstrap bundle must be a plain src=-external script with an empty body,
+    loaded outside any overridable block: trip_detail.html's {% block scripts %}
+    fully replaces this block rather than extending it, so a script placed inside
+    {% block scripts %} would silently disappear from that one page.
+    {% endcomment %}
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
     {% comment %}
     Scripts load last so they never block the page, and so a script can rely on the
     elements it operates on already existing.

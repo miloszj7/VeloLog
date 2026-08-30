@@ -866,31 +866,31 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 2.1 `collectstatic --noinput` completes with no MissingFileError (theme.css resolves)
-- [x] 2.2 `pytest tests/test_static_references.py --cov` passes with `theme.css` added
-- [x] 2.3 `black --check .`, `ruff check .`, `isort --check-only .` pass
+- [x] 2.1 `collectstatic --noinput` completes with no MissingFileError (theme.css resolves) — a25be92
+- [x] 2.2 `pytest tests/test_static_references.py --cov` passes with `theme.css` added — a25be92
+- [x] 2.3 `black --check .`, `ruff check .`, `isort --check-only .` pass — a25be92
 
 #### Manual
 
-- [x] 2.4 Links/headings already render in design-system green, not Bootstrap blue
-- [x] 2.5 `theme.css` contains the `.btn-primary` override block with the correct hex values
-- [x] 2.6 `#map`'s sizing is unaffected by the new stylesheet load order
-- [x] 2.7 `manage.py check` passes
+- [x] 2.4 Links/headings already render in design-system green, not Bootstrap blue — a25be92
+- [x] 2.5 `theme.css` contains the `.btn-primary` override block with the correct hex values — a25be92
+- [x] 2.6 `#map`'s sizing is unaffected by the new stylesheet load order — a25be92
+- [x] 2.7 `manage.py check` passes — a25be92
 
 ### Phase 3: Base layout, navbar, and shared form-styling filter
 
 #### Automated
 
-- [ ] 3.1 `mypy .` passes with the new templatetags module typed
-- [ ] 3.2 `pytest tests/accounts/test_form_widgets.py --cov` passes, both filters' branches covered
-- [ ] 3.3 `collectstatic --noinput` succeeds
+- [x] 3.1 `mypy .` passes with the new templatetags module typed
+- [x] 3.2 `pytest tests/accounts/test_form_widgets.py --cov` passes, both filters' branches covered
+- [x] 3.3 `collectstatic --noinput` succeeds
 
 #### Manual
 
-- [ ] 3.4 Every page shows the new navbar and container spacing
-- [ ] 3.5 A success message renders as a dismissible alert with a working close button
-- [ ] 3.6 Logout still only shows for authenticated users and still logs out via POST
-- [ ] 3.7 `#map`'s existing sizing rule in `style.css` is unaffected by the new
+- [x] 3.4 Every page shows the new navbar and container spacing
+- [x] 3.5 A success message renders as a dismissible alert with a working close button
+- [x] 3.6 Logout still only shows for authenticated users and still logs out via POST
+- [x] 3.7 `#map`'s existing sizing rule in `style.css` is unaffected by the new
       `errorlist` alias rule
 
 ### Phase 4: Auth templates (login, signup)

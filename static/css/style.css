@@ -19,3 +19,18 @@
     min-height: 18rem;
     max-height: 40rem;
 }
+
+/* Django's default error rendering emits <ul class="errorlist">, not Bootstrap's
+ * expected sibling .invalid-feedback element — is-invalid alone only recolors the
+ * input border and leaves the error text itself unstyled. This aliases errorlist's
+ * appearance to match .invalid-feedback without introducing a new error-rendering
+ * mechanism. */
+.errorlist {
+    display: block;
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+    padding-left: 0;
+    list-style: none;
+    font-size: 0.875em;
+    color: var(--bs-form-invalid-color, #dc3545);
+}

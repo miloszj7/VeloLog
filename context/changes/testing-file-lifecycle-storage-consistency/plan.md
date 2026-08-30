@@ -365,8 +365,8 @@ time, never persisted.
 
 #### Automated
 
-- [x] 3.1 `test-plan.md` still parses as valid Markdown with no broken table/section structure
+- [x] 3.1 `test-plan.md` still parses as valid Markdown with no broken table/section structure — 349fd13
 
 #### Manual
 
-- [x] 3.2 A reader following only §6.3/§6.5 can find the right file, naming convention, and run command to add a similar test
+- [x] 3.2 A reader following only §6.3/§6.5 can find the right file, naming convention, and run command to add a similar test — 349fd13

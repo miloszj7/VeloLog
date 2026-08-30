@@ -940,14 +940,14 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 7.1 `pytest --cov` passes in full (fail_under = 80 maintained)
-- [x] 7.2 `collectstatic --noinput` succeeds
-- [x] 7.3 `manage.py check` passes
-- [x] 7.4 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` all pass
-- [x] 7.5 `sha256sum -c SHA256SUMS` passes in both vendor directories
+- [x] 7.1 `pytest --cov` passes in full (fail_under = 80 maintained) — 4454e51
+- [x] 7.2 `collectstatic --noinput` succeeds — 4454e51
+- [x] 7.3 `manage.py check` passes — 4454e51
+- [x] 7.4 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` all pass — 4454e51
+- [x] 7.5 `sha256sum -c SHA256SUMS` passes in both vendor directories — 4454e51
 
 #### Manual
 
-- [x] 7.6 All 8 pages reviewed at desktop and ~375px width, no horizontal scroll/broken layout
-- [x] 7.7 No browser console JS errors on any page
-- [x] 7.8 Full golden path works end-to-end through the restyled UI
+- [x] 7.6 All 8 pages reviewed at desktop and ~375px width, no horizontal scroll/broken layout — 4454e51
+- [x] 7.7 No browser console JS errors on any page — 4454e51
+- [x] 7.8 Full golden path works end-to-end through the restyled UI — 4454e51

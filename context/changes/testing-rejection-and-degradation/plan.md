@@ -318,11 +318,11 @@ Not applicable — test-only phase.
 
 #### Automated
 
-- [x] 3.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail.py -v`
-- [x] 3.2 Full suite still passes: `uv run pytest --cov`
-- [x] 3.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`)
+- [x] 3.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail.py -v` — 7f1b842
+- [x] 3.2 Full suite still passes: `uv run pytest --cov` — 7f1b842
+- [x] 3.3 Lint, format, import order, strict typing all pass (`/python-quality-gates`) — 7f1b842
 
 #### Manual
 
-- [x] 3.4 Confirm the combined test fails if one branch is made to short-circuit the other, then revert
-- [x] 3.5 Confirm test-plan.md §6.1, §6.4, §6.7 updated correctly with no other `TBD` touched
+- [x] 3.4 Confirm the combined test fails if one branch is made to short-circuit the other, then revert — 7f1b842
+- [x] 3.5 Confirm test-plan.md §6.1, §6.4, §6.7 updated correctly with no other `TBD` touched — 7f1b842

@@ -1,7 +1,7 @@
 ---
 change_id: testing-rejection-and-degradation
 title: Test plan Phase 3 - rejection and degradation coverage
-status: implementing
+status: implemented
 created: 2026-08-30
 updated: 2026-08-30
 archived_at: null

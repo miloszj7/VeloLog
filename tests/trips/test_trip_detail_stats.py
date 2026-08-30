@@ -7,6 +7,7 @@ were never computed says so in its own words, and that both views rendering this
 supply the blob.
 """
 
+import re
 from datetime import date
 
 import pytest
@@ -20,7 +21,13 @@ from django.urls import reverse
 from tests.conftest import TrackFactory
 from trips.models import Trip
 
-STATS_HEADING = "<h2>Stats</h2>"
+# Tolerant of an added class on <h2> (e.g. Bootstrap styling) — still distinguishes the
+# heading's presence from its absence, which is what the 3 call sites below need.
+STATS_HEADING = re.compile(r"<h2[^>]*>Stats</h2>")
+# Tolerant of an added class on <dd> — a bare "<dd>0 min</dd>" substring check would be
+# made vacuously true by any class attribute, silently deleting the zero-vs-null guard.
+ZERO_MINUTES_DD = re.compile(r"<dd[^>]*>0 min</dd>")
+ZERO_METERS_DD = re.compile(r"<dd[^>]*>0 m</dd>")
 # Queries a detail render costs with one fully-populated track: the session, the user,
 # the trip, and the track. The four statistics are columns on that last row, so they add
 # nothing — which is the whole reason they are stored instead of re-parsed. Raise this
@@ -58,7 +65,7 @@ def test_a_track_with_every_statistic_renders_all_four_values(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert STATS_HEADING in body
+    assert STATS_HEADING.search(body)
     assert "42.2 km" in body
     assert "2 h 15 min" in body
     assert "1240 m" in body
@@ -107,7 +114,7 @@ def test_a_track_with_no_timestamps_says_so_and_still_renders_its_distance(
     assert "3.7 km" in body
     assert "120 m" in body
     assert NO_TIMESTAMPS_NOTE in body
-    assert "<dd>0 min</dd>" not in body
+    assert ZERO_MINUTES_DD.search(body) is None
     assert RE_UPLOAD_SENTENCE not in body
 
 
@@ -123,7 +130,7 @@ def test_a_track_with_no_elevation_says_so_for_both_elevation_stats(
     assert "3.7 km" in body
     assert body.count(NO_ELEVATION_NOTE) == 2
     assert NO_TIMESTAMPS_NOTE in body
-    assert "<dd>0 m</dd>" not in body
+    assert ZERO_METERS_DD.search(body) is None
 
 
 @pytest.mark.django_db
@@ -142,7 +149,7 @@ def test_a_track_whose_statistics_were_never_computed_points_at_re_upload(
 
     assert response.status_code == 200
     assert response.context["stats"] is None
-    assert STATS_HEADING in body
+    assert STATS_HEADING.search(body)
     assert RE_UPLOAD_SENTENCE in body
     assert NO_TIMESTAMPS_NOTE not in body
     assert NO_ELEVATION_NOTE not in body
@@ -162,7 +169,7 @@ def test_a_trip_with_no_track_renders_no_stats_section_at_all(
 
     assert response.status_code == 200
     assert response.context["stats"] is None
-    assert STATS_HEADING not in body
+    assert STATS_HEADING.search(body) is None
     assert RE_UPLOAD_SENTENCE not in body
     assert "Recorded time" not in body
 

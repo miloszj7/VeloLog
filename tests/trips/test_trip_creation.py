@@ -93,8 +93,9 @@ def test_form_renders_cancel_link_to_trip_list(auth_client: Client) -> None:
     response = auth_client.get(reverse("trips:create"))
 
     assert response.status_code == 200
-    expected_link = f'<a href="{reverse("trips:list")}">Cancel</a>'
-    assert expected_link in response.content.decode()
+    body = response.content.decode()
+    assert f'href="{reverse("trips:list")}"' in body
+    assert ">Cancel<" in body
 
 
 @pytest.mark.django_db

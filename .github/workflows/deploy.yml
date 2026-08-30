@@ -31,6 +31,13 @@ jobs:
         working-directory: gpx/static/gpx/vendor
         run: sha256sum -c SHA256SUMS
 
+      # Same guarantee, for the vendored Bootstrap bytes under static/vendor/bootstrap.
+      # Named distinctly so a failure's origin (Leaflet vs. Bootstrap) is unambiguous in
+      # the Actions log.
+      - name: Vendored asset integrity (Bootstrap)
+        working-directory: static/vendor/bootstrap
+        run: sha256sum -c SHA256SUMS
+
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 

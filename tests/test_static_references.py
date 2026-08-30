@@ -50,6 +50,8 @@ STATIC_REFERENCES = (
     "gpx/map.js",
     "gpx/vendor/leaflet/leaflet.css",
     "gpx/vendor/leaflet/leaflet.js",
+    "vendor/bootstrap/bootstrap.min.css",
+    "vendor/bootstrap/bootstrap.bundle.min.js",
 )
 
 MANIFEST = Path(STATIC_ROOT) / "staticfiles.json"

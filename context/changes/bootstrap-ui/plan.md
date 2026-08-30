@@ -852,15 +852,15 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [ ] 1.1 `sha256sum -c SHA256SUMS` passes in both vendor directories
-- [ ] 1.2 `collectstatic --noinput` completes with no MissingFileError
-- [ ] 1.3 `pytest tests/test_static_references.py --cov` passes
+- [x] 1.1 `sha256sum -c SHA256SUMS` passes in both vendor directories
+- [x] 1.2 `collectstatic --noinput` completes with no MissingFileError
+- [x] 1.3 `pytest tests/test_static_references.py --cov` passes
 
 #### Manual
 
-- [ ] 1.4 Bootstrap vendor README reads as a faithful parallel to the Leaflet one
-- [ ] 1.5 New CI step's name makes a failure's origin unambiguous
-- [ ] 1.6 `git check-attr text -- static/vendor/bootstrap/bootstrap.min.css` reports `unset`
+- [x] 1.4 Bootstrap vendor README reads as a faithful parallel to the Leaflet one
+- [x] 1.5 New CI step's name makes a failure's origin unambiguous
+- [x] 1.6 `git check-attr text -- static/vendor/bootstrap/bootstrap.min.css` reports `unset`
 
 ### Phase 2: Design-system theme layer
 

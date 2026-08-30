@@ -5,3 +5,4 @@
 # differently on a Windows checkout than in CI or production, so the same commit would
 # produce two different sets of content-hashed asset names.
 gpx/static/gpx/vendor/** -text
+static/vendor/** -text

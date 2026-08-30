@@ -924,30 +924,30 @@ Not applicable — no data model or schema changes.
 
 #### Automated
 
-- [x] 6.1 `pytest tests/trips/test_trip_detail.py tests/trips/test_trip_detail_map.py tests/trips/test_trip_detail_stats.py tests/trips/test_trip_delete.py --cov` passes
-- [x] 6.2 `pytest tests/gpx --cov` passes unchanged
-- [x] 6.3 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass
+- [x] 6.1 `pytest tests/trips/test_trip_detail.py tests/trips/test_trip_detail_map.py tests/trips/test_trip_detail_stats.py tests/trips/test_trip_delete.py --cov` passes — 49312d6
+- [x] 6.2 `pytest tests/gpx --cov` passes unchanged — 49312d6
+- [x] 6.3 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` pass — 49312d6
 
 #### Manual
 
-- [x] 6.4 Leaflet map still renders and sizes correctly on a trip with a route
-- [x] 6.5 Map/track/stats fallback messages still render with exact existing copy
-- [x] 6.6 Delete confirmation clearly reads as a destructive action
+- [x] 6.4 Leaflet map still renders and sizes correctly on a trip with a route — 49312d6
+- [x] 6.5 Map/track/stats fallback messages still render with exact existing copy — 49312d6
+- [x] 6.6 Delete confirmation clearly reads as a destructive action — 49312d6
 - [x] 6.7 Rewritten zero-vs-null stats assertions still go red when a real `0` value
-      is made to render as the not-recorded fallback (verified by temporary revert)
+      is made to render as the not-recorded fallback (verified by temporary revert) — 49312d6
 
 ### Phase 7: Full-suite verification and cross-page visual QA
 
 #### Automated
 
-- [ ] 7.1 `pytest --cov` passes in full (fail_under = 80 maintained)
-- [ ] 7.2 `collectstatic --noinput` succeeds
-- [ ] 7.3 `manage.py check` passes
-- [ ] 7.4 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` all pass
-- [ ] 7.5 `sha256sum -c SHA256SUMS` passes in both vendor directories
+- [x] 7.1 `pytest --cov` passes in full (fail_under = 80 maintained)
+- [x] 7.2 `collectstatic --noinput` succeeds
+- [x] 7.3 `manage.py check` passes
+- [x] 7.4 `mypy .`, `ruff check .`, `black --check .`, `isort --check-only .` all pass
+- [x] 7.5 `sha256sum -c SHA256SUMS` passes in both vendor directories
 
 #### Manual
 
-- [ ] 7.6 All 8 pages reviewed at desktop and ~375px width, no horizontal scroll/broken layout
-- [ ] 7.7 No browser console JS errors on any page
-- [ ] 7.8 Full golden path works end-to-end through the restyled UI
+- [x] 7.6 All 8 pages reviewed at desktop and ~375px width, no horizontal scroll/broken layout
+- [x] 7.7 No browser console JS errors on any page
+- [x] 7.8 Full golden path works end-to-end through the restyled UI

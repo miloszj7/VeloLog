@@ -9,6 +9,7 @@ nothing about it.
 """
 
 import pytest
+from django.contrib.auth.models import User
 from django.core.exceptions import SuspiciousFileOperation
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -94,6 +95,28 @@ def test_a_trip_queryset_cascade_removes_the_track_files_it_never_loaded(
 
     with django_capture_on_commit_callbacks(execute=True):
         Trip.objects.filter(pk=trip.pk).delete()
+
+    assert GpxTrack.objects.count() == 0
+    assert not default_storage.exists(name)
+
+
+@pytest.mark.django_db
+def test_a_user_queryset_cascade_removes_the_track_files_two_levels_down(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """The admin's **Delete selected users** path: a cascade two levels deep.
+
+    `Trip.owner` and `GpxTrack.trip` are both `CASCADE`, so deleting the owning `User`
+    has to materialize the intervening `Trip` *and* the `GpxTrack` beneath it, reclaiming
+    the file the same way the one-level `Trip` queryset cascade above already does.
+    """
+    name = stored_name(make_stored_track(trip))
+    assert default_storage.exists(name)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        User.objects.filter(pk=trip.owner_id).delete()
 
     assert GpxTrack.objects.count() == 0
     assert not default_storage.exists(name)

@@ -341,13 +341,13 @@ time, never persisted.
 
 #### Automated
 
-- [ ] 1.1 New tests pass: `uv run pytest tests/gpx/test_gpx_signals.py tests/gpx/test_reconcile_media.py`
-- [ ] 1.2 Full suite passes with coverage: `uv run pytest --cov`
-- [ ] 1.3 Lint, format, import order, strict typing: `/python-quality-gates`
+- [x] 1.1 New tests pass: `uv run pytest tests/gpx/test_gpx_signals.py tests/gpx/test_reconcile_media.py`
+- [x] 1.2 Full suite passes with coverage: `uv run pytest --cov`
+- [x] 1.3 Lint, format, import order, strict typing: `/python-quality-gates`
 
 #### Manual
 
-- [ ] 1.4 Invert the `>` to `>=` in `reconcile_media.py:218`, confirm the new boundary test goes red, then revert
+- [x] 1.4 Invert the `>` to `>=` in `reconcile_media.py:218`, confirm the new boundary test goes red, then revert
 
 ### Phase 2: Deliberate storage-miss marker on the trip detail page
 

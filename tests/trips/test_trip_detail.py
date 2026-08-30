@@ -2,11 +2,12 @@ from datetime import date
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.files.storage import default_storage
 from django.test import Client
 from django.urls import reverse
 from django.utils.formats import date_format
 
-from tests.conftest import TrackFactory
+from tests.conftest import StoredTrackFactory, TrackFactory
 from trips.models import Trip
 
 
@@ -86,3 +87,50 @@ def test_trip_with_a_track_renders_only_its_own_track(
     assert "alps-loop.gpx" in body
     assert "pyrenees-loop.gpx" not in body
     assert "No route yet" not in body
+
+
+@pytest.mark.django_db
+def test_a_rider_sees_a_live_download_link_when_the_track_file_is_present(
+    auth_client: Client, rider: User, make_stored_track: StoredTrackFactory
+) -> None:
+    """The healthy-state companion to the storage-miss test below.
+
+    Both branches of `track_file_available` need their own assertion — proving the
+    marker renders when the file is gone says nothing about whether it wrongly renders
+    when the file is fine.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
+    track = make_stored_track(trip)
+
+    response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["track_file_available"] is True
+    assert f'href="{reverse("gpx:download", kwargs={"pk": track.pk})}"' in body
+    assert "Track file unavailable" not in body
+
+
+@pytest.mark.django_db
+def test_a_rider_sees_a_deliberate_marker_when_the_track_file_is_missing(
+    auth_client: Client, rider: User, make_stored_track: StoredTrackFactory
+) -> None:
+    """Risk #3's actual claim: stats present + file gone must not render as healthy.
+
+    The file is removed via `default_storage.delete(name)` rather than `track.delete()`
+    — the latter would remove the row too, and this test needs the row to survive with
+    the file simply gone from underneath it.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
+    track = make_stored_track(trip)
+    name = track.file.name
+    assert name is not None
+    default_storage.delete(name)
+
+    response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert response.context["track_file_available"] is False
+    assert "Track file unavailable" in body
+    assert f'href="{reverse("gpx:download", kwargs={"pk": track.pk})}"' not in body

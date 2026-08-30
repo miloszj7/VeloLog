@@ -9,6 +9,7 @@ from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, View
 
+from gpx.availability import track_file_is_available
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
@@ -67,10 +68,11 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Supply what `trips/trip_detail.html` needs when re-rendering with errors.
 
-        Including the map and stats blobs: this path renders the same page as
-        `TripDetailView`, so a rider whose upload was rejected must still see the route and
-        the figures they already had, not the template's no-route-to-draw branch and not
-        its "these were never computed" sentence.
+        Including the map, stats, and file-availability blobs: this path renders the same
+        page as `TripDetailView`, so a rider whose upload was rejected must still see the
+        route and the figures they already had, not the template's no-route-to-draw branch,
+        not its "these were never computed" sentence, and not a false "file unavailable"
+        marker over a track whose file is perfectly healthy.
         """
         context = super().get_context_data(**kwargs)
         track = self.trip.tracks.first()
@@ -78,6 +80,7 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         context["track"] = track
         context["map_config"] = build_map_config(track)
         context["stats"] = build_trip_stats(track)
+        context["track_file_available"] = track_file_is_available(track)
         return context
 
     def get_success_url(self) -> str:

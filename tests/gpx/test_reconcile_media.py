@@ -184,6 +184,38 @@ def test_a_freshly_written_orphan_spared_line_reports_its_size(
 
 
 @pytest.mark.django_db
+def test_a_file_aged_to_exactly_the_cutoff_is_treated_as_an_orphan(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The comparison is strict `>` (`reconcile_media.py:218`): equality must not be spared.
+
+    A real-clock `back_date` cannot hit an exact equality boundary reliably, since the
+    cutoff is computed inside `handle()` at call time — so both sides of the comparison
+    are frozen here instead: `timezone.now()` for the command's cutoff, and the orphan's
+    `get_modified_time` for the other side of it.
+    """
+    fixed_now = timezone.now()
+    monkeypatch.setattr(timezone, "now", lambda: fixed_now, raising=True)
+    orphan = write_orphan("gpx/1/1/stray.gpx", aged=False)
+    exact_cutoff = fixed_now - timedelta(minutes=ORPHAN_MIN_AGE_MINUTES)
+    real_get_modified_time = default_storage.get_modified_time
+
+    def pinned(name: str) -> object:
+        if name == orphan:
+            return exact_cutoff
+        return real_get_modified_time(name)
+
+    monkeypatch.setattr(default_storage, "get_modified_time", pinned, raising=True)
+
+    call_command("reconcile_media")
+
+    captured = capsys.readouterr()
+    assert f"Orphan {orphan}" in captured.err
+    assert "orphaned 1, spared 0" in captured.out
+
+
+@pytest.mark.django_db
 def test_an_orphan_outside_the_gpx_prefix_is_found(
     trip: Trip,
     make_stored_track: StoredTrackFactory,

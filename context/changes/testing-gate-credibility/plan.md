@@ -673,28 +673,28 @@ plus §6.8 are where that is recorded.
 
 #### Automated
 
-- [x] 1.1 Full suite passes: `uv run pytest --cov`
-- [x] 1.2 The four touched files pass individually
-- [x] 1.3 Lint, format, import order, typing
+- [x] 1.1 Full suite passes: `uv run pytest --cov` — 0d19821
+- [x] 1.2 The four touched files pass individually — 0d19821
+- [x] 1.3 Lint, format, import order, typing — 0d19821
 
 #### Manual
 
-- [x] 1.4 Each new assertion confirmed to bite, then reverted
-- [x] 1.5 `test_put_is_rejected_as_a_disallowed_method`'s docstring matches its body
+- [x] 1.4 Each new assertion confirmed to bite, then reverted — 0d19821
+- [x] 1.5 `test_put_is_rejected_as_a_disallowed_method`'s docstring matches its body — 0d19821
 
 ### Phase 2: The assertion-strength audit
 
 #### Automated
 
-- [ ] 2.1 Audit passes on the post-Phase-1 suite
-- [ ] 2.2 Full suite passes: `uv run pytest --cov`
-- [ ] 2.3 Lint, format, import order, typing
+- [x] 2.1 Audit passes on the post-Phase-1 suite
+- [x] 2.2 Full suite passes: `uv run pytest --cov`
+- [x] 2.3 Lint, format, import order, typing
 
 #### Manual
 
-- [ ] 2.4 Audit bites: a reverted Phase 1 probe makes it fail by name
-- [ ] 2.5 Precision confirmed: empty waiver list yields exactly the one healthz finding
-- [ ] 2.6 Stale-waiver detection bites
+- [x] 2.4 Audit bites: a reverted Phase 1 probe makes it fail by name
+- [x] 2.5 Precision confirmed: empty waiver list yields exactly the one healthz finding
+- [x] 2.6 Stale-waiver detection bites
 
 ### Phase 3: The bite-proof harness and its wiring
 

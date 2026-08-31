@@ -1,10 +1,10 @@
 ---
 change_id: testing-environment-guard
 title: Prove the media-root misconfiguration guard refuses deploys instead of silently accepting them
-status: impl_reviewed
+status: archived
 created: 2026-08-31
 updated: 2026-08-31
-archived_at: null
+archived_at: 2026-08-31T09:47:43Z
 ---
 
 ## Notes

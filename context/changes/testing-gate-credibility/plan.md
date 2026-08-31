@@ -15,8 +15,9 @@ complementary gates instead of another coverage number:
    goes red *for the named reason*. Catches the "asserts the wrong thing" shape that no
    AST rule can see, and turns the manual `test-plan.md` §6.2 ritual into automation.
 
-Before either gate lands, the four genuinely status-only tests the audit finds are
-fixed, so the gate ships green on a clean suite rather than green on a waiver list.
+Before either gate lands, the three genuinely status-only tests the audit finds — plus one
+test whose assertion is narrower than its own docstring claims — are fixed, so the gate
+ships green on a clean suite rather than green on a waiver list.
 
 ## Current State Analysis
 
@@ -38,13 +39,15 @@ already happened.
 **What is missing is a mechanism, and a small residue.** Nothing prevents a third
 status-only test from creeping in, and nothing captures the "prove it bites" practice.
 Running a refined AST heuristic over the suite during planning found **5 findings out of a
-129-test request-cycle population** — two that research named, and three it missed:
+129-test request-cycle population** — two that research named, and three it missed: one
+genuinely status-only, one whose docstring overclaims what its assertion delivers, and one
+a legitimate waiver:
 
 | File:line | Test | Verdict |
 |---|---|---|
 | `tests/gpx/test_gpx_download.py:97` | `test_a_row_whose_file_is_gone_returns_404_not_500` | fix — only `== 404`; its own sibling at `:78` probes for leaked bytes and filename |
 | `tests/gpx/test_gpx_upload.py:489` | `test_the_upload_url_does_not_serve_a_page_of_its_own` | fix — only `== 405`; no `Allow` header, no no-row-created probe |
-| `tests/trips/test_trip_creation.py:191` | `test_put_is_rejected_as_a_disallowed_method` | fix — **its docstring ends "The `Allow` assertion pins the pair of verbs that stay open." There is no `Allow` assertion.** `lessons.md` #1 verbatim, live in `master` |
+| `tests/trips/test_trip_creation.py:191` | `test_put_is_rejected_as_a_disallowed_method` | fix — asserts only that `PUT` is absent from `Allow` (plus a DB probe); its docstring's closing sentence claims the assertion "pins the pair of verbs that stay open," a positive pin the body doesn't make — a narrower `lessons.md` #1 shape: a docstring overclaiming what its own assertion delivers |
 | `tests/trips/test_trip_delete.py:110` | `test_deleted_trips_detail_url_returns_404` | fix — only `== 404`; never asserts the row is actually gone |
 | `tests/test_media_storage.py:279` | `test_healthz_serves_a_cached_verdict_instead_of_reprobing` | **waiver** — the behavior under test genuinely *is* a status sequence (200 → 200 with the store broken → 500 after a cache clear); any added probe would be contrived |
 
@@ -71,8 +74,9 @@ never been captured as anything that runs again later.
   request-cycle test that asserts only a status code fails the suite with a message naming
   the file, the test, and what to add.
 - A second CI step, `uv run pytest -m bite_proof`, injects each registered mutation shape
-  and asserts the named guard test fails for the named reason. Deleting or weakening any
-  of the five guarded tests turns that step red.
+  and asserts the named guard test fails for the named reason. Deleting a guarded test, or
+  removing the specific assertion its shape trips, turns that step red — a shape guards the
+  one assertion it exercises, not every assertion in a multi-probe test.
 - `test-plan.md` §5's "suite credibility gate" row is satisfied rather than planned, and
   §6.7/§6.8 record how to add a mutation shape.
 
@@ -181,9 +185,12 @@ already be red. The harness may rely on that rather than paying a second subproc
 shape to establish green.
 
 **Cost budget.** Five shapes × one subprocess each, at roughly 2–4 s per cold Django boot,
-is ~10–20 s — a separate CI step, not part of the ~6-minute `gates` sequence's critical
-assertions, and deselected locally so the edit loop and any future per-edit hook pay
-nothing. If a sixth shape is ever added, that budget is the thing to re-check.
+is ~10–20 s locally — a separate step inside the `gates` job (Phase 3 §5), added to that
+job's wall clock rather than sitting outside it; the CI figure is expected to run higher
+than the local one, since each subprocess re-runs migrations on a GitHub Actions runner
+slower than a local machine. Deselected locally by default, so the edit loop and any future
+per-edit hook pay nothing. If a sixth shape is ever added, that budget is the thing to
+re-check.
 
 ---
 
@@ -191,10 +198,11 @@ nothing. If a sixth shape is ever added, that budget is the thing to re-check.
 
 ### Overview
 
-Add the missing post-act probe to the four genuinely status-only request-cycle tests, each
+Add the missing post-act probe to the three genuinely status-only request-cycle tests, and
+narrow a fourth test's `Allow` assertion to match what its docstring already claims, each
 following the pattern `test-plan.md` §6.2 already prescribes ("a status code plus a state
 or no-leak probe, always"). This must land before Phase 2 so the audit ships green against
-a clean suite rather than green against a four-entry waiver list.
+a clean suite rather than green against a waiver list.
 
 ### Changes Required
 
@@ -231,14 +239,18 @@ and that the GET created no `GpxTrack` row.
 
 **File**: `tests/trips/test_trip_creation.py`
 
-**Intent**: `test_put_is_rejected_as_a_disallowed_method` (line 191) is the `lessons.md` #1
-shape live in `master` — its docstring's closing sentence promises an `Allow` assertion the
-body never makes. Make the docstring true. Also assert the PUT created nothing, since the
-docstring's stated concern is `ProcessFormView.put` re-entering `post()`.
+**Intent**: `test_put_is_rejected_as_a_disallowed_method` (line 191) already asserts
+`"PUT" not in ...headers["Allow"]` and `not Trip.objects.exists()`. Its docstring's closing
+sentence claims the assertion "pins the pair of verbs that stay open" — a positive pin
+(`Allow` is exactly `HEAD, OPTIONS`) the negative-only check doesn't deliver. This is a
+narrower `lessons.md` #1 shape: the docstring overclaims, not a test that's silent. Make
+the assertion match the docstring's claim.
 
-**Contract**: assert `response.headers["Allow"]` contains exactly the verbs
-`TripCreateView.http_method_names` declares (`GET`, `POST`, `HEAD`, `OPTIONS`) and not
-`PUT`, and that `Trip.objects.count() == 0`.
+**Contract**: replace the negative-only check with a positive assertion that
+`response.headers["Allow"]` equals exactly the verbs `TripCreateView.http_method_names`
+declares (`GET`, `POST`, `HEAD`, `OPTIONS`); the existing `not Trip.objects.exists()` DB
+probe already covers the docstring's other concern (`ProcessFormView.put` re-entering
+`post()`) and needs no change.
 
 #### 4. The post-delete detail-URL test
 
@@ -266,8 +278,8 @@ and before or after the detail GET.
   new assertion — not merely the pre-existing status assertion — is the one that fails,
   then revert. This is `test-plan.md` §6.2's ritual, and Phase 3 is what stops it having to
   be remembered.
-- `test_put_is_rejected_as_a_disallowed_method`'s docstring now describes assertions the
-  body actually makes.
+- `test_put_is_rejected_as_a_disallowed_method`'s docstring's positive-pin claim now matches
+  an assertion the body actually makes (previously it only asserted `PUT`'s absence).
 
 **Implementation Note**: After completing this phase and all automated verification
 passes, pause for manual confirmation before proceeding.
@@ -301,13 +313,18 @@ parsing tests.
   name containing `client`, either directly or through a module-local helper (resolve one
   level; `tests/test_ownership_matrix.py`'s `_issue` is the case that needs it). Everything
   else — unit tests, parsing tests, settings tests — is out of scope and unexamined.
-- **Rule** — after the last such call in the function, there must be at least one
+- **Rule** — at or after the last such call in the function, there must be at least one
   *behavior probe*: an `assert` whose expression references anything beyond `status_code`
   and integer literals; or a `with` block (`pytest.raises`, `django_assert_num_queries`);
   or a call handed the response object as an argument (`route.probe(target, response)`); or
   a call to a module-local helper that itself contains a non-status assertion. Assertions
   *before* the act are setup guards and are deliberately not counted — this is what makes
-  the rule catch `test_gpx_download.py:97`.
+  the rule catch `test_gpx_download.py:97`. "At or after" (not strictly after) covers the
+  suite's fused idiom, where the client call sits inside the assert expression itself
+  (`assert "PUT" not in auth_client.options(...).headers["Allow"]`) — the statement is both
+  the act and the probe, and the eight sites shaped like this (`test_trip_creation.py:207`,
+  `test_trip_delete.py:245`, `test_trip_edit.py:257`, five in `test_media_storage.py`) must
+  not be flagged just because nothing follows them.
 - **Waiver inventory** — a module-level tuple of `(relative path, test name, reason)`.
   Exactly one entry at first:
   `tests/test_media_storage.py`, `test_healthz_serves_a_cached_verdict_instead_of_reprobing`,
@@ -387,6 +404,13 @@ name is imported rather than defined — `trips.views.track_file_is_available` a
 `gpx.forms.MAX_GPX_FILE_BYTES` are both re-exported names, and patching the defining module
 would silently do nothing.
 
+`fragment` is the one condition in "red for the right reason" (§3, below) that actually
+discriminates the guard test's own assertion failing from *anything* failing — the other
+three (zero errors, ≥1 failure, guard node named) are near-tautological once the subprocess
+runs only that node. A `fragment` must therefore be a distinctive substring of the guard
+assertion's own message or expression, never a generic pytest token (`"AssertionError"`,
+`"assert"`, `"FAILED"`) that would match any failure vacuously.
+
 #### 2. The injection hook
 
 **File**: `tests/conftest.py`
@@ -419,9 +443,11 @@ inventory assertion.
   errors-only run means the mutation broke collection and proved nothing.
 - An inventory assertion (unmarked, so it runs in the normal suite) asserts every
   `test-plan.md` §2 risk this phase claims to cover has at least one shape, and that every
-  shape's guard node id resolves to a test that exists — collected via
-  `pytest --collect-only` or by parsing the target file, whichever stays honest without a
-  second subprocess per shape.
+  shape's guard node id resolves to a test that exists — resolved by reusing Phase 2's AST
+  parse of `tests/` (the module that already extracts every test function name for
+  `test_assertion_strength.py`), never `pytest --collect-only`: a whole-suite collection run
+  inside the default suite is exactly the subprocess cost the marker and `addopts` in change
+  4 below exist to keep out of the local edit loop.
 - On failure the message must say which is more likely: the guard test was weakened, or the
   patch target moved. Those are the two real causes and they have opposite fixes.
 
@@ -476,6 +502,9 @@ this workflow is already load-bearing and commented as such.
   about.
 - Harness wall-clock is confirmed at roughly 10–20 s, within the budget stated in Critical
   Implementation Details.
+- Each shape's `fragment` is confirmed to discriminate: it is absent from that guard node's
+  *unmutated* run output (`sys.executable -m pytest <guard node> -o addopts= -q`), so a
+  generic pytest token could not have passed the check vacuously.
 
 **Implementation Note**: After completing this phase and all automated verification
 passes, pause for manual confirmation before proceeding.
@@ -499,19 +528,32 @@ table and cookbook, `AGENTS.md`, and `lessons.md`.
 exist; §3 row 5 is mid-flight; §6.7 needs this phase's notes, in the same shape Phases
 1–4 already use.
 
-**Contract**: four edits.
-- §3 row 5 Status → `complete`, change folder pointing at this change's archived path.
+**Contract**: five edits.
+- §3 row 5 Status → `complete`; leave the change folder pointing at
+  `context/changes/testing-gate-credibility/` — the archived path doesn't exist until
+  `/10x-archive` runs after this phase, and `/10x-archive` is what updates it then.
 - §5 "suite credibility gate" row — keep "required after §3 Phase 5", and name what
   satisfies it: the audit inside `pytest --cov` plus the `Suite credibility` CI step.
+- §5's ownership-matrix row, which currently says `deploy.yml` "already runs `pytest --cov`
+  … so no new CI job was needed" — amend it, since this phase adds a second `pytest` step
+  (`Suite credibility`, running `pytest -m bite_proof`) to that same job.
 - §6.7 — a "Phase 5 — Gate credibility" block. It must record, at minimum: that the
   premise was *partly* true here for the first time in the rollout (research found two
-  status-only tests; a mechanized heuristic found five, one of which had a docstring
-  claiming an assertion it never made — the discovery that a human read of 268 tests
-  missed three instances a 60-line AST rule caught); that mutation testing was ruled out on
-  Python 3.14 grounds and cost, not preference; and the patch-the-imported-name trap.
+  status-only tests; a mechanized heuristic found five total — one genuinely status-only
+  that research missed, one whose docstring overclaimed a positive `Allow` pin its
+  negative-only assertion didn't deliver, and one legitimate waiver — the discovery that a
+  human read of 268 tests missed three of five a 60-line AST rule caught); that mutation
+  testing was ruled out on Python 3.14 grounds and cost, not preference; and the
+  patch-the-imported-name trap.
 - A new §6.8, "Adding a mutation shape to the credibility gate" — location, naming, the
   reference shape to copy, how to run it, and the requirement to verify the shape actually
-  flips its guard before committing it.
+  flips its guard before committing it. Must state two limitations explicitly: a shape
+  guards the one assertion its mutation trips, not every assertion in the guard test — a
+  multi-probe guard test (e.g. `test_a_second_rider_is_refused_on_every_verb_that_reaches_
+  the_object`'s eight delegated `route.probe()` calls) is only as protected as the shapes
+  that exercise each of its probes; and `fragment` must be a distinctive substring of the
+  guard assertion's own message or expression, verified absent from that guard node's
+  unmutated run output, never a generic pytest token.
 
 #### 2. Agent-facing repository guide
 
@@ -523,20 +565,26 @@ exist; §3 row 5 is mid-flight; §6.7 needs this phase's notes, in the same shap
 **Contract**: extend the Testing section with the two new gates — the audit's rule and where
 its waiver list lives, and the `bite_proof` marker being deselected by default with the
 command to run it. Update the `.github/workflows/deploy.yml` gate sequence in the
-Commits & Git Workflow section to include the new step.
+Commits & Git Workflow section to include the new step, and while that sentence is open,
+add the second vendored-asset integrity check (`deploy.yml` runs one for Leaflet and one for
+Bootstrap; today's sentence names only one). Pair the existing CI-equivalence command
+(`SECRET_KEY=… uv run pytest --cov`) with its `-m bite_proof` counterpart — once
+`addopts` deselects the marker, the bare command alone no longer reproduces what CI runs.
 
 #### 3. Lessons
 
 **File**: `context/foundation/lessons.md`
 
 **Intent**: Capture the class of defect this phase found, which #1 does not quite cover: #1
-is "a test whose name claims an assertion must actually make it"; the new instance was a
-*docstring* claiming one, in a test whose name was accurate.
+is "a test whose name claims an assertion must actually make it"; the new instance is a
+*docstring* claiming a stronger assertion (a positive `Allow` pin) than the body's
+negative-only check delivers, in a test whose name was accurate throughout.
 
 **Contract**: one new numbered entry — a docstring that describes an assertion is a claim
-the body must honour, sourced to `test_put_is_rejected_as_a_disallowed_method`, with the
-reason: the docstring is what the next reader trusts instead of re-deriving the assertions,
-so a lying docstring is worse than an absent one. Cross-reference #1 and the new gate.
+the body must fully honour, not partially, sourced to
+`test_put_is_rejected_as_a_disallowed_method`, with the reason: the docstring is what the
+next reader trusts instead of re-deriving the assertions, so an overclaiming docstring is
+worse than an absent one. Cross-reference #1 and the new gate.
 
 ### Success Criteria
 

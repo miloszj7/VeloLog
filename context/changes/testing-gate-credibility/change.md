@@ -1,7 +1,7 @@
 ---
 change_id: testing-gate-credibility
 title: Prove test gates catch the regressions they claim to catch
-status: planned
+status: plan_reviewed
 created: 2026-08-31
 updated: 2026-08-31
 archived_at: null

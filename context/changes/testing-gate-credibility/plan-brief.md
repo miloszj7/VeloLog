@@ -21,18 +21,22 @@ human's head during `/10x-implement`, with a real but purely historical track re
 (`50b6abf`, `4e712b7`).
 
 Running a mechanized heuristic during planning made the case sharper than research could:
-against a 129-test request-cycle population it found **five** status-only tests, not two.
-One of them — `tests/trips/test_trip_creation.py:191` — has a docstring ending *"The `Allow`
-assertion pins the pair of verbs that stay open"* and no `Allow` assertion anywhere in its
-body. That is `lessons.md` #1 verbatim, live in `master`, and a careful human read of the
-whole suite walked past it.
+against a 129-test request-cycle population it found five findings, not two — three
+genuinely status-only tests, one legitimate waiver, and one docstring overclaim. That last
+one, `tests/trips/test_trip_creation.py:191`, has a docstring ending *"The `Allow`
+assertion pins the pair of verbs that stay open"* while its body only asserts `PUT`'s
+absence from `Allow`, not the positive pin the docstring claims. That's a narrower
+`lessons.md` #1 shape — a docstring overclaiming its own assertion — and a careful human
+read of the whole suite walked past it.
 
 ## Desired End State
 
 `uv run pytest --cov` fails when a new request-cycle test asserts nothing beyond a status
 code, naming the test and what to add. A second CI step mutates five named production
 behaviors — one per risk area — and fails if the guard test for any of them stays green.
-Weakening or deleting a guarded test turns CI red instead of shipping quietly.
+Deleting a guarded test, or removing the specific assertion a shape's mutation trips, turns
+CI red instead of shipping quietly — a shape guards the one assertion it exercises, not
+every assertion in a multi-probe test.
 
 ## Key Decisions Made
 
@@ -84,7 +88,7 @@ all verified as patchable attributes with existing guard tests.
 
 | Phase | What it delivers | Key risk |
 |---|---|---|
-| 1. Close the residue | Missing probes on the four genuinely status-only tests | A probe that looks right but doesn't bite — mitigated by breaking each guarded line and confirming the *new* assertion is the one that fails |
+| 1. Close the residue | Missing probes on three genuinely status-only tests, plus one docstring-vs-assertion gap | A probe that looks right but doesn't bite — mitigated by breaking each guarded line and confirming the *new* assertion is the one that fails |
 | 2. Assertion-strength audit | The deterministic gate, with an asserted waiver inventory | False positives making the gate annoying enough to remove; the precision check (empty the waiver list, expect exactly one finding) is the acceptance test |
 | 3. Bite-proof harness + wiring | Five shapes, injection hook, marker, `addopts`, CI step | Patching the *defining* module instead of the importing one — a silent false green, and the plan's headline trap; verified deliberately in manual testing |
 | 4. Documentation | `test-plan.md` §3/§5/§6.7 + new §6.8, `AGENTS.md`, `lessons.md` | A doc claiming a command that was never run |
@@ -114,7 +118,8 @@ engineering; Phases 1 and 4 are short.
 
 - A new request-cycle test that asserts only a status code cannot reach `master` — CI names
   it and says what to add.
-- Weakening or deleting any of the five guarded tests turns CI red, rather than quietly
-  removing a protection nobody notices is gone.
+- Deleting a guarded test, or removing the specific assertion a shape's mutation trips,
+  turns CI red rather than quietly removing a protection nobody notices is gone — a shape
+  guards the one assertion it exercises, not every assertion in a multi-probe test.
 - `test-plan.md` §5's "suite credibility gate" row describes something that exists and runs
   on every PR, and §6.8 tells the next contributor how to add a shape.

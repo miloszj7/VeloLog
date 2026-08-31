@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-08-29
+> Last updated: 2026-08-31
 
 ## 1. Strategy
 
@@ -79,7 +79,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 1 | Data-isolation contract | Prove no route lets one user read, modify, or delete another user's trip or track | #2 | integration (route × actor matrix) | complete | `context/changes/testing-data-isolation-contract/` |
 | 2 | File lifecycle and storage/row consistency | Prove every delete and replace path reclaims exactly what it should — asserted after commit, not before | #1, #3 | integration (commit-callback aware), management-command | complete | `context/archive/2026-08-30-testing-file-lifecycle-storage-consistency/` |
 | 3 | Rejection and degradation | Prove bad input and absent data produce deliberate states, never a server error or a blank page | #5, #6 | unit (parsing) + integration (view/template) | complete | `context/archive/2026-08-30-testing-rejection-and-degradation/` |
-| 4 | Environment guard | Prove a media-root misconfiguration is refused rather than silently accepted | #7 | unit + integration on the health probe | not started | — |
+| 4 | Environment guard | Prove a media-root misconfiguration is refused rather than silently accepted | #7 | unit + integration on the health probe | complete | `context/archive/2026-08-31-testing-environment-guard/` |
 | 5 | Gate credibility | Prove the suite actually goes red when the behavior it names breaks | #4 | gate (mutation-style or assertion audit) | not started | — |
 
 Ordering rationale: Risk #1 is the only High × High row, yet Phase 1 goes to
@@ -190,7 +190,11 @@ the relevant rollout phase ships; before that, the sub-section reads
 
 ### 6.6 Adding a test for a settings or environment guard
 
-- TBD — see §3 Phase 4 for the misconfiguration-refusal pattern (the guard refuses, rather than the platform being simulated).
+- **Location**: `tests/test_settings_env.py` for a composition/subprocess-level test proving a real boot sequence trips a guard; `tests/test_media_storage.py` for the guard's own unit tests (each branch, hand-set on the `settings` fixture) and the `/healthz/` probe's integration tests.
+- **Naming**: `test_<condition>_trips_the_guard_under_<debug-state>` for a composition test.
+- **Reference test**: `test_blank_media_root_trips_the_guard_under_debug_false` (`tests/test_settings_env.py`, added in Phase 4).
+- **Run locally**: `uv run pytest tests/test_settings_env.py tests/test_media_storage.py -v`.
+- **Restated from Phase 4's finding**: a guard's own unit tests and its probe's integration tests can each be fully thorough in isolation and still miss the one thing that actually caused a real incident — that two independently-tested facts *compose* at boot. When an autouse fixture (here, `_media_root_in_tmp_path` in `tests/conftest.py`) exists specifically to isolate the rest of the suite from a real environment fallback, it also means no in-process test can observe that fallback landing where production would — a subprocess (`sys.executable -c <code>`, `django.setup()`, a foreign `cwd`, an explicit env dict with no `.env`) is the only way to see it.
 
 ### 6.7 Per-rollout-phase notes
 
@@ -213,6 +217,10 @@ taught that the entries above do not already carry.)
 - *The brief's premise was largely already true, the same shape Phase 1's research found.* Both Risk #5 (upload rejection) and Risk #6 (trip detail degradation) were already substantially implemented and tested with content-level assertions before this phase opened — every rejection path had its own distinct message, and every degradation branch had its own distinct sentence. The actual gap was narrow and named: a storage-side debris assertion missing from every rejection test, and one untested combination of two already-tested degradation dimensions.
 - *The storage-emptiness idiom generalizes cleanly across risk areas.* `assert not (tmp_path / "media").exists()`, first established for `reconcile_media`'s empty-volume case in Phase 2, reused verbatim as the "no debris on rejection" assertion for Risk #5 — the same per-test `MEDIA_ROOT` fixture makes the idiom portable with no new fixture required.
 - *Two of the phase's four named scenarios shared one code branch with an existing test — worth pinning explicitly rather than treating as already covered.* "Empty" (0-byte) and "truncated" (cut off mid-tag) uploads both resolve via the same `GpxSyntaxError` branch `test_malformed_xml_is_a_syntax_error` already exercised — a true fact, but not one any test asserted by name before this phase. Naming them individually pins today's shared-branch behavior so a future change that splits that branch is caught by name, not silently passed because a different-looking input happened to land in the same except clause.
+
+**Phase 4 — Environment guard.**
+
+- *The brief's premise was already false, the same shape as Phase 1 and Phase 3.* The guard (`media_root_misconfiguration()`) and both test layers §2's Risk Response Guidance named — unit on settings resolution, integration on the probe — already existed and were already thorough: 12 tests in `tests/test_media_storage.py` plus `env_or()` unit and subprocess tests in `tests/test_settings_env.py`. The actual gap was narrow: nothing proved the two independently-tested facts (the blank-`MEDIA_ROOT` fallback, and the `inside_base_dir` check) compose at a real process boot — the exact shape of the 2026-08-26 production incident. Closing it meant one new subprocess test, not a rebuild.
 
 ## 7. What We Deliberately Don't Test
 

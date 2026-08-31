@@ -79,3 +79,46 @@ def test_blank_keys_resolve_to_the_project_defaults(tmp_path: Path) -> None:
     resolved = json.loads(result.stdout)
     assert resolved["media_root"] == str(BASE_DIR / "media")
     assert resolved["db_name"] == str(BASE_DIR / "db.sqlite3")
+
+
+def test_blank_media_root_trips_the_guard_under_debug_false(tmp_path: Path) -> None:
+    """Prove the two halves compose, not just that each is true in isolation.
+
+    `test_env_or_falls_back_when_the_key_is_present_but_blank` (this file) proves the
+    fallback lands on `BASE_DIR / "media"`; the sibling guard test in
+    `tests/test_media_storage.py` proves that path trips the guard when hand-set.
+    Neither proves a real process, booted with no `.env` and `DEBUG=False` — the exact
+    shape of the 2026-08-26 production incident — reaches `inside_base_dir` on its own.
+    This suite's autouse `_media_root_in_tmp_path` fixture (`tests/conftest.py`)
+    prevents any in-process test from observing that composition, so a subprocess is
+    the only way to see it.
+    """
+    code = (
+        "import django\n"
+        "django.setup()\n"
+        "from velo_log.urls import media_root_misconfiguration\n"
+        "print(media_root_misconfiguration())\n"
+    )
+    # S603: argv is entirely literal — this interpreter and the constant source above.
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", code],
+        env={
+            **os.environ,
+            # cwd is deliberately foreign, so the repo root has to be put back on the
+            # import path explicitly.
+            "PYTHONPATH": str(BASE_DIR),
+            "DJANGO_SETTINGS_MODULE": "velo_log.settings",
+            "SECRET_KEY": "test-only-not-a-real-secret",
+            "DEBUG": "False",
+            "MEDIA_ROOT": "",
+            "DB_PATH": "",
+        },
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    # The guard's own logger writes to stdout by design (velo_log/settings.py's LOGGING
+    # config), so the printed verdict is the last line, not the whole of stdout.
+    assert result.stdout.strip().splitlines()[-1] == "inside_base_dir"

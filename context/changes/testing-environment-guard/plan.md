@@ -220,13 +220,13 @@ Not applicable — test-only change.
 
 #### Automated
 
-- [ ] 1.1 New test passes: `uv run pytest tests/test_settings_env.py -v -k trips_the_guard`
-- [ ] 1.2 Full guard-relevant suite passes: `uv run pytest tests/test_settings_env.py tests/test_media_storage.py -v`
-- [ ] 1.3 Quality gates pass: `/python-quality-gates`
+- [x] 1.1 New test passes: `uv run pytest tests/test_settings_env.py -v -k trips_the_guard`
+- [x] 1.2 Full guard-relevant suite passes: `uv run pytest tests/test_settings_env.py tests/test_media_storage.py -v`
+- [x] 1.3 Quality gates pass: `/python-quality-gates`
 
 #### Manual
 
-- [ ] 1.4 None required — this phase adds regression coverage only, no behavior change.
+- [x] 1.4 None required — this phase adds regression coverage only, no behavior change.
 
 ### Phase 2: Verify and document
 

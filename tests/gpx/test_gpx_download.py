@@ -106,11 +106,15 @@ def test_a_row_whose_file_is_gone_returns_404_not_500(
     """
     track = make_stored_track(trip, TRACK_BYTES)
     assert track.file.name is not None
+    stored_name = track.file.name
     Path(track.file.path).unlink()
 
     response = auth_client.get(download_url(track))
 
     assert response.status_code == 404
+    assert stored_name not in response.content.decode()
+    assert track.original_filename not in response.content.decode()
+    assert GpxTrack.objects.filter(pk=track.pk).exists()
 
 
 @pytest.mark.django_db

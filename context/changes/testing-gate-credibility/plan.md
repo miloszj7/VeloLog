@@ -673,14 +673,14 @@ plus §6.8 are where that is recorded.
 
 #### Automated
 
-- [ ] 1.1 Full suite passes: `uv run pytest --cov`
-- [ ] 1.2 The four touched files pass individually
-- [ ] 1.3 Lint, format, import order, typing
+- [x] 1.1 Full suite passes: `uv run pytest --cov`
+- [x] 1.2 The four touched files pass individually
+- [x] 1.3 Lint, format, import order, typing
 
 #### Manual
 
-- [ ] 1.4 Each new assertion confirmed to bite, then reverted
-- [ ] 1.5 `test_put_is_rejected_as_a_disallowed_method`'s docstring matches its body
+- [x] 1.4 Each new assertion confirmed to bite, then reverted
+- [x] 1.5 `test_put_is_rejected_as_a_disallowed_method`'s docstring matches its body
 
 ### Phase 2: The assertion-strength audit
 

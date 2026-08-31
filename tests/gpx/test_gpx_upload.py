@@ -495,3 +495,6 @@ def test_the_upload_url_does_not_serve_a_page_of_its_own(auth_client: Client, tr
     response = auth_client.get(upload_url(trip))
 
     assert response.status_code == 405
+    assert "GET" not in response.headers["Allow"]
+    assert "POST" in response.headers["Allow"]
+    assert GpxTrack.objects.count() == 0

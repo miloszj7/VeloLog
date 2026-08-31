@@ -204,4 +204,5 @@ def test_put_is_rejected_as_a_disallowed_method(auth_client: Client) -> None:
 
     assert response.status_code == 405
     assert not Trip.objects.exists()
-    assert "PUT" not in auth_client.options(reverse("trips:create")).headers["Allow"]
+    allow = auth_client.options(reverse("trips:create")).headers["Allow"]
+    assert allow == "GET, POST, HEAD, OPTIONS"

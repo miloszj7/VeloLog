@@ -220,21 +220,21 @@ Not applicable — test-only change.
 
 #### Automated
 
-- [x] 1.1 New test passes: `uv run pytest tests/test_settings_env.py -v -k trips_the_guard`
-- [x] 1.2 Full guard-relevant suite passes: `uv run pytest tests/test_settings_env.py tests/test_media_storage.py -v`
-- [x] 1.3 Quality gates pass: `/python-quality-gates`
+- [x] 1.1 New test passes: `uv run pytest tests/test_settings_env.py -v -k trips_the_guard` — f932be2
+- [x] 1.2 Full guard-relevant suite passes: `uv run pytest tests/test_settings_env.py tests/test_media_storage.py -v` — f932be2
+- [x] 1.3 Quality gates pass: `/python-quality-gates` — f932be2
 
 #### Manual
 
-- [x] 1.4 None required — this phase adds regression coverage only, no behavior change.
+- [x] 1.4 None required — this phase adds regression coverage only, no behavior change. — f932be2
 
 ### Phase 2: Verify and document
 
 #### Automated
 
-- [ ] 2.1 Full suite passes: `uv run pytest --cov`
-- [ ] 2.2 `/python-quality-gates` passes
+- [x] 2.1 Full suite passes: `uv run pytest --cov` — 329 passed, 2 skipped, 97.21% coverage
+- [x] 2.2 `/python-quality-gates` passes — black/isort/ruff/mypy strict/manage.py check/migration guard all clean
 
 #### Manual
 
-- [ ] 2.3 `context/foundation/test-plan.md` §6.6 no longer reads `TBD`, and §6.7 carries a Phase 4 entry consistent with the Phase 1–3 entries above it.
+- [x] 2.3 `context/foundation/test-plan.md` §6.6 no longer reads `TBD`, and §6.7 carries a Phase 4 entry consistent with the Phase 1–3 entries above it.

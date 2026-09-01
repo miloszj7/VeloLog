@@ -724,11 +724,11 @@ plus §6.8 are where that is recorded.
 
 #### Automated
 
-- [x] 4.1 Full suite passes: `uv run pytest --cov`
-- [x] 4.2 Harness passes: `uv run pytest -m bite_proof`
-- [x] 4.3 All quality gates: `/python-quality-gates`
+- [x] 4.1 Full suite passes: `uv run pytest --cov` — 576f261
+- [x] 4.2 Harness passes: `uv run pytest -m bite_proof` — 576f261
+- [x] 4.3 All quality gates: `/python-quality-gates` — 576f261
 
 #### Manual
 
-- [x] 4.4 §6.8 is followable for adding a sixth shape
-- [x] 4.5 No document claims a gate, path, or command that does not exist
+- [x] 4.4 §6.8 is followable for adding a sixth shape — 576f261
+- [x] 4.5 No document claims a gate, path, or command that does not exist — 576f261

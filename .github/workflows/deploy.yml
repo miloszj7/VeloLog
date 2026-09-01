@@ -71,6 +71,12 @@ jobs:
       - name: Tests
         run: uv run pytest --cov
 
+      # If the suite itself is red, which test bites is not yet the interesting question —
+      # this step is placed after Tests deliberately. No --cov: the harness spawns its own
+      # pytest subprocesses per case, and a coverage context here would fight itself.
+      - name: Suite credibility
+        run: uv run pytest -m bite_proof
+
   deploy:
     needs: gates
     if: github.event_name == 'push'

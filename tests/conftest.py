@@ -1,6 +1,7 @@
 """Shared pytest-django fixtures for the VeloLog test suite."""
 
-from collections.abc import Callable
+import os
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from django.test import Client
 from pytest_django.fixtures import Settings
 
 from gpx.models import GpxTrack
+from tests.mutations import MUTATION_SHAPES, apply_mutation_shape
 from trips.models import Trip
 
 GPX_POINTS = [[50.06, 19.94], [50.07, 19.95]]
@@ -72,6 +74,34 @@ def _plain_staticfiles_storage(settings: Settings) -> None:
         **settings.STORAGES,
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
     }
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _apply_mutation_shape() -> Iterator[None]:
+    """Apply the mutation shape named by `VELOLOG_MUTATION`, or do nothing.
+
+    Unset or empty — every normal run, local and CI — is a no-op: the `yield` below runs
+    with no patch in place. Session-scoped rather than done in `pytest_configure`, because
+    the patch must land *after* `pytest-django` has configured Django, and `pytest_configure`
+    races that setup. An unrecognized name raises rather than skips, so a typo in
+    `tests/mutations.py`'s registry (or in the `VELOLOG_MUTATION` value the harness passes)
+    surfaces as an error instead of a silently vacuous run.
+    """
+    shape_name = os.environ.get("VELOLOG_MUTATION", "")
+    if not shape_name:
+        yield
+        return
+
+    shapes_by_name = {shape.name: shape for shape in MUTATION_SHAPES}
+    if shape_name not in shapes_by_name:
+        raise ValueError(
+            f"VELOLOG_MUTATION={shape_name!r} does not match any shape registered in "
+            "tests/mutations.py"
+        )
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        apply_mutation_shape(shapes_by_name[shape_name], monkeypatch)
+        yield
 
 
 @pytest.fixture(autouse=True)

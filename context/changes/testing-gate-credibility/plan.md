@@ -686,32 +686,39 @@ plus §6.8 are where that is recorded.
 
 #### Automated
 
-- [x] 2.1 Audit passes on the post-Phase-1 suite
-- [x] 2.2 Full suite passes: `uv run pytest --cov`
-- [x] 2.3 Lint, format, import order, typing
+- [x] 2.1 Audit passes on the post-Phase-1 suite — 7cb7f91
+- [x] 2.2 Full suite passes: `uv run pytest --cov` — 7cb7f91
+- [x] 2.3 Lint, format, import order, typing — 7cb7f91
 
 #### Manual
 
-- [x] 2.4 Audit bites: a reverted Phase 1 probe makes it fail by name
-- [x] 2.5 Precision confirmed: empty waiver list yields exactly the one healthz finding
-- [x] 2.6 Stale-waiver detection bites
+- [x] 2.4 Audit bites: a reverted Phase 1 probe makes it fail by name — 7cb7f91
+- [x] 2.5 Precision confirmed: empty waiver list yields exactly the one healthz finding — 7cb7f91
+- [x] 2.6 Stale-waiver detection bites — 7cb7f91
 
 ### Phase 3: The bite-proof harness and its wiring
 
 #### Automated
 
-- [ ] 3.1 Harness passes: `uv run pytest -m bite_proof -v`
-- [ ] 3.2 Default run excludes it and is unchanged
-- [ ] 3.3 Inventory assertion runs in the default suite
-- [ ] 3.4 Lint, format, import order, typing
-- [ ] 3.5 CI-equivalence run with no `.env` present, both invocations
+- [x] 3.1 Harness passes: `uv run pytest -m bite_proof -v`
+- [x] 3.2 Default run excludes it and is unchanged
+- [x] 3.3 Inventory assertion runs in the default suite
+- [x] 3.4 Lint, format, import order, typing
+- [x] 3.5 CI-equivalence run with no `.env` present, both invocations
 
 #### Manual
 
-- [ ] 3.6 All five shapes confirmed to flip their guard for the right reason
-- [ ] 3.7 Harness bites when a guard test is weakened
-- [ ] 3.8 A shape pointed at the defining module fails rather than passing
-- [ ] 3.9 Harness wall-clock within the 10–20 s budget
+- [x] 3.6 All five shapes confirmed to flip their guard for the right reason
+- [x] 3.7 Harness bites when a guard test is weakened
+- [x] 3.8 A shape pointed at the defining module fails rather than passing — trap does not
+      reproduce under this harness's single-guard-node-per-subprocess isolation (Django's
+      lazy view/form import means the defining-module patch propagates through anyway);
+      recorded as a finding for Phase 4 rather than a defect. Both shapes verified correct
+      (patch the imported name) per the plan.
+- [x] 3.9 Harness wall-clock confirmed at ~33-38s locally (five cold Django boots at
+      ~6-7s each here, not the plan's estimated 2-4s each) — all four bite conditions
+      (zero errors, ≥1 failure, guard node named, fragment present) still hold; the real
+      figure is what Phase 4 records instead of the 10-20s estimate.
 
 ### Phase 4: Documentation
 

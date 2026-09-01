@@ -700,35 +700,35 @@ plus §6.8 are where that is recorded.
 
 #### Automated
 
-- [x] 3.1 Harness passes: `uv run pytest -m bite_proof -v`
-- [x] 3.2 Default run excludes it and is unchanged
-- [x] 3.3 Inventory assertion runs in the default suite
-- [x] 3.4 Lint, format, import order, typing
-- [x] 3.5 CI-equivalence run with no `.env` present, both invocations
+- [x] 3.1 Harness passes: `uv run pytest -m bite_proof -v` — 2aaee84
+- [x] 3.2 Default run excludes it and is unchanged — 2aaee84
+- [x] 3.3 Inventory assertion runs in the default suite — 2aaee84
+- [x] 3.4 Lint, format, import order, typing — 2aaee84
+- [x] 3.5 CI-equivalence run with no `.env` present, both invocations — 2aaee84
 
 #### Manual
 
-- [x] 3.6 All five shapes confirmed to flip their guard for the right reason
-- [x] 3.7 Harness bites when a guard test is weakened
+- [x] 3.6 All five shapes confirmed to flip their guard for the right reason — 2aaee84
+- [x] 3.7 Harness bites when a guard test is weakened — 2aaee84
 - [x] 3.8 A shape pointed at the defining module fails rather than passing — trap does not
       reproduce under this harness's single-guard-node-per-subprocess isolation (Django's
       lazy view/form import means the defining-module patch propagates through anyway);
       recorded as a finding for Phase 4 rather than a defect. Both shapes verified correct
-      (patch the imported name) per the plan.
+      (patch the imported name) per the plan. — 2aaee84
 - [x] 3.9 Harness wall-clock confirmed at ~33-38s locally (five cold Django boots at
       ~6-7s each here, not the plan's estimated 2-4s each) — all four bite conditions
       (zero errors, ≥1 failure, guard node named, fragment present) still hold; the real
-      figure is what Phase 4 records instead of the 10-20s estimate.
+      figure is what Phase 4 records instead of the 10-20s estimate. — 2aaee84
 
 ### Phase 4: Documentation
 
 #### Automated
 
-- [ ] 4.1 Full suite passes: `uv run pytest --cov`
-- [ ] 4.2 Harness passes: `uv run pytest -m bite_proof`
-- [ ] 4.3 All quality gates: `/python-quality-gates`
+- [x] 4.1 Full suite passes: `uv run pytest --cov`
+- [x] 4.2 Harness passes: `uv run pytest -m bite_proof`
+- [x] 4.3 All quality gates: `/python-quality-gates`
 
 #### Manual
 
-- [ ] 4.4 §6.8 is followable for adding a sixth shape
-- [ ] 4.5 No document claims a gate, path, or command that does not exist
+- [x] 4.4 §6.8 is followable for adding a sixth shape
+- [x] 4.5 No document claims a gate, path, or command that does not exist

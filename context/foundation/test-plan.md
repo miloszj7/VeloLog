@@ -80,7 +80,7 @@ orchestrator updates Status as artifacts appear on disk.
 | 2 | File lifecycle and storage/row consistency | Prove every delete and replace path reclaims exactly what it should — asserted after commit, not before | #1, #3 | integration (commit-callback aware), management-command | complete | `context/archive/2026-08-30-testing-file-lifecycle-storage-consistency/` |
 | 3 | Rejection and degradation | Prove bad input and absent data produce deliberate states, never a server error or a blank page | #5, #6 | unit (parsing) + integration (view/template) | complete | `context/archive/2026-08-30-testing-rejection-and-degradation/` |
 | 4 | Environment guard | Prove a media-root misconfiguration is refused rather than silently accepted | #7 | unit + integration on the health probe | complete | `context/archive/2026-08-31-testing-environment-guard/` |
-| 5 | Gate credibility | Prove the suite actually goes red when the behavior it names breaks | #4 | gate (mutation-style or assertion audit) | change opened | `context/changes/testing-gate-credibility/` |
+| 5 | Gate credibility | Prove the suite actually goes red when the behavior it names breaks | #4 | gate (mutation-style or assertion audit) | complete | `context/changes/testing-gate-credibility/` |
 
 Ordering rationale: Risk #1 is the only High × High row, yet Phase 1 goes to
 Risk #2 first. Phase 1 is the cheapest phase, the most likely to surface a
@@ -124,10 +124,10 @@ phase lands; before that, the gate is planned.
 | migration guard | CI | required | a model change shipped without its migration — invisible to every other gate |
 | collectstatic | CI | required | an unresolvable static reference; must precede the test step, which skips itself without a manifest |
 | unit + integration | local + CI | required | logic regressions |
-| ownership/isolation matrix | CI | required | one user reaching another user's data. Satisfied by `tests/test_ownership_matrix.py` existing in the suite — `.github/workflows/deploy.yml` already runs `pytest --cov` on every PR to `master` and every push to it, so no new CI job was needed or added — this row means "the matrix exists in the suite", not a separate job. The gate has teeth because the module asserts its own inventory against the URLconf: a new `<int:pk>` route under `trips` or `gpx` fails the suite until it is classified |
+| ownership/isolation matrix | CI | required | one user reaching another user's data. Satisfied by `tests/test_ownership_matrix.py` existing in the suite — `.github/workflows/deploy.yml`'s `gates` job runs two `pytest` steps on every PR to `master` and every push to it: `Tests` (`pytest --cov`) and, since §3 Phase 5, `Suite credibility` (`pytest -m bite_proof`) — this row means "the matrix exists in the suite", not a separate job. The gate has teeth because the module asserts its own inventory against the URLconf: a new `<int:pk>` route under `trips` or `gpx` fails the suite until it is classified |
 | post-commit side-effect assertions | CI | required after §3 Phase 2 | file-lifecycle regressions that a pre-commit assertion cannot see |
 | environment-guard check | CI | required after §3 Phase 4 | a media-root misconfiguration reaching a deploy |
-| suite credibility gate | CI on PR | required after §3 Phase 5 | tests that stay green when the behavior they name is broken |
+| suite credibility gate | CI on PR | required after §3 Phase 5 | tests that stay green when the behavior they name is broken. Two parts: the assertion-strength audit (`tests/test_assertion_strength.py`, inside `pytest --cov`) fails a request-cycle test that asserts only a status code; the bite-proof harness (`tests/mutations.py` + `tests/test_suite_bites.py`, the `Suite credibility` step running `pytest -m bite_proof`) proves five named mutation shapes each flip a named guard test red for a named reason. See §6.7 Phase 5 and §6.8 |
 | e2e on critical flows | — | not planned | see §4: no phase proposes it; the primary flow is covered at the integration layer |
 | pre-prod smoke | between merge and production | optional | environment-specific failures the health probe would report |
 
@@ -221,6 +221,83 @@ taught that the entries above do not already carry.)
 **Phase 4 — Environment guard.**
 
 - *The brief's premise was already false, the same shape as Phase 1 and Phase 3.* The guard (`media_root_misconfiguration()`) and both test layers §2's Risk Response Guidance named — unit on settings resolution, integration on the probe — already existed and were already thorough: 12 tests in `tests/test_media_storage.py` plus `env_or()` unit and subprocess tests in `tests/test_settings_env.py`. The actual gap was narrow: nothing proved the two independently-tested facts (the blank-`MEDIA_ROOT` fallback, and the `inside_base_dir` check) compose at a real process boot — the exact shape of the 2026-08-26 production incident. Closing it meant one new subprocess test, not a rebuild.
+
+**Phase 5 — Gate credibility.**
+
+- *The brief's premise was only partly true here — the first rollout phase where that
+  happened.* Every earlier phase (1, 3, 4) found the premise already false: the tested
+  behavior existed and was already covered. Here, research read all 268 request-cycle test
+  functions across 25 files and found two genuinely status-only tests. A mechanized AST
+  heuristic, run during planning, found five: the same two, plus a third genuinely
+  status-only test research missed (`test_deleted_trips_detail_url_returns_404`), a fourth
+  whose docstring overclaimed a positive `Allow` pin its negative-only assertion never
+  delivered (`test_put_is_rejected_as_a_disallowed_method`), and one legitimate waiver (the
+  `/healthz/` cached-verdict test, where the sequence of status codes genuinely *is* the
+  behavior under test). A 60-line-class AST rule caught three of five findings a careful
+  human read of 268 tests missed — the reason this phase exists as a mechanism, not a
+  one-time cleanup.
+- *Mutation testing was ruled out on tooling and cost grounds, not preference.* `mutmut`'s
+  cache layer has an unresolved incompatibility with Python 3.14 (a `copy.deepcopy()`
+  semantics change breaks the Pony ORM query translator it uses internally), and this
+  project's `pyproject.toml` pins `>=3.14` with no 3.13 fallback interpreter. Independently,
+  a full mutation run reruns the whole suite once per mutant — hundreds to low-thousands of
+  runs for ~3,000 LOC — against a `gates` job budgeted at roughly six minutes end to end. The
+  five-shape bite-proof harness is the cost-proportionate substitute: one subprocess per
+  named risk area, not one per surviving mutant.
+- *Patch the name where it is used, not where it is defined — the trap a false-green would
+  hide behind.* `trips/views.py` does `from gpx.availability import track_file_is_available`,
+  so the view's live reference is `trips.views.track_file_is_available`; patching
+  `gpx.availability.track_file_is_available` leaves the view's own module attribute
+  untouched and the harness would report a false green. `gpx.forms.MAX_GPX_FILE_BYTES` is the
+  same trap — imported by value from `gpx.constants`. Every shape in `tests/mutations.py`
+  patches the importing module's attribute, with a comment naming why, for exactly this
+  reason.
+
+### 6.8 Adding a mutation shape to the credibility gate
+
+- **Location**: `tests/mutations.py` — add one `MutationShape` instance to the
+  `MUTATION_SHAPES` tuple. No other file needs an edit: `tests/conftest.py`'s injection
+  fixture and `tests/test_suite_bites.py`'s harness both iterate the registry.
+- **Naming**: `name` is the `VELOLOG_MUTATION` value — a short phrase naming the broken
+  behavior, not the guard test (`no_op_file_discard`, not
+  `test_a_trip_queryset_cascade_...`).
+- **Reference shape to copy**: `file_always_available` in `tests/mutations.py` — a plain
+  module-attribute patch (not a nested class attribute like
+  `unscoped_trip_detail_queryset`), with the imported-name-vs-defining-module comment this
+  pattern always needs.
+- **Fields to fill**: the `(module_path, attribute)` pair naming where the target is
+  *imported*, not where it is defined (see the trap above — read the call site with `grep`
+  before guessing); a `replacement` factory building the broken value (deferred imports of
+  Django models inside the factory, never at module level — `tests/mutations.py`'s own
+  module docstring explains why); a `guard_node_id` naming the one existing test that should
+  go red; and a `fragment` that is a distinctive substring of that guard test's own
+  assertion message or expression — never a generic pytest token (`"AssertionError"`,
+  `"FAILED"`) that would match any failure vacuously.
+- **Verify before committing**: run the guard node unmutated
+  (`sys.executable -m pytest <guard node id> -o addopts= -q`) and confirm `fragment` is
+  *absent* from that output — otherwise it could have passed the harness's fragment check
+  vacuously. Then run
+  `VELOLOG_MUTATION=<name> sys.executable -m pytest <guard node id> -o addopts= -q` (or add
+  the shape and run `uv run pytest -m bite_proof -v`) and confirm the guard actually goes
+  red for the fragment reason, not a collection error. A shape whose guard stays green, or
+  goes red for an unrelated reason, is a broken shape — do not commit it un-verified.
+- **Run locally**: `uv run pytest -m bite_proof -v` (deselected from the default
+  `uv run pytest` / `uv run pytest --cov` by `pyproject.toml`'s `addopts`).
+
+**Two limitations, stated so a future reader does not read more protection into a shape than
+it gives:**
+
+- **A shape guards the one assertion its mutation trips, not every assertion in the guard
+  test.** `test_a_second_rider_is_refused_on_every_verb_that_reaches_the_object` delegates to
+  eight `route.probe(target, response)` calls across the ownership matrix; the
+  `unscoped_trip_detail_queryset` shape only proves the harness catches the `trips:detail`
+  route's own probe going unscoped. A different route in that same test going unscoped is
+  only caught if a shape exists that mutates *its* queryset — the guard test being
+  comprehensive does not make the shape comprehensive.
+- **`fragment` must be verified, not assumed, to discriminate.** It has to be a substring
+  that appears in the guard's *mutated* failure output and is absent from its *unmutated*
+  run — the verification step above is what confirms this, not a read of the assertion by
+  eye.
 
 ## 7. What We Deliberately Don't Test
 

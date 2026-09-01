@@ -3,7 +3,7 @@ change_id: testing-gate-credibility
 title: Prove test gates catch the regressions they claim to catch
 status: implementing
 created: 2026-08-31
-updated: 2026-08-31
+updated: 2026-09-01
 archived_at: null
 ---
 

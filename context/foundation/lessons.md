@@ -68,3 +68,16 @@ every `/10x-implement` run and let it shape implementation choices. Add to it vi
     the receiver is the mechanism, not merely the hook — and it must schedule its storage
     work with `transaction.on_commit`, because `post_delete` fires inside the collector's
     transaction and a delete performed there is already gone if the block later raises.
+
+11. **A docstring that describes an assertion is a claim the body must fully honour, not
+    partially.**
+    Source: `context/changes/testing-gate-credibility/plan.md` (Phase 1, finding on
+    `test_put_is_rejected_as_a_disallowed_method`); see also `tests/test_assertion_strength.py`
+    and lesson #1.
+    Why: the test's docstring claimed the assertion "pins the pair of verbs that stay open" —
+    a positive `Allow` pin — while the body only asserted `"PUT" not in ...headers["Allow"]`,
+    a negative-only check that doesn't deliver that claim. The docstring is what the next
+    reader trusts instead of re-deriving the assertions from the body, so an overclaiming
+    docstring is worse than an absent one: lesson #1 is a test whose *name* claims an
+    assertion it doesn't make; this is the same shape one level deeper, in the docstring,
+    on a test whose name was accurate throughout.

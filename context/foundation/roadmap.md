@@ -40,7 +40,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ID   | Change ID                        | Outcome (user can …)                                                                                       | Prerequisites | PRD refs                                    | Status   |
 | ---- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- | -------- |
 | S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | ready    |
-| S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | planning |
+| S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | in-progress |
 | S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view      | S-01           | PRD Fast-follow (whole-trip/per-stage statistics, nice-to-have) | proposed |
 
 ## Baseline
@@ -84,7 +84,7 @@ No foundations are needed. The data model already supports multiple stages per t
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — per `## Baseline`, this is a config flip on already-vendored, already-rendering Leaflet code (flip `dragging`/`scrollWheelZoom`/`touchZoom`/`doubleClickZoom`/`keyboard`/`boxZoom`/`zoomControl` and re-enable the zoom control), not a new integration. Sequenced after S-01 in the milestone's priority (per the user's sequencing call) precisely because it's the safe, low-risk item — if time runs out, this is what's still acceptable to finish last or cut.
-- **Status:** planning
+- **Status:** in-progress
 
 ### S-03: User can view whole-trip and per-stage statistics (stretch)
 

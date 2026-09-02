@@ -124,6 +124,7 @@ Milestone `M-02` slices migrated to GitHub Issues on 2026-09-02, under the GitHu
 - **FR-012 (browse/filter trip list)** — Why parked: carried from M-01; small trip count still doesn't justify it.
 - **FR-013 (trip metadata — start location, photos, companions)** — Why parked: carried from M-01; nice-to-have, not required by this milestone's Success Criterion.
 - **Speed and moving-time stats (average speed, max speed, moving time)** — Why parked: carried from M-01 (dropped from S-05 during its plan review, 2026-08-27, F7 — `gpxpy.get_moving_data()` was unreliable on synthetic probe input). Pick up with real timed exports in hand; if S-03 (multi-stage stats) is picked up this milestone, this is a natural companion to reconsider at the same time, not before.
+- **Rider supplies missing stage timestamps (and, through them, the trip's timespan)** — Why parked: raised 2026-09-02 while researching S-01. A GPX with no `<time>` elements yields no orderable instant, so such stages fall back to upload order and a trip holding one shows no derived timespan — only its stored start date, which is exactly v1's current display. That degrade is cheap and ships in S-01; a capability letting the rider fill the gap in is not, and its value is unmeasured. **Pick up only with real exports in hand** (owner investigating Garmin and phone-app output) — untimed GPX is typically a *planned-route* export rather than a ridden track, which is out-of-character input for a diary-not-planner, so this may never be due. Two design constraints are already settled if it is: the edit targets a **stage's** `started_at`/`ended_at`, never the trip's span directly (editing the trip span reintroduces the two-sources-of-truth drift that closed E-10), and **no `order`/`position` column** is added, so stage order stays a pure function of instants and the "no manual reordering" Non-Goal above softens only to "derived from timestamps, recorded or supplied". Forward-compatibility is free: the nullable timestamp columns S-01 adds are the whole schema requirement, so this needs only a form later, no migration. Full reasoning in `context/changes/multi-stage-gpx-upload/research.md` (follow-up 3).
 
 ## Engineering Backlog
 
@@ -138,7 +139,6 @@ item is in `### Details`.
 | ---- | -------------------------------------------------------- | ----------------------------------------------------------------- | ----------- |
 | E-04 | `railway.json` must migrate to `.railway/railway.ts`       | By 2026-11-01, after the 2026-09-10 product deadline               | open        |
 | E-07 | `$5` Railway spend alert un-reverified                     | After free trial expires (23 days from 2026-08-28)                 | **blocked** (on free trial) |
-| E-10 | `Trip.date` is a single field on a multi-day product       | FR-011 (multi-stage grouping) — needs a PRD amendment first        | open        |
 
 ### At a glance — Done
 
@@ -152,6 +152,7 @@ item is in `### Details`.
 | E-08 | `TripForm` accepted a future-dated trip with no validation               | done (2026-08-27)      | — |
 | E-09 | CI actions pinned to deprecated Node 20 runtime                         | done (2026-08-28)      | [#20](https://github.com/miloszj7/VeloLog/issues/20) |
 | E-11 | GPX upload orphans its file in storage on transaction rollback          | done (2026-08-28)      | [#23](https://github.com/miloszj7/VeloLog/issues/23) |
+| E-10 | `Trip.date` is a single field on a multi-day product                    | done (2026-09-02) — closed as unnecessary | — |
 
 ### Details
 
@@ -234,9 +235,9 @@ item is in `### Details`.
 #### E-10 — `Trip.date` is a single field on a multi-day product
 
 - **Item:** `Trip.date` is a single `DateField` on a product whose subject is the **multi-day** tour — the owner's own framing: *"for one day trip it is simple, for multi day, better will be two date fields - start and end"* (2026-08-26).
-- **Proposed fix:** Split `Trip.date` into start and end dates, and re-derive `Meta.ordering`, both templates, the admin column and `TripForm.clean_date`'s comparison from the pair.
-- **Trigger:** FR-011 (multi-stage grouping) — multi-day chronology actually lives there per `prd.md:99`, so the split has a consumer rather than being shape-for-its-own-sake. **Needs a PRD amendment first**: FR-003, FR-007 and the Primary Success Criterion all say "a date", singular.
-- **Status:** open
+- **Proposed fix:** **Original proposal superseded** — splitting `Trip.date` into start and end dates (re-deriving `Meta.ordering`, both templates, the admin column and `TripForm.clean_date` from the pair) would store a pair that is *derivable*, creating a second source of truth whose only novel behavior is drift. Resolved instead by deriving the displayed span from the stages: `min(started_at)` … `max(ended_at)` over a trip's `GpxTrack` rows, with `Trip.date` retained unchanged as the day the tour started. No `Trip` migration; the wording of that field's help text is the only user-visible change, and it belongs to `multi-stage-gpx-upload`.
+- **Trigger:** FR-011 (multi-stage grouping) — was the named trigger, on the reasoning that multi-day chronology lives there per `prd.md:99`. It fired (S-01, `multi-stage-gpx-upload`) and disclosed the opposite: FR-011 orders stages by **GPS timestamp**, so it never reads `Trip.date` at all. The field had no consumer waiting on it.
+- **Status:** done (2026-09-02) — **closed as unnecessary, not as delivered.** Two independent findings, both from `context/changes/multi-stage-gpx-upload/research.md`; either alone would be misleading. (1) *The PRD-amendment blocker is gone.* It cited FR-003, FR-007 and the Primary Success Criterion as all saying "a date", singular — but PRD v4 superseded v3 wholesale (v3 now at `context/foundation/archive/prd-2026-05-29-v3.md:66,74`), carries no FR numbering, and its Primary Success Criterion never mentions a date. The amendment happened as a regeneration, so nothing procedural stood in the way. (2) *The split is unnecessary regardless* — the `(start, end)` pair is derivable from stage timestamps (above), so storing it would be denormalization. Recording only (1) would leave this row reading "blocker cleared" and invite the next reader to perform the split, which is why both are here. The owner's original insight stands as correct — a multi-day tour does span dates — and is satisfied by derivation rather than by a second stored field. Absent-timestamp fallbacks and a possible future "rider supplies missing stage timestamps" capability are parked (`## Parked`), pending inspection of real Garmin/phone exports.
 - **GitHub Issue:** —
 
 #### E-11 — GPX upload orphans its file in storage on transaction rollback

@@ -96,6 +96,16 @@
         // confirm. The padding keeps the route off the edge of the frame.
         map.fitBounds(config.bounds, {padding: [20, 20]});
 
+        // The map is fully drawn and functional at this point, so the fallback comes
+        // down here rather than after the decorative hint control below. That keeps
+        // fallback removal gated on "core map exists," not on the hint also
+        // succeeding — a throw from the hint code would otherwise skip removal and
+        // leave a fully rendered live map sitting behind the "could not be loaded"
+        // message, contradicting this file's own contract (see header comment).
+        if (fallback && fallback.parentNode) {
+            fallback.parentNode.removeChild(fallback);
+        }
+
         // Scroll-wheel zoom starts disabled (see the L.map options above); this hint
         // control tells the user how to turn it on, and the first interaction with the
         // map turns it on and removes itself. Leaflet's own controls (including the
@@ -126,10 +136,5 @@
             window.console.error("VeloLog: the route map could not be drawn.", error);
         }
         return;
-    }
-
-    // Last, and only once every drawing call above has returned.
-    if (fallback && fallback.parentNode) {
-        fallback.parentNode.removeChild(fallback);
     }
 })();

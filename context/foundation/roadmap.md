@@ -39,7 +39,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 
 | ID   | Change ID                        | Outcome (user can …)                                                                                       | Prerequisites | PRD refs                                    | Status   |
 | ---- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- | -------- |
-| S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | ready    |
+| S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | planning    |
 | S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | done |
 | S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view      | S-01           | PRD Fast-follow (whole-trip/per-stage statistics, nice-to-have) | proposed |
 
@@ -72,7 +72,7 @@ No foundations are needed. The data model already supports multiple stages per t
 - **Unknowns:**
   - The Constraints section flags that a future route removing a single stage would need its own entry in the ownership-scoping test inventory (`tests/test_ownership_matrix.py`) — not required by this milestone's scope (no stage-removal capability is being built), but worth naming so `/10x-plan` doesn't skip it if scope grows. Owner: user. Block: no.
 - **Risk:** `GpxUploadView.post` today resolves `.tracks.first()` and its upload flow *replaces* the trip's existing track — a `pre_save` signal reclaims the superseded file on that assumption. Changing "replace" to "add" touches that upload path and its file-lifecycle signal together; getting this wrong risks the "data never lost" guardrail (an accidentally-deleted earlier stage) rather than just a rendering bug. This is exactly why it's sequenced as the north star: it's the riskiest change in the milestone, and proving it first means a slip still leaves the core capability shipped.
-- **Status:** ready
+- **Status:** planning
 
 ### S-02: User views the trip route on an interactive map
 

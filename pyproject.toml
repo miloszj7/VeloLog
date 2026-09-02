@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "django>=6.0.5",
+    "django>=6.0.8,<6.1",
     "django-environ>=0.14.0",
     "gpxpy>=1.6.2",
     "gunicorn>=26.1.0",
@@ -16,7 +16,7 @@ dependencies = [
 dev = [
     "black>=26.5.1",
     "django-stubs[compatible-mypy]>=6.1.0",
-    "isort>=8.0.1",
+    "isort>=9",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",

@@ -96,9 +96,15 @@ MUTATION_SHAPES: tuple[MutationShape, ...] = (
         module_path="trips.views",
         attribute="TripDetailView.get_queryset",
         replacement=_unscoped_trip_detail_queryset,
+        # Narrowed to the single cell the mutation actually exercises (`trips:detail`'s
+        # primary verb, `get`) rather than the whole parametrized matrix — an unmutated
+        # cell for an unrelated route (e.g. `gpx:download`) failing for its own reason
+        # would otherwise satisfy `failed >= 1` and the shared fragment below without the
+        # `trips:detail` cell the mutation targets ever going red.
         guard_node_id=(
             "tests/test_ownership_matrix.py::"
             "test_a_second_rider_is_refused_on_every_verb_that_reaches_the_object"
+            "[trips:detail-get]"
         ),
         fragment="confirms the pk exists",
     ),

@@ -101,6 +101,19 @@ def test_the_mutation_shape_flips_its_guard_for_the_named_reason(shape: Mutation
     )
 
 
+def _guard_node_function(guard_node_id: str) -> tuple[str, str]:
+    """(relative path, function name) a guard node id resolves to, its `[...]` id stripped.
+
+    A shape may pin a specific parametrization (e.g. `test_foo[trips:detail-get]`) to
+    narrow which cell of a parametrized test must go red; the AST inventory below only
+    knows about the underlying function definition, so the parametrize suffix is stripped
+    before checking that the node id resolves to a real test.
+    """
+    path, function_id = guard_node_id.split("::", 1)
+    function_name = function_id.split("[", 1)[0]
+    return path, function_name
+
+
 def _all_test_function_names() -> set[tuple[str, str]]:
     """(relative path, test name) for every `test_*` function under `tests/`.
 
@@ -133,7 +146,7 @@ def test_every_risk_area_has_a_shape_and_every_guard_node_resolves() -> None:
     unresolved = [
         shape.guard_node_id
         for shape in MUTATION_SHAPES
-        if tuple(shape.guard_node_id.split("::", 1)) not in all_test_functions
+        if _guard_node_function(shape.guard_node_id) not in all_test_functions
     ]
     assert not unresolved, (
         "the following guard node ids in tests/mutations.py's MUTATION_SHAPES do not "

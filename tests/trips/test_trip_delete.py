@@ -115,6 +115,7 @@ def test_deleted_trips_detail_url_returns_404(auth_client: Client, rider: User) 
     response = auth_client.get(detail_url)
 
     assert response.status_code == 404
+    assert not Trip.objects.filter(pk=trip.pk).exists()
 
 
 @pytest.mark.django_db

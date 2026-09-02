@@ -194,7 +194,7 @@ def test_put_is_rejected_as_a_disallowed_method(auth_client: Client) -> None:
     Left at the default, `ProcessFormView.put` re-enters `post()` against an empty
     `request.POST` and returns a 200 re-render with every field in error — a page that
     reads as "you submitted this badly" for a request that was never a submission. The
-    `Allow` assertion pins the pair of verbs that stay open.
+    `Allow` assertion pins the full set of verbs that stay open.
     """
     response = auth_client.put(
         reverse("trips:create"),
@@ -204,4 +204,6 @@ def test_put_is_rejected_as_a_disallowed_method(auth_client: Client) -> None:
 
     assert response.status_code == 405
     assert not Trip.objects.exists()
-    assert "PUT" not in auth_client.options(reverse("trips:create")).headers["Allow"]
+    allow = auth_client.options(reverse("trips:create")).headers["Allow"]
+    allowed_verbs = {verb.strip() for verb in allow.split(",")}
+    assert allowed_verbs == {"GET", "POST", "HEAD", "OPTIONS"}

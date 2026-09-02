@@ -1,9 +1,12 @@
 """Shared pytest-django fixtures for the VeloLog test suite."""
 
-from collections.abc import Callable
+import os
+import shutil
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
+from django.conf import settings as django_settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -11,6 +14,7 @@ from django.test import Client
 from pytest_django.fixtures import Settings
 
 from gpx.models import GpxTrack
+from tests.mutations import MUTATION_SHAPES, apply_mutation_shape
 from trips.models import Trip
 
 GPX_POINTS = [[50.06, 19.94], [50.07, 19.95]]
@@ -72,6 +76,52 @@ def _plain_staticfiles_storage(settings: Settings) -> None:
         **settings.STORAGES,
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
     }
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _apply_mutation_shape() -> Iterator[None]:
+    """Apply the mutation shape named by `VELOLOG_MUTATION`, or do nothing.
+
+    Unset or empty — every normal run, local and CI — is a no-op: the `yield` below runs
+    with no patch in place. Session-scoped rather than done in `pytest_configure`, because
+    the patch must land *after* `pytest-django` has configured Django, and `pytest_configure`
+    races that setup. An unrecognized name raises rather than skips, so a typo in
+    `tests/mutations.py`'s registry (or in the `VELOLOG_MUTATION` value the harness passes)
+    surfaces as an error instead of a silently vacuous run.
+    """
+    shape_name = os.environ.get("VELOLOG_MUTATION", "")
+    if not shape_name:
+        yield
+        return
+
+    shapes_by_name = {shape.name: shape for shape in MUTATION_SHAPES}
+    if shape_name not in shapes_by_name:
+        raise ValueError(
+            f"VELOLOG_MUTATION={shape_name!r} does not match any shape registered in "
+            "tests/mutations.py"
+        )
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        apply_mutation_shape(shapes_by_name[shape_name], monkeypatch)
+        try:
+            yield
+        finally:
+            _discard_media_guard_probe_tree()
+
+
+def _discard_media_guard_probe_tree() -> None:
+    """Remove the directory `test_media_storage.py`'s guard test writes its probe under.
+
+    Only the `media_guard_always_clean` shape reaches this: with the misconfiguration
+    check patched to a no-op, `/healthz/`'s short-circuit never fires and the probe write
+    goes through, and `FileSystemStorage` creates the parent directories along the way —
+    only the probe *file* is deleted afterwards. Left behind, the directory makes every
+    later plain-suite run of that guard test fail on its "nothing was created" assertion,
+    invisibly to `git status` (which does not track empty directories). A no-op for every
+    other shape and for a normal run, since the path never exists there.
+    """
+    probe_dir = Path(django_settings.BASE_DIR) / "media-misconfigured-probe"
+    shutil.rmtree(probe_dir, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)

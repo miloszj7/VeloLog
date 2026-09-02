@@ -87,6 +87,11 @@ media/
 # The whole directory is ignored: never commit a production dump of any kind.
 backup/
 
+# Probe directory the media_guard_always_clean bite-proof shape's guard test writes under
+# (tests/test_media_storage.py, tests/mutations.py). tests/conftest.py tears it down after
+# every run; this is belt-and-braces in case that teardown is ever skipped.
+/media-misconfigured-probe/
+
 # Flask stuff:
 instance/
 .webassets-cache

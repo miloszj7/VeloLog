@@ -17,6 +17,7 @@ import os
 import re
 import subprocess
 import sys
+from typing import NamedTuple
 
 import pytest
 
@@ -48,42 +49,104 @@ def _failure_marked_lines(output: str) -> str:
     return "\n".join(line for line in output.splitlines() if FAILURE_MARKED_LINE_RE.match(line))
 
 
-def _run_guard_under_mutation(shape: MutationShape) -> str:
-    """Run `shape`'s guard node in a subprocess with the mutation applied; return the output.
+GUARD_SUBPROCESS_TIMEOUT_SECONDS = 180
+
+# pytest's own exit codes (https://docs.pytest.org/en/stable/reference/exit-codes.html) for
+# every code a guard run might legitimately produce other than 1 ("tests failed", the only
+# code a genuinely red guard exits with — see `test_the_mutation_shape_flips_its_guard_for_
+# the_named_reason` below). Read explicitly rather than left to `failed_count >= 1` alone: a
+# usage error or an uncollectable node id also leaves `failed_count == 0`, which without this
+# would be misdiagnosed as "the guard was weakened" instead of "the harness itself is broken".
+PYTEST_EXIT_CODE_MEANINGS: dict[int, str] = {
+    0: "the guard node passed instead of failing — the mutation had no effect",
+    2: "pytest was interrupted before it finished running the guard node",
+    3: "pytest hit an internal error running the guard node",
+    4: "pytest raised a usage error — the guard node id most likely does not resolve",
+    5: "no tests were collected — the guard node id most likely does not resolve",
+}
+
+
+class _GuardRun(NamedTuple):
+    returncode: int
+    output: str
+
+
+def _run_guard_under_mutation(shape: MutationShape) -> _GuardRun:
+    """Run `shape`'s guard node in a subprocess with the mutation applied.
 
     `-o addopts=` neutralizes the default `-m "not bite_proof"` deselect (and anything else
     `addopts` grows later, such as `--cov`) so the child run is reproducible and does not
     write a competing coverage file. `-p no:cacheprovider` leaves nothing in
     `.pytest_cache`. Neither guard node is itself marked `bite_proof`, so the neutralization
     is defensive rather than presently load-bearing.
+
+    `-o addopts=` only neutralizes the child's *own* `--cov`; pytest-cov's subprocess hook
+    is driven by the `COV_CORE_*` environment variables, not `addopts`, so a parent run
+    already under `--cov` (`pytest --cov -m bite_proof`, a plausible local invocation) would
+    still instrument every child and drop `.coverage.*` files without this being stripped
+    from the inherited environment.
+
+    A mutation is deliberately broken production behavior — exactly the kind of change that
+    can turn a short-circuit into a loop or a guard into a deadlock — so the child is bounded
+    by `timeout=`. Without it, a hanging shape would block the parent (and, in CI, the
+    runner's job) indefinitely with no diagnostic naming which shape hung.
     """
-    env = {**os.environ, "VELOLOG_MUTATION": shape.name}
-    result = subprocess.run(  # noqa: S603
-        [
-            sys.executable,
-            "-m",
-            "pytest",
-            shape.guard_node_id,
-            "-o",
-            "addopts=",
-            "-p",
-            "no:cacheprovider",
-            "--no-header",
-            "-q",
-        ],
-        cwd=REPO_ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return result.stdout + result.stderr
+    env = {k: v for k, v in os.environ.items() if not k.startswith("COV_CORE_")}
+    env["VELOLOG_MUTATION"] = shape.name
+    args = [
+        sys.executable,
+        "-m",
+        "pytest",
+        shape.guard_node_id,
+        "-o",
+        "addopts=",
+        "-p",
+        "no:cacheprovider",
+        "--no-header",
+        "-q",
+    ]
+    try:
+        # S603: argv is entirely literal — this interpreter, "-m pytest", and shape's own
+        # `guard_node_id`, which is a string constant declared in tests/mutations.py.
+        result = subprocess.run(  # noqa: S603
+            args,
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=GUARD_SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        # `text=True`/`encoding=` above guarantee `str`, not `bytes`, at runtime — the union
+        # in `TimeoutExpired`'s stub is generic over both, unaware of those arguments.
+        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+        stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+        pytest.fail(
+            f"shape {shape.name!r}'s guard node {shape.guard_node_id} did not finish within "
+            f"{GUARD_SUBPROCESS_TIMEOUT_SECONDS}s — the mutation likely turned a "
+            f"short-circuit into a loop or a guard into a deadlock rather than a clean "
+            f"failure:\n{stdout}{stderr}"
+        )
+    return _GuardRun(result.returncode, result.stdout + result.stderr)
 
 
 @pytest.mark.bite_proof
 @pytest.mark.parametrize("shape", MUTATION_SHAPES, ids=lambda s: s.name)
 def test_the_mutation_shape_flips_its_guard_for_the_named_reason(shape: MutationShape) -> None:
-    output = _run_guard_under_mutation(shape)
+    run = _run_guard_under_mutation(shape)
+    output = run.output
+
+    if run.returncode != 1:
+        reason = PYTEST_EXIT_CODE_MEANINGS.get(
+            run.returncode, f"pytest exited {run.returncode}, an unrecognized code"
+        )
+        pytest.fail(
+            f"shape {shape.name!r}'s guard node {shape.guard_node_id} exited "
+            f"{run.returncode} instead of 1 (tests failed) — {reason}:\n{output}"
+        )
 
     error_match = ERROR_RE.search(output)
     error_count = int(error_match.group(1)) if error_match else 0

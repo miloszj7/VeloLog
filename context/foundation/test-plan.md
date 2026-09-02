@@ -76,11 +76,11 @@ orchestrator updates Status as artifacts appear on disk.
 
 | # | Phase name | Goal (one line) | Risks covered | Test types | Status | Change folder |
 |---|---|---|---|---|---|---|
-| 1 | Data-isolation contract | Prove no route lets one user read, modify, or delete another user's trip or track | #2 | integration (route × actor matrix) | complete | `context/changes/testing-data-isolation-contract/` |
+| 1 | Data-isolation contract | Prove no route lets one user read, modify, or delete another user's trip or track | #2 | integration (route × actor matrix) | complete | `context/archive/2026-08-29-testing-data-isolation-contract/` |
 | 2 | File lifecycle and storage/row consistency | Prove every delete and replace path reclaims exactly what it should — asserted after commit, not before | #1, #3 | integration (commit-callback aware), management-command | complete | `context/archive/2026-08-30-testing-file-lifecycle-storage-consistency/` |
 | 3 | Rejection and degradation | Prove bad input and absent data produce deliberate states, never a server error or a blank page | #5, #6 | unit (parsing) + integration (view/template) | complete | `context/archive/2026-08-30-testing-rejection-and-degradation/` |
 | 4 | Environment guard | Prove a media-root misconfiguration is refused rather than silently accepted | #7 | unit + integration on the health probe | complete | `context/archive/2026-08-31-testing-environment-guard/` |
-| 5 | Gate credibility | Prove the suite actually goes red when the behavior it names breaks | #4 | gate (mutation-style or assertion audit) | complete | `context/changes/testing-gate-credibility/` |
+| 5 | Gate credibility | Prove the suite actually goes red when the behavior it names breaks | #4 | gate (mutation-style or assertion audit) | complete | `context/archive/2026-08-31-testing-gate-credibility/` |
 
 Ordering rationale: Risk #1 is the only High × High row, yet Phase 1 goes to
 Risk #2 first. Phase 1 is the cheapest phase, the most likely to surface a

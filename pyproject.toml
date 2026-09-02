@@ -61,7 +61,7 @@ markers = [
     "bite_proof: proves a guard test goes red when the production behavior it names is mutated (tests/mutations.py); spawns a pytest subprocess per case, run explicitly with `pytest -m bite_proof`",
 ]
 # Deselects `bite_proof` from every plain `pytest`/`pytest --cov` run, local or CI, so the
-# edit loop and any future per-edit hook pay nothing for the ~10-20 s subprocess cost. A
+# edit loop and any future per-edit hook pay nothing for the ~12-13 s subprocess cost. A
 # bare `-m bite_proof` on the command line overrides this `-m`, not adds to it — that is
 # what makes `uv run pytest -m bite_proof` select exactly the marked tests despite looking
 # contradictory next to this line.

@@ -244,14 +244,24 @@ taught that the entries above do not already carry.)
   runs for ~3,000 LOC — against a `gates` job budgeted at roughly six minutes end to end. The
   five-shape bite-proof harness is the cost-proportionate substitute: one subprocess per
   named risk area, not one per surviving mutant.
-- *Patch the name where it is used, not where it is defined — the trap a false-green would
-  hide behind.* `trips/views.py` does `from gpx.availability import track_file_is_available`,
-  so the view's live reference is `trips.views.track_file_is_available`; patching
-  `gpx.availability.track_file_is_available` leaves the view's own module attribute
-  untouched and the harness would report a false green. `gpx.forms.MAX_GPX_FILE_BYTES` is the
-  same trap — imported by value from `gpx.constants`. Every shape in `tests/mutations.py`
-  patches the importing module's attribute, with a comment naming why, for exactly this
-  reason.
+- *Patch the name where it is used, not where it is defined — a convention, not a trap this
+  harness was ever caught by.* `trips/views.py` does
+  `from gpx.availability import track_file_is_available`, so the view's live reference is
+  `trips.views.track_file_is_available`; `gpx.forms.MAX_GPX_FILE_BYTES` (imported by value
+  from `gpx.constants`) is the same shape. The plan flagged patching the *defining* module
+  instead as a false-green trap and deferred confirming that to this phase; tried
+  deliberately against `gpx.availability.track_file_is_available`, it did not reproduce —
+  Django's lazy view import means the patch on the defining module propagates through to the
+  view's own reference anyway, so the harness caught the mutation regardless of which module
+  was patched. Patching the importing module, as every shape in `tests/mutations.py` still
+  does, remains the right convention (it is the name the code actually reads, and the one a
+  reader expects), but nothing here proves the other order fails — say so as a convention,
+  not as a guaranteed false green.
+- *Wall clock, measured, not estimated.* `pyproject.toml`'s ~10-20s guess became ~28-30s for
+  five shapes (~6s/boot) before F3's node-id narrowing of the `unscoped_trip_detail_queryset`
+  shape (see `tests/mutations.py`) cut its subprocess from the whole ownership matrix down to
+  one cell; `uv run pytest -m bite_proof` now runs in ~12-13s for five shapes (~2.5s/boot).
+  Re-measure if a sixth shape is added rather than trusting either figure.
 
 ### 6.8 Adding a mutation shape to the credibility gate
 
@@ -273,10 +283,15 @@ taught that the entries above do not already carry.)
   go red; and a `fragment` that is a distinctive substring of that guard test's own
   assertion message or expression — never a generic pytest token (`"AssertionError"`,
   `"FAILED"`) that would match any failure vacuously.
-- **Verify before committing**: run the guard node unmutated
-  (`sys.executable -m pytest <guard node id> -o addopts= -q`) and confirm `fragment` is
-  *absent* from that output — otherwise it could have passed the harness's fragment check
-  vacuously. Then run
+- **Verify before committing**: `tests/test_suite_bites.py`'s fragment check only ever reads
+  the `>` flow-marker line and `E ` explanation lines pytest prints for a failure — not the
+  unmarked source context above them — specifically so a fragment drawn from an assertion
+  earlier than the one that actually failed cannot match by way of that context. Confirm
+  `fragment` discriminates by forcing the guard to fail for the *wrong* reason (comment out
+  the mutation but break some unrelated precondition, or reuse a known stale-state failure)
+  and checking it stays absent from `>`/`E` lines — a clean unmutated pass proves nothing,
+  since a passing run prints no source at all and every fragment is trivially absent from
+  it. Then run
   `VELOLOG_MUTATION=<name> sys.executable -m pytest <guard node id> -o addopts= -q` (or add
   the shape and run `uv run pytest -m bite_proof -v`) and confirm the guard actually goes
   red for the fragment reason, not a collection error. A shape whose guard stays green, or

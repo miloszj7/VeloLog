@@ -7,9 +7,10 @@ shape in `tests/mutations.py`, spawn a real `pytest` subprocess with the mutatio
 assert the named guard test goes red *for the named reason* — not merely "something failed".
 
 Marked `bite_proof` and deselected by default (`pyproject.toml`'s `addopts`), because each
-case pays a cold Django boot (~2-4 s); `uv run pytest -m bite_proof` is the CI step and the
-local opt-in. The inventory assertion at the bottom is deliberately unmarked so it runs in
-the default suite at effectively no cost — it never spawns a subprocess.
+case pays a cold Django boot; `uv run pytest -m bite_proof` (~12-13 s for five shapes, see
+`context/foundation/test-plan.md` §6.7 Phase 5 for how that figure was measured) is the CI
+step and the local opt-in. The inventory assertion at the bottom is deliberately unmarked so
+it runs in the default suite at effectively no cost — it never spawns a subprocess.
 """
 
 import ast

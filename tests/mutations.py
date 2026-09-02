@@ -13,10 +13,14 @@ the session that variable is set on.
 
 **Patch the name where it is used, not where it is defined.** `trips/views.py` does
 `from gpx.availability import track_file_is_available`, so the live reference the view calls
-is `trips.views.track_file_is_available` — patching `gpx.availability.track_file_is_available`
-would leave the view's own module attribute untouched and the harness would report a false
-green. `gpx.forms.MAX_GPX_FILE_BYTES` is the same trap: it is imported by value from
-`gpx.constants`, so `gpx.constants.MAX_GPX_FILE_BYTES` is not the name the form reads.
+is `trips.views.track_file_is_available`, not `gpx.availability.track_file_is_available`.
+`gpx.forms.MAX_GPX_FILE_BYTES` is the same shape: it is imported by value from
+`gpx.constants`, so `gpx.constants.MAX_GPX_FILE_BYTES` is not the name the form reads. This is
+the convention every shape below follows — it is the name the code actually reads, and the
+one a reader expects — not a guaranteed false green: patching the defining module instead was
+tried once, deliberately, against `track_file_is_available`, and the harness still caught it,
+because Django's lazy view import means the patch on the defining module propagates through to
+the view's own reference anyway (see `context/foundation/test-plan.md` §6.7 Phase 5).
 """
 
 import dataclasses

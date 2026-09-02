@@ -1,124 +1,112 @@
 ---
 project: VeloLog
-version: 3
+version: 4
 status: draft
-created: 2026-05-29
-updated: 2026-08-26
-context_type: greenfield
+created: 2026-09-02
+context_type: brownfield
 product_type: web-app
 target_scale:
   users: small
-  qps: low
-  data_volume: small
 timeline_budget:
-  mvp_weeks: 2
+  delivery_weeks: 1
   hard_deadline: "2026-09-10"
   after_hours_only: true
 ---
 
-## Vision & Problem Statement
+> **Supersedes** `context/foundation/archive/prd-2026-05-29-v3.md` — the archived document is the v1 **greenfield** PRD (versions 1–3, covering the original register/login/create-trip/upload-one-GPX/static-map flow, all shipped and archived). This document is v4: the v1.5 **brownfield** delta PRD for multi-stage trips and the interactive map, generated from `context/foundation/shape-notes.md`. Version numbering continues from the archived document's `version: 3` rather than restarting, since this PRD describes the next change to the same product, not a new one.
 
-GPX tracks from multi-day cycling tours are scattered across devices (watch, phone) and third-party apps, with no way to group stages of a single trip into a coherent unit. No existing tool treats a "trip" as a first-class entity — all major platforms (Strava, Komoot, Wikiloc) are activity-centric: each GPX file is a standalone activity, not a stage of a larger journey. A touring cyclist who completes a multi-day tour is left manually juggling disconnected files, with no single view of the full journey and no narrative layer capturing where they slept, who they rode with, or what the experience felt like.
+## Current System Overview
 
-The key insight is that the problem is not the GPX format or the tracking device — it is the absence of a trip-centric data model. Existing platforms optimise for sharing and performance metrics on individual activities. A personal diary of multi-day tours, where the trip is the primary entity and individual day-tracks are its stages, does not exist as a product.
+**System purpose**: VeloLog is a trip-centric personal diary for multi-day cycling tours, aggregating GPX tracks and trip context into a single view.
+
+**Key architecture**: A monolithic web application deployed as a single service.
+
+**Tech stack**: Django 6 (Python), deployed on Railway.
+
+**Current user base**: A single solo touring cyclist (the product owner), logging their own tours. Small/solo scale.
+
+**Core functionality (v1, shipped and archived)**: register/login; create a trip (name, single date, description); upload exactly one GPX track file per trip; view the trip on a static (non-interactive) map with distance, recorded-time, and elevation stats; edit and delete the trip. Ownership scoping is enforced project-wide (a 404-not-403 contract, tested via an ownership matrix). Upload storage lifecycle is fully handled by the application (signals plus a reconciliation backstop). All 5 v1 roadmap slices (S-01–S-05) are done.
+
+## Problem Statement & Motivation
+
+Two gaps remain between v1 and the original core insight — that a trip is a first-class multi-stage entity, not a single activity:
+
+1. **Data-fidelity gap**: the trip model still represents a single day and a single GPX file. A real multi-day tour — the product's actual subject — cannot be represented.
+2. **Presentation gap**: the map is static and its points are unstyled. Interactive map support was explicitly deferred as "the first feature after the core flow is validated" — that validation is now done, since v1 has shipped and is in use.
+
+**Why now**: one week of remaining after-hours time is available before a 2026-09-10 deadline. Both gaps are already named and reasoned about in the project's parked backlog; this change scopes how much of that cluster fits in a week, without introducing new scope.
 
 ## User & Persona
 
-**Primary persona**: A solo touring cyclist who undertakes multi-day bike tours and wants a single personal log of those trips. Initially the product owner himself. He captures GPS tracks on a variety of devices (watch, phone, dedicated GPS unit) and wants to aggregate all stages of a trip, attach supporting context (accommodation, companions, photos, description), and view the full journey on a map with statistics.
-
-He is technically literate, not technical-first — he wants a tool that works, not a project to maintain. He reaches for VeloLog after completing a tour, when he wants to record and relive it before the details fade.
-
-**Access model**: Multi-user from day one. Each user registers their own account and manages their own trips. The primary development and validation user is the product owner himself.
+**Primary persona**: unchanged from v1 — a solo touring cyclist (the product owner) who logs their own multi-day tours. No new persona is introduced by this change.
 
 ## Success Criteria
 
 ### Primary
-A new user can register, log in, create a trip (name, date, description), upload one GPX file, and see the route drawn on a non-interactive map — end to end, without assistance. If this flow completes, VeloLog v1 works.
+A user opens an existing trip, uploads a second (and further) GPX file as an additional stage, and the trip detail view renders all stages as visually distinct, chronologically-ordered segments on an interactive (pan/zoom) map, with distinct markers for the trip's start, end, and each inter-stage boundary ("stage break"). A single-GPX v1 trip continues to render correctly, unchanged, on the same interactive map.
 
 ### Secondary
-Basic trip stats (distance and duration) calculated from the uploaded GPX file and displayed on the trip detail view. Not required for the primary proof, but meaningfully raises the value of a completed upload.
+None promoted for this change — whole-trip/per-stage statistics and standalone accommodation waypoints are explicitly fast-follow (see Non-Goals).
 
 ### Guardrails
-- **Data never lost**: Every uploaded GPX file is durably stored and always retrievable. Data loss is catastrophic for a personal diary product.
-- **User data isolation**: One authenticated user can never read, modify, or delete another user's private trips under any circumstance.
+- **Data never lost**: every uploaded stage file is durably stored and retrievable, the same guarantee as v1.
+- **v1 trips unaffected**: existing single-GPX, single-date trips keep working through the data-model change with no manual migration step from the user.
+- **User data isolation**: unchanged from v1 — no cross-user access to trips or stage files under any circumstance.
 
 ## User Stories
 
-### US-01: First successful trip log
+### US-02: Multi-day trip logged as one interactive journey
 
-- **Given** a user has registered and is logged in
-- **When** they create a trip, upload a valid GPX file, and open the trip detail view
-- **Then** they see the route drawn on a non-interactive map and a confirmation that the trip was saved
+- **Given** a user has an existing trip with one GPX stage already uploaded
+- **When** they upload a second GPX file to the same trip and open the trip detail view
+- **Then** they see both stages as visually distinct, chronologically-ordered segments on an interactive map, with markers at the trip's start, end, and the "stage break" between the two stages
 
-#### Acceptance Criteria
-- The trip appears in the user's trip list after creation
-- The uploaded GPX file is associated with the trip and the map renders without error
-- A trip with no uploaded GPX file does not show a broken map — it shows a clear empty state
+# TODO: US-02 has no separate Acceptance Criteria checklist beyond its Given/When/Then — see Open Questions.
 
-## Functional Requirements
+## Scope of Change
 
-### Authentication
-- FR-001: User can register with email and password. Priority: must-have
-  > Socrates: Counter-argument considered: "Magic-link or OAuth would be faster to build and equally secure." Resolution: kept as email+password; no change to priority. Auth mechanism is a downstream stack decision — the FR specifies the capability, not the implementation.
-- FR-002: User can log in and log out. Priority: must-have
+- [new] User can upload a second (and further) GPX file to an existing trip as an additional stage. Priority: must-have.
+  > Socrates: No counter-argument; it stands as written — this is the core data-fidelity fix the whole change is about.
+- [modified] User sees all of a trip's stages merged into one route, ordered chronologically by GPS timestamp, with each stage rendered as a visually distinct segment (e.g. a different line color per stage) — was: a trip renders exactly one uploaded track as a single undifferentiated line. Priority: must-have.
+  > Socrates: Counter-argument considered: "chronological merge is wrong if stages have a time gap (rest day, or simply a new day) — a continuous unbroken line implies continuous riding." Resolution: revised — stages render as visually distinct segments (per-stage color) rather than one undifferentiated line, so a gap in time doesn't read as a gap that should exist in the geometry.
+- [modified] User views the trip route on an interactive (pan/zoom) map instead of a static image — was: a static, non-interactive map image. Priority: must-have.
+  > Socrates: No counter-argument; it stands as written — the static map was always a placeholder for the current validation stage.
+- [new] User sees distinct markers for trip start, trip end, and each inter-stage boundary, labeled generically as a "stage break" rather than "accommodation". Priority: must-have.
+  > Socrates: Counter-argument considered: "labeling a stage boundary as 'accommodation' asserts a fact the data doesn't support — it could be a lunch stop, a GPS pause, or any reason a rider split a stage into two files, not necessarily an overnight stay." Resolution: revised — marker labeled generically as "stage break". True accommodation semantics (a confirmed overnight stop with its own description/photo) is fast-follow (see Non-Goals).
+- [preserved] Existing single-GPX v1 trips continue to render, edit, and delete correctly, unchanged.
+  > Socrates: No counter-argument; it stands as written.
 
-### Trip Management
-- FR-003: User can create a trip with a name, date, and description. Priority: must-have
-- FR-004: User can upload a GPX file to a trip. Priority: must-have
-  > Socrates: Counter-argument considered: "GPX is one format — locking to it may require migration if FIT/TCX support is added later." Resolution: kept. The product refers to this capability as uploading a 'track file'; GPX is the first supported format.
-- FR-005: User can view a trip's route drawn on a non-interactive map. Priority: must-have
-  > Socrates: Counter-argument considered: "A static map image would be simpler than an interactive map." Resolution: revised — a non-interactive map accepted for v1. Interactive map is the first v2 enhancement (FR-015).
-  > Amended v3 (2026-08-26): the wording was "a static map image" until implementation. What shipped renders the route client-side onto a raster tile map with panning, zooming, and keyboard navigation all disabled — visually static, but not a server-rendered image. The delta FR-015 still owns is therefore *interactivity*, not *the map*: v2 re-enables the controls this deliberately turns off. Kept as a wording amendment rather than a scope change because the user-visible outcome is unchanged.
-- FR-006: User can view a list of their own trips. Priority: must-have
-  > Socrates: Counter-argument considered: "A bare list with no filter/sort is enough for v1 with 1–2 trips." Resolution: kept as must-have, scoped to minimal list only — no filter/sort in v1 (FR-012 is nice-to-have).
-- FR-007: User can edit a trip's details (name, date, description). Priority: must-have
-  > Socrates: No counter-argument; edit/delete is table stakes for personal data.
-- FR-008: User can delete a trip. Priority: must-have
+### Fast-follow (parked for this change — pick up only if the week's core scope finishes early)
+- [new, deferred] User can add an accommodation waypoint (description, photo) between stages, as its own record rather than an inferred map marker. Priority: nice-to-have.
+- [new, deferred] User can view whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view. Priority: nice-to-have.
 
-### Extended (Nice-to-have)
-- FR-009: User can set a trip's visibility as public or private. Priority: nice-to-have
-  > Socrates: Counter-argument accepted: "Default-private for v1 is enough; toggle ships in v2 when multiple users are active." Demoted from must-have. All trips are private in v1.
-- FR-010: User can view basic trip stats (distance and duration) calculated from the GPX. Priority: nice-to-have
-- FR-011: User can upload multiple GPX files to one trip (multi-stage grouping). Priority: nice-to-have
-- FR-012: User can browse and filter their trip list. Priority: nice-to-have
-- FR-013: User can add trip metadata (start location, photos, companions). Priority: nice-to-have
-- FR-014: User can add accommodation waypoints between stages with a description and photo. Priority: nice-to-have
-- FR-015: User can view the trip route on an interactive map. Priority: nice-to-have
-  > Note: v2 — first feature after the core upload-and-view flow is validated in production.
+## Constraints & Compatibility
+
+- **No data migration required from the user**: existing v1 trips (one file, one date) must continue to work with no manual action required — any schema change (e.g. splitting the single-file relationship into a stage collection) must be backward-compatible or auto-backfilled.
+- **Preserved behavior**: existing single-GPX, single-date trips must continue to render, edit, and delete correctly after the data-model change. Ownership scoping and the "data never lost" guardrail extend unchanged to any new upload paths.
+- **Ownership matrix stays in sync**: any new per-object route this change introduces (e.g. removing a single stage from a trip) must be added to the project's ownership-scoping test inventory, per the project's standing rule.
+
+## Business Logic Changes
+
+**Current rule**: a trip is complete with exactly one uploaded track file; the system does not merge multiple files.
+
+**Change**: a trip may now have multiple stages (track files). The system merges them into one route ordered chronologically by GPS timestamp, renders each stage as a visually distinct segment, and marks each inter-stage boundary as a "stage break". The system still does not infer trip boundaries or which files belong together — grouping stages under a trip remains an explicit user action (uploading to that trip), consistent with the current rule.
+
+## Access Control Changes
+
+No access control changes — current model preserved. Flat single-user role, email+password auth, strict per-owner scoping (404-not-403 contract) on every object-scoped route. New object types introduced by this change (additional stage files) are child records of a trip and inherit its ownership scope — no new access concept is required, but any new per-object route added must still be added to the project's ownership-scoping test inventory, per the project's standing rule.
 
 ## Non-Functional Requirements
 
-- **Perceived responsiveness**: The trip detail view, including the map image, reaches a usable state within a time that does not feel broken to a user on a typical home broadband connection. Silent failures on map generation are not acceptable — if the map cannot be rendered, the user receives a clear error state, not a blank page.
-
-## Business Logic
-
-A trip is a user-curated collection of track files; the system treats the trip as the primary entity, not the individual file.
-
-In v1, a trip has exactly one associated track file. A trip with no uploaded file is a valid empty draft — the map and stats views are unavailable until a file is attached. The system does not auto-detect or auto-group tracks; all grouping is an explicit user action.
-
-Multi-stage grouping (multiple track files per trip, FR-011) is a v2 feature. When implemented, the system will merge track files into a single rendered route in chronological order by GPS timestamp.
-
-## Access Control
-
-- **Authentication**: Email and password registration and login.
-- **Role model**: Flat — a single registered-user role. All authenticated users have identical capabilities on their own trips. No admin UI in v1.
-- **Visibility**: All trips are private in v1. Unauthenticated users cannot view any trip. A public/private toggle is a v2 feature (FR-009).
-- **Data isolation**: Users can only read, edit, and delete their own trips. No user can access another user's trips under any circumstances.
+Unchanged from v1: the trip map renders and the page reaches an interactive state within a time that does not feel broken on typical home broadband, with continuous visible feedback during load and no silent load failures. This property extends to the merged multi-stage render without a new target.
 
 ## Non-Goals
 
-- **No external platform integration**: No import from or sync with any external cycling, fitness, or mapping platform. Users upload track files manually. This keeps VeloLog independent and removes third-party API dependency and OAuth complexity from v1.
-  > Clarified v3 (2026-08-26): rendering the route requires map tiles, which v1 fetches from OpenStreetMap in the browser. This is consistent with the non-goal rather than an exception to it — there is no import, no sync, no account, no API key, and no server-side dependency, so an OSM outage degrades the map to blank tiles with the route still drawn. What the non-goal excludes is integration with a *platform holding user data*; a public basemap is not that. See `DEPLOY.md` for the tile-usage policy and privacy consequences.
-- **No route planning or track editing**: VeloLog is a log and viewer, not a planner or editor. Users upload finished tracks; no in-app route building or track modification.
-- **No native mobile app**: A responsive web app accessible from mobile browsers is sufficient. No app store distribution in v1.
-- **No AI or geographic enrichment features**: Automatic geographic enrichment (landmarks, regions, administrative areas) and weather retrieval are deferred to v2+.
-
-## Changelog
-
-- **v1 (2026-05-29)** — Initial PRD: hard deadline `2026-06-30`.
-- **v2 (2026-08-22)** — `hard_deadline` changed `2026-06-30` → `2026-09-10`.
-- **v3 (2026-08-26)** — FR-005, the Primary Success Criterion, and US-01 reworded from "static map image" to a non-interactive map, matching what shipped in slice S-03; FR-015's remaining v2 delta narrowed to interactivity. Non-Goals clarified that browser-fetched OSM raster tiles are in scope and why that does not contradict "no external platform integration". No scope change — user-visible outcome is unchanged.
+- **No accommodation waypoint entity in this change**: a standalone record with description/photo, placed between stages, is fast-follow, not built this week. Only the generic "stage break" marker ships.
+- **No manual stage reordering**: stage order is always derived from GPS timestamp; there is no drag-to-reorder UI or manual override in this change.
+- **No whole-trip/per-stage statistics in this change**: fast-follow — existing single-file distance/duration/elevation stats are not extended to multi-stage aggregation this week (v1's stats display continues to reflect only what it already covers).
+- **No product type or scale change**: still a responsive web app at small/solo scale; unchanged from v1.
 
 ## Open Questions
 
-_No open questions._
+1. **US-02 has no separate Acceptance Criteria checklist beyond its Given/When/Then.** — Owner: user. By: before implementation planning. Block: no — the Given/When/Then is sufficient to scope the change, but an explicit checklist would tighten testability.

@@ -44,6 +44,15 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
+      # Annotates but does not fail the build on a published advisory against a locked
+      # dependency — CI-as-report, not CI-as-gate, so a finding doesn't block a PR
+      # unrelated to the flagged package. Keeps the class of gap this step closes
+      # (Django/sqlparse CVEs shipping unnoticed) from recurring silently — see
+      # context/foundation/health-check.md fix #2.
+      - name: Dependency audit
+        continue-on-error: true
+        run: uvx pip-audit -r <(uv export --no-hashes --format requirements-txt)
+
       - name: Lint
         run: uv run ruff check .
 

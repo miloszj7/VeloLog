@@ -36,13 +36,12 @@ test_every_object_scoped_route_is_classified` already give their own declaration
 """
 
 import ast
+import functools
 from collections.abc import Iterator
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-TEST_DIR = REPO_ROOT / "tests"
-
-FuncDef = ast.FunctionDef | ast.AsyncFunctionDef
+from tests.astscan import REPO_ROOT, TEST_DIR, FuncDef
+from tests.astscan import class_test_methods as _class_test_methods
+from tests.astscan import module_test_functions as _module_test_functions
 
 # The Django test client methods that issue a request. `generic` and `trace` are included
 # even though nothing in this suite calls them today, so a future test using either is
@@ -295,39 +294,18 @@ def _has_behavior_probe(
     return False
 
 
-def _module_test_functions(tree: ast.Module) -> tuple[list[FuncDef], list[FuncDef]]:
-    """Split a module's top-level defs into (`test_*` functions, everything else)."""
-    tests: list[FuncDef] = []
-    helpers: list[FuncDef] = []
-    for node in tree.body:
-        if not isinstance(node, FuncDef):
-            continue
-        (tests if node.name.startswith("test_") else helpers).append(node)
-    return tests, helpers
+@functools.cache
+def _collect_analysis() -> dict[tuple[str, str], bool]:
+    """Map (relative path, test name) -> probe_found, for every test in the population.
 
+    A key absent from the result is out of population (not request-cycle) — callers that
+    need to tell "out of population" apart from "found" use `dict.get`, which already
+    returns `None` for a missing key with no need for the value type itself to carry it.
 
-def _class_test_methods(tree: ast.Module) -> list[tuple[str, FuncDef]]:
-    """`(qualified name, method)` for every `test_*` method of a top-level `Test*` class.
-
-    Pytest's default collection (`python_classes = Test*`, left unconfigured in
-    `pyproject.toml`) only picks up classes named this way, so restricting to that prefix
-    matches what pytest would actually run rather than over-counting. `AGENTS.md` documents
-    this shape for integration tests; without this, a class-based test was never in the
-    population at all — not reported as out of scope, just silently never seen.
+    Cached: three test functions in this module each call this over every file under
+    `tests/`, and the answer cannot change within one test session.
     """
-    methods: list[tuple[str, FuncDef]] = []
-    for node in tree.body:
-        if not (isinstance(node, ast.ClassDef) and node.name.startswith("Test")):
-            continue
-        for child in node.body:
-            if isinstance(child, FuncDef) and child.name.startswith("test_"):
-                methods.append((f"{node.name}::{child.name}", child))
-    return methods
-
-
-def _collect_analysis() -> dict[tuple[str, str], bool | None]:
-    """Map (relative path, test name) -> probe_found, or `None` if out of population."""
-    results: dict[tuple[str, str], bool | None] = {}
+    results: dict[tuple[str, str], bool] = {}
     for path in sorted(TEST_DIR.rglob("*.py")):
         if "__pycache__" in path.parts:
             continue
@@ -359,8 +337,7 @@ def _collect_analysis() -> dict[tuple[str, str], bool | None]:
 def test_the_population_is_non_empty() -> None:
     """Guard the guard: a heuristic that silently matched nothing would pass for free."""
     analysis = _collect_analysis()
-    population = {key: found for key, found in analysis.items() if found is not None}
-    assert population, (
+    assert analysis, (
         "the request-cycle population is empty — the client-call detection in "
         "test_assertion_strength.py no longer matches anything under tests/, which means "
         "this audit is not examining any test at all"

@@ -110,7 +110,7 @@ Milestone `M-02` slices migrated to GitHub Issues on 2026-09-02, under the GitHu
 
 ## Open Roadmap Questions
 
-1. **US-02 has no separate Acceptance Criteria checklist beyond its Given/When/Then.** — Owner: user. Block: no. Carried verbatim from PRD `## Open Questions` #1; the Given/When/Then is sufficient to scope S-01/S-02, but tightening it before `/10x-plan` would sharpen testability.
+1. ~~**US-02 has no separate Acceptance Criteria checklist beyond its Given/When/Then.**~~ — **Resolved 2026-09-02**, in `prd.md` → US-02 `#### Acceptance Criteria` (and its `## Open Questions` #1). Answered *after* `/10x-plan` rather than before it: S-01's plan worked out the concrete criteria while deciding what to build, so the checklist was backfilled from the plan's Phase 2/3/4 success criteria instead of being guessed at up front. One PRD amendment rode along — Non-Goal #3 narrowed to whole-trip aggregation only, which **narrows S-03**: per-stage display now lands in S-01, leaving S-03 as trip-total aggregation plus its partial-data presentation rule. S-01's plan already schedules that S-03 re-wording as Phase 4 work; this row records why it is coming.
 
 ## Parked
 

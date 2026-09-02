@@ -1,4 +1,4 @@
-/* Draws an uploaded GPX route as a map that behaves like a static image.
+/* Draws an uploaded GPX route as an interactive pan/zoom Leaflet map.
  *
  * Everything this file needs arrives in one JSON blob rendered by
  * `trips/trip_detail.html` via `{{ ...|json_script }}`. Nothing is interpolated into
@@ -52,17 +52,20 @@
 
         var map = L.map("map", {
             maxZoom: MAX_ZOOM,
-            // FR-015 (an interactive map) is parked for v2. Until then the map is a
-            // picture of the route: every interaction handler is off, and the zoom
-            // control is hidden rather than left visible and inert.
-            dragging: false,
+            // FR-015 (an interactive map) is live: dragging, touch/double-click zoom,
+            // keyboard pan/zoom, and the zoom control are all on. `scrollWheelZoom`
+            // stays off at init and is enabled by the click-to-enable control below —
+            // the standard fix for the trap where scrolling the page over an embedded
+            // map hijacks the scroll into a zoom. `boxZoom` and `tapHold` stay off;
+            // out of scope per user decision.
+            dragging: true,
             scrollWheelZoom: false,
-            touchZoom: false,
-            doubleClickZoom: false,
-            keyboard: false,
+            touchZoom: true,
+            doubleClickZoom: true,
+            keyboard: true,
             boxZoom: false,
             tapHold: false,
-            zoomControl: false
+            zoomControl: true
         });
 
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -92,6 +95,39 @@
         // line being drawn, and the client stays off an API surface the 1.x docs did not
         // confirm. The padding keeps the route off the edge of the frame.
         map.fitBounds(config.bounds, {padding: [20, 20]});
+
+        // The map is fully drawn and functional at this point, so the fallback comes
+        // down here rather than after the decorative hint control below. That keeps
+        // fallback removal gated on "core map exists," not on the hint also
+        // succeeding — a throw from the hint code would otherwise skip removal and
+        // leave a fully rendered live map sitting behind the "could not be loaded"
+        // message, contradicting this file's own contract (see header comment).
+        if (fallback && fallback.parentNode) {
+            fallback.parentNode.removeChild(fallback);
+        }
+
+        // Scroll-wheel zoom starts disabled (see the L.map options above); this hint
+        // control tells the user how to turn it on, and the first interaction with the
+        // map turns it on and removes itself. Leaflet's own controls (including the
+        // zoom control enabled above) call L.DomEvent.disableClickPropagation on their
+        // DOM element, so clicking them never reaches the map as a "click" event, and
+        // Leaflet suppresses the synthetic "click" fired after a drag gesture — so
+        // "click" alone would miss both. Binding to dragstart/zoomstart too means
+        // panning or using the zoom control also enables scroll zoom, not only a
+        // literal click on the map surface.
+        var ScrollZoomHint = L.Control.extend({
+            options: {position: "topright"},
+            onAdd: function () {
+                var el = L.DomUtil.create("div", "leaflet-control-scroll-zoom-hint leaflet-bar");
+                el.textContent = "Click map to enable scroll zoom";
+                return el;
+            }
+        });
+        var scrollZoomHint = new ScrollZoomHint().addTo(map);
+        map.once("dragstart zoomstart click", function () {
+            map.scrollWheelZoom.enable();
+            map.removeControl(scrollZoomHint);
+        });
     } catch (error) {
         // Swallowed on purpose. The fallback paragraph is still in the container, and that
         // message is the entire user-visible contract for a failed draw; there is no error
@@ -100,10 +136,5 @@
             window.console.error("VeloLog: the route map could not be drawn.", error);
         }
         return;
-    }
-
-    // Last, and only once every drawing call above has returned.
-    if (fallback && fallback.parentNode) {
-        fallback.parentNode.removeChild(fallback);
     }
 })();

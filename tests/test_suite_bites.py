@@ -31,6 +31,21 @@ CLAIMED_RISK_AREAS = frozenset({"#1", "#2", "#3", "#5", "#7"})
 
 FAILED_RE = re.compile(r"(\d+) failed")
 ERROR_RE = re.compile(r"(\d+) error")
+FAILURE_MARKED_LINE_RE = re.compile(r"^(?:>|E)\s")
+
+
+def _failure_marked_lines(output: str) -> str:
+    """The `> ` flow-marker line and `E ` explanation lines pytest prints for a failure.
+
+    On failure, pytest also prints every source line of the guard function from its `def`
+    down to the failing statement, as unmarked context — a fragment drawn from any assertion
+    earlier than the one that actually tripped would appear there regardless of *why* the
+    test failed. These two line kinds are the only ones that describe what actually happened,
+    so matching a shape's fragment against just this text is what tells "this exact assertion
+    failed" apart from "some other assertion failed and an earlier statement happens to share
+    the fragment's text as source context".
+    """
+    return "\n".join(line for line in output.splitlines() if FAILURE_MARKED_LINE_RE.match(line))
 
 
 def _run_guard_under_mutation(shape: MutationShape) -> str:
@@ -93,11 +108,12 @@ def test_the_mutation_shape_flips_its_guard_for_the_named_reason(shape: Mutation
         f"failure output never names the guard test:\n{output}"
     )
 
-    assert shape.fragment in output, (
+    failure_lines = _failure_marked_lines(output)
+    assert shape.fragment in failure_lines, (
         f"shape {shape.name!r}'s guard failed, but not for the named reason — the expected "
-        f"fragment {shape.fragment!r} is absent from the output, which means either the "
-        f"guard was weakened (a different assertion in it failed first) or the patch target "
-        f"moved:\n{output}"
+        f"fragment {shape.fragment!r} is absent from the failure-marked lines, which means "
+        f"either the guard was weakened (a different assertion in it failed first) or the "
+        f"patch target moved:\n{output}"
     )
 
 

@@ -113,16 +113,15 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | GitHub Issue | Linear Issue | Notes |
-| ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ------------ | ------------ | ----- |
-| S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | [#1](https://github.com/miloszj7/VeloLog/issues/1) | [10X-1](https://linear.app/miloszj/issue/10X-1/s-01-user-can-register-log-in-and-log-out) | Run `/10x-plan user-registration-login` |
-| S-02       | `create-and-list-trips`          | Create and list trips                                       | yes                     | [#2](https://github.com/miloszj7/VeloLog/issues/2) | [10X-2](https://linear.app/miloszj/issue/10X-2/s-02-user-can-create-a-trip-and-see-it-in-their-trip-list) | Planned and implemented (Phase 5, `/10x-implement create-and-list-trips`) |
-| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | yes                     | [#3](https://github.com/miloszj7/VeloLog/issues/3) | [10X-3](https://linear.app/miloszj/issue/10X-3/s-03-user-can-upload-a-gpx-file-and-see-the-route-as-a-static-map) | Planned and implemented (Phase 6, `/10x-implement upload-gpx-and-view-map`) |
-| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | yes                     | [#4](https://github.com/miloszj7/VeloLog/issues/4) | [10X-4](https://linear.app/miloszj/issue/10X-4/s-04-user-can-edit-and-delete-a-trip) | Planned and implemented (Phase 5, `/10x-implement edit-and-delete-trip`) |
-| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | yes                     | [#5](https://github.com/miloszj7/VeloLog/issues/5) | [10X-5](https://linear.app/miloszj/issue/10X-5/s-05-user-can-view-basic-trip-stats) | Planned and implemented (Phase 5, `/10x-implement trip-distance-duration-stats`) |
+| Roadmap ID | Change ID                      | Suggested issue title                                    | Ready for `/10x-plan` | GitHub Issue | Notes |
+| ---------- | -------------------------------- | ---------------------------------------------------------- | ---------------------- | ------------ | ----- |
+| S-01       | `user-registration-login`        | User registration and login/logout                         | yes                     | [#1](https://github.com/miloszj7/VeloLog/issues/1) | Run `/10x-plan user-registration-login` |
+| S-02       | `create-and-list-trips`          | Create and list trips                                       | yes                     | [#2](https://github.com/miloszj7/VeloLog/issues/2) | Planned and implemented (Phase 5, `/10x-implement create-and-list-trips`) |
+| S-03       | `upload-gpx-and-view-map`        | Upload GPX and view route as static map (north star)        | yes                     | [#3](https://github.com/miloszj7/VeloLog/issues/3) | Planned and implemented (Phase 6, `/10x-implement upload-gpx-and-view-map`) |
+| S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | yes                     | [#4](https://github.com/miloszj7/VeloLog/issues/4) | Planned and implemented (Phase 5, `/10x-implement edit-and-delete-trip`) |
+| S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | yes                     | [#5](https://github.com/miloszj7/VeloLog/issues/5) | Planned and implemented (Phase 5, `/10x-implement trip-distance-duration-stats`) |
 
-Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions.
-Mirrored to Linear on 2026-08-22 — see `context/foundation/linear-issues-migration.md` for the format, labels, and mirroring decisions.
+Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions. Linear mirror retired 2026-08-31 → `context/archive/foundation/2026-08-31-linear-issues-migration.md`; GitHub Issues is now the sole tracker.
 
 ## Open Roadmap Questions
 
@@ -153,7 +152,6 @@ item is in `### Details`.
 
 | ID   | Item                                                    | Trigger                                                        | Status      |
 | ---- | -------------------------------------------------------- | ----------------------------------------------------------------- | ----------- |
-| E-03 | Tracker statuses never sync back from GitHub/Linear       | Before the next roadmap regeneration                               | open        |
 | E-04 | `railway.json` must migrate to `.railway/railway.ts`       | By 2026-11-01, after the 2026-09-10 product deadline               | open        |
 | E-07 | `$5` Railway spend alert un-reverified                     | After free trial expires (23 days from 2026-08-28)                 | **blocked** (on free trial) |
 | E-10 | `Trip.date` is a single field on a multi-day product       | FR-011 (multi-stage grouping) — needs a PRD amendment first        | open        |
@@ -162,6 +160,7 @@ item is in `### Details`.
 
 | ID   | Item                                                                | Status               | GitHub Issue |
 | ---- | ---------------------------------------------------------------------- | --------------------- | ------------ |
+| E-03 | Tracker statuses never sync back from GitHub/Linear                 | done (2026-08-31)      | — |
 | E-01 | CI ran no tests/lint/type checks before merge                           | done                   | [#7](https://github.com/miloszj7/VeloLog/issues/7) |
 | E-02 | `gates` was not a required branch-protection check                      | done (2026-08-28)      | [#19](https://github.com/miloszj7/VeloLog/issues/19) |
 | E-05 | DB/media restore path had never been exercised                          | done (2026-08-26)      | — |
@@ -194,7 +193,7 @@ item is in `### Details`.
 - **Item:** Tracker statuses never propagate — GitHub and Linear migrations are documented as one-way with no sync back.
 - **Proposed fix:** Decide whether trackers are authoritative or decorative, and either close them out per slice or note in the roadmap that they are a point-in-time snapshot.
 - **Trigger:** Before the next roadmap regeneration.
-- **Status:** open (partial: `ci-quality-gates` PR #8 added the `GitHub Issue` column read by this item, but the gap it describes — no sync *back* from GitHub — is untouched)
+- **Status:** done (2026-08-31) — Linear mirror retired; GitHub Issues is now the single source of truth. Manual sync adopted (Option A): when a GitHub issue with the `roadmap` label is closed, update `roadmap.md`'s `Status` field by hand. Automation rejected as overkill for a 5-issue roadmap.
 - **GitHub Issue:** —
 
 #### E-04 — `railway.json` must migrate to `.railway/railway.ts`

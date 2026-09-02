@@ -100,11 +100,13 @@ No foundations are needed. The data model already supports multiple stages per t
 
 ## Backlog Handoff
 
-| Roadmap ID | Change ID                 | Suggested issue title                                              | Ready for `/10x-plan` | Notes |
-| ---------- | -------------------------- | ---------------------------------------------------------------------- | ---------------------- | ----- |
-| S-01       | `multi-stage-gpx-upload`   | Multi-stage GPX upload: chronological merge, segments, stage markers   | yes                     | Run `/10x-plan multi-stage-gpx-upload` — north star |
-| S-02       | `interactive-trip-map`     | Flip trip map to interactive (pan/zoom)                                 | yes                     | Run `/10x-plan interactive-trip-map` — can run in parallel with S-01 |
-| S-03       | `multi-stage-trip-stats`   | Whole-trip and per-stage statistics (stretch goal)                      | no                      | Stretch — only plan after S-01 lands and time remains before 2026-09-10 |
+| Roadmap ID | Change ID                 | Suggested issue title                                              | Ready for `/10x-plan` | GitHub Issue | Notes |
+| ---------- | -------------------------- | ---------------------------------------------------------------------- | ---------------------- | ------------ | ----- |
+| S-01       | `multi-stage-gpx-upload`   | Multi-stage GPX upload: chronological merge, segments, stage markers   | yes                     | [#37](https://github.com/miloszj7/VeloLog/issues/37) | Run `/10x-plan multi-stage-gpx-upload` — north star |
+| S-02       | `interactive-trip-map`     | Flip trip map to interactive (pan/zoom)                                 | yes                     | [#38](https://github.com/miloszj7/VeloLog/issues/38) | Run `/10x-plan interactive-trip-map` — can run in parallel with S-01 |
+| S-03       | `multi-stage-trip-stats`   | Whole-trip and per-stage statistics (stretch goal)                      | no                      | [#39](https://github.com/miloszj7/VeloLog/issues/39) | Stretch — only plan after S-01 lands and time remains before 2026-09-10 |
+
+Milestone `M-02` slices migrated to GitHub Issues on 2026-09-02, under the GitHub milestone "VeloLog v1.5" (due 2026-09-10) — see `context/foundation/github-issues-migration.md` for format and decisions.
 
 ## Open Roadmap Questions
 

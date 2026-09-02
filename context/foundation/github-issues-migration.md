@@ -19,6 +19,22 @@ GitHub Issues is now the single source of truth for roadmap tracking. Manual syn
 adopted: when a GitHub issue with the `roadmap` label is closed, update `roadmap.md`'s
 `Status` field by hand.
 
+**2026-09-02 update — M-02 migration:** milestone `M-02` (multi-stage trips and
+interactive map) slices S-01–S-03 were migrated the same way, under a new GitHub
+milestone, **"VeloLog v1.5"**, due `2026-09-10` (the roadmap's stated hard deadline for
+this milestone — same convention as the original "VeloLog v1" milestone, kept separate
+so each roadmap milestone maps to its own GitHub milestone). Same format, same label
+set — no new labels were needed. Issues were created in roadmap dependency order
+(S-01 → S-02 → S-03), same as the original migration; S-01's `Parallel with: S-02`
+forward reference was backfilled via `gh issue edit` once S-02 existed, for the same
+reason as the original `S-03`/`S-04` case.
+
+| Roadmap ID | Change ID | GitHub Issue |
+|---|---|---|
+| S-01 | `multi-stage-gpx-upload` | [#37](https://github.com/miloszj7/VeloLog/issues/37) |
+| S-02 | `interactive-trip-map` | [#38](https://github.com/miloszj7/VeloLog/issues/38) |
+| S-03 | `multi-stage-trip-stats` | [#39](https://github.com/miloszj7/VeloLog/issues/39) |
+
 ## Scope
 
 Only rows from `## At a glance` / `## Backlog Handoff` (i.e. `F-NN` and `S-NN` roadmap

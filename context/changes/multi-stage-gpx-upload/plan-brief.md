@@ -79,16 +79,18 @@ single-track signatures and are called once per stage, so no aggregate is invent
 | 2. ADD semantics | Stages accumulate; ordering expression; mutation shape | The dangerous one — a leftover delete destroys prior stages' files |
 | 3. Multi-stage rendering | Segments + marker array payload; `map.js` loops; palette amendment | Payload shape change breaks the `#map` byte-exact pin or the manifest-resolved icons |
 | 4. Stage list + per-stage stats | Stages section: swatch, filename, figures, download link | Largest template diff; the stats correctness fix that is *not* cuttable |
-| 5. Backfill *(cuttable)* | Instants filled on pre-existing rows | A migration cannot be re-applied — a bad `MEDIA_ROOT` fills nothing silently |
-| 6. Marker pins *(cuttable)* | Three SVG pins replacing the shared Leaflet one | Wrong anchor puts the pin tip off its coordinate |
+| 5. Marker pins | Three SVG pins replacing the shared Leaflet one | Wrong anchor puts the pin tip off its coordinate |
+| 6. Backfill *(cuttable)* | Instants filled on pre-existing rows | A migration cannot be re-applied — a bad `MEDIA_ROOT` fills nothing silently |
 | 7. Derived span + wording *(cuttable)* | Tour span on the detail page; corrected help text | Showing a span over partially timed stages understates the tour |
 
 **Prerequisites:** none — S-02 (interactive map) is already `done`, and no foundation work is
 outstanding. Real timed GPX exports from the owner's device are needed for Phase 3's
 measurement and Phase 5's manual verification.
 
-**Estimated effort:** ~4-6 after-hours sessions. Phases 1-4 are the shippable core; 5-7 are
-the nominated cuts, ordered most-valuable-first, against the 2026-09-10 deadline.
+**Estimated effort:** ~4-6 after-hours sessions. Phases 1-5 are the shippable core — the
+marker pins are in it, not in the tail, because "distinct markers … without hovering" is a
+PRD must-have (`prd.md:96-97,127`) that Phase 3's shared pin satisfies only on hover. Phases
+6-7 are the nominated cuts, ordered most-valuable-first, against the 2026-09-10 deadline.
 
 ## Open Risks & Assumptions
 

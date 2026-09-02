@@ -134,10 +134,15 @@ path — server payload and client rendering together, since the payload shape i
 boundary and the drawing is only verifiable by eye. Then the stage list, which is where the
 per-stage statistics decision lands.
 
-The last three phases are the ones nominated as cuttable, ordered most-valuable-first:
-backfill, then the custom pins, then the derived span. Each is self-contained and leaves the
-codebase shippable if the week runs out — Phase 3 deliberately emits marker *kinds* through
-a keyed `icons` map so Phase 6 is a two-URL swap rather than a rewrite.
+Then the custom pins, which are **not** cuttable: the "distinct markers" clause is a PRD
+must-have (`prd.md:96-97,127`) that Phase 3's shared pin satisfies only on hover, so Phases
+1-5 are the shippable core. Phase 3 deliberately emits marker *kinds* through a keyed
+`icons` map so Phase 5 is a two-URL swap rather than a rewrite, which is what makes it cheap
+enough to sit inside the core rather than in the tail.
+
+Only the last two phases are nominated as cuttable, ordered most-valuable-first: backfill,
+then the derived span. Each is self-contained and leaves the codebase shippable if the week
+runs out.
 
 ## Critical Implementation Details
 
@@ -227,7 +232,7 @@ site instead.
 
 **File**: `gpx/migrations/0004_gpxtrack_stage_instants.py`
 
-**Intent**: Additive-first, schema only — the data write is a separate migration in Phase 5,
+**Intent**: Additive-first, schema only — the data write is a separate migration in Phase 6,
 so the two are independently reversible, exactly as `0002`/`0003` are.
 
 **Contract**: `AddField` ×2, both nullable. Generated with `makemigrations gpx` and committed
@@ -298,6 +303,15 @@ guarantee, so leaving them is `lessons.md` #11 in its exact shape. Keep a short 
 docstring recording *why* the delete is gone and that `post_delete` remains the only path
 that removes a file, so the next reader does not reinstate it as "cleanup".
 
+**The rider-facing replace copy changes here too, not in Phase 4.** `trip_detail.html:159`
+and `:174` read `{% if track %}` — two uses that sit *outside* the `:41` gate — and render
+"Replace the route" / "Replace GPX file". Both become "Add a stage" / "Add GPX file"
+unconditionally in this phase, because this is the phase where the semantics actually flip:
+leaving them until Phase 4 would ship one commit whose button promises a replacement the
+view no longer performs, which is `lessons.md` #11 aimed at the rider instead of the next
+reader. Add `trips/templates/trips/trip_detail.html` to this phase's touched files for those
+two strings only — the `:41` gate and everything under it stay untouched until Phase 4.
+
 Note for the implementer: `transaction.atomic()` is no longer needed for a single insert,
 but E-11's roadmap row (`roadmap.md:247`) names "the next time `gpx/views.py`'s upload
 transaction is touched" as a deliberate-reopening trigger. State in the commit message that
@@ -347,10 +361,32 @@ the delete returns.
 **Contract**: A `MutationShape` named `upload_replaces_instead_of_adding`, `risk="#1"`,
 patching `gpx.views` / `GpxUploadView.form_valid` (a class attribute, so the dotted-attribute
 form the `unscoped_trip_detail_queryset` shape already uses) with a replacement that
-reinstates the read-then-delete. `guard_node_id` names the Phase 2 test below;
-`fragment` is a distinctive string from that test's assertion message.
-`tests/test_suite_bites.py` asserts every risk area has a shape and every guard node
-resolves, so this registration is checked rather than trusted.
+reinstates the read-then-delete. `replacement` is a zero-argument *factory* returning the
+broken `form_valid`, with any Django-model import deferred inside it, per the registry's own
+module docstring. `guard_node_id` names the Phase 2 test below, in
+`tests/<path>.py::<test name>` posix form; `fragment` is a distinctive string from that
+test's assertion message. `tests/test_suite_bites.py` asserts every risk area has a shape
+and every guard node resolves, so the registration itself is checked rather than trusted.
+
+**`fragment` must be *proven* to discriminate, not chosen to look distinctive.**
+`test-plan.md` §6.8 is explicit that the obvious check is worthless here: "a clean unmutated
+pass proves nothing, since a passing run prints no source at all and every fragment is
+trivially absent from it", and "a shape whose guard stays green, or goes red for an
+unrelated reason, is a broken shape — do not commit it un-verified." So do both halves
+before committing:
+
+1. **Positive.** `VELOLOG_MUTATION=upload_replaces_instead_of_adding` on the guard node with
+   `-o addopts=`, and confirm it fails with `fragment` present in the `>` / `E ` lines — not
+   a collection error, and not some other assertion in the same test.
+2. **Negative.** Force the guard to fail for an *unrelated* reason with the mutation off
+   (break some unrelated precondition), and confirm `fragment` is **absent** from those
+   `>` / `E ` lines. This is the half that catches a fragment matching by way of source
+   context or a neighbouring assertion, and it is the only half that proves the shape is
+   pinned to the behaviour it names.
+
+This matters more here than for any existing shape: risk #1 is permanent loss of a rider's
+file, and an unverified fragment means the harness reports protection it does not have —
+which is risk #4 (`test-plan.md` §2) wearing risk #1's clothes.
 
 #### 5. Signal re-verification
 
@@ -392,6 +428,7 @@ one-track-replaced to two-tracks-accumulated.
 - The `pre_save` receiver removes nothing when a sibling stage is inserted
 - Deleting one stage removes exactly its own file, leaving the sibling's in place
 - The bite-proof harness passes with the new shape: `uv run pytest -m bite_proof -v`
+- The new shape's `fragment` is proven to discriminate, per `test-plan.md` §6.8: present in the guard's failure output under the mutation, and **absent** when the guard is broken for an unrelated reason
 - Quality gates pass: `/python-quality-gates`
 
 #### Manual Verification:
@@ -448,10 +485,24 @@ keep their single-track signatures; they are called once per stage.
 
 #### 3. Map payload
 
-**File**: `gpx/map_config.py`
+**Files**: `gpx/map_config.py`, `gpx/statistics.py` (docstring only)
 
 **Intent**: Segments and markers as data, so the assertions land on the payload rather than
 on Leaflet's drawing (`test-plan.md:323`).
+
+**Two module docstrings currently assert this signature and must move with it.**
+`gpx/statistics.py:30-31` claims "`build_trip_stats` mirrors `gpx/map_config.py`'s
+`build_map_config` exactly — same `GpxTrack | None` in, same 'or `None` when there is
+nothing to show' out". Half of that stops being true here: `build_map_config` takes
+`Sequence[Stage]` while `build_trip_stats` deliberately keeps its single-track signature
+(§2). Correct it to name only the half that survives — the `None`-when-nothing-to-show
+discipline, which is the part the template actually depends on — and drop the input-type
+claim rather than deleting the paragraph, since the discipline is still the reason both
+helpers live outside the views. Re-read `gpx/availability.py:1-8` at the same time: its
+"exact drift `build_map_config` and `build_trip_stats` already exist to prevent" sentence is
+about drift, not signatures, so it should survive unedited — confirm that rather than
+assume it. `lessons.md` #11: a docstring is a claim the body must honour, and a stale one
+misdirects the next reader instead of merely aging.
 
 **Contract**: `build_map_config(stages: Sequence[Stage]) -> dict[str, Any] | None`, returning
 `None` when there are no stages or when no stage has points. Shape:
@@ -473,7 +524,7 @@ when `chronology_is_established` — an upload-ordered boundary has no real-worl
 A stage carrying no points is skipped for segments and markers but must not crash the build.
 
 `icons` becomes a mapping keyed by marker kind. In this phase all three values are the same
-existing Leaflet pin blob, which is what makes Phase 6 a two-URL swap rather than a rewrite.
+existing Leaflet pin blob, which is what makes Phase 5 a two-URL swap rather than a rewrite.
 
 #### 4. Both views
 
@@ -484,8 +535,27 @@ already demand.
 
 **Contract**: Both set `context["stages"] = build_stages(trip)` and
 `context["map_config"] = build_map_config(stages)`, plus
-`context["chronology_established"]`. The keys `track`, `stats` and `track_file_available`
-are retired — the template reads them per stage now. Both docstrings update to say so.
+`context["chronology_established"]`. Both docstrings update to say so.
+
+**`track`, `stats` and `track_file_available` are *not* retired here** — they survive this
+phase as a deliberate interim shim, each resolved from `stages[0]` (equivalently, the first
+element of `ordered_stage_tracks(trip)`, which Phase 2 already computes at both call sites)
+and each carrying a comment naming Phase 4 §1 as its removal point. Retiring them in this
+phase would break the page and this phase's own criteria, because the template does not
+change until Phase 4:
+
+- `trip_detail.html:41`'s `{% if track %}` gate wraps **both** the Route block (`:42-92`)
+  and the Stats block (`:103-149`), and `{% if map_config %}` (`:44`) is *nested inside* it.
+  With `track` falsy the whole page falls to the `{% else %}` empty state at `:150`, so
+  `#map` and the `json_script` element are never rendered — which makes criterion 3.9
+  ("`#map`'s markup is byte-identical to today") unsatisfiable and reddens
+  `tests/trips/test_trip_detail_map.py:60`.
+- Three test files read the keys and are not otherwise touched here:
+  `tests/trips/test_trip_detail.py:109,134` and `tests/gpx/test_gpx_upload.py:343`.
+
+The shim's only honest reading is "the chronologically first stage", not "the trip's
+track" — which is exactly why it is temporary and why the comment is load-bearing rather
+than decorative. Phase 4 §1 deletes all three in the same edit that stops reading them.
 
 #### 5. Client rendering
 
@@ -514,6 +584,30 @@ literal path written into `map_config.py`. The coordinate test asserts `segments
 cover segment count and per-stage colour, whole-trip bounds across stages, the marker array's
 kinds and positions, and break-marker suppression when chronology is not established.
 
+#### 7. Repoint the risk-#3 mutation shape
+
+**File**: `tests/mutations.py`
+
+**Intent**: `file_always_available` (`:130-146`) is the **only** shape covering risk #3, and
+§2 moves the name it patches out from under it. Left alone, `pytest -m bite_proof` fails and
+CI's `Suite credibility` step goes red — for a reason that has nothing to do with what
+broke.
+
+**Contract**: The shape names `module_path="trips.views"` / `attribute="track_file_is_available"`,
+and its comment states why: "`trips/views.py` does `from gpx.availability import
+track_file_is_available`, so the view's live reference is
+`trips.views.track_file_is_available` — patching `gpx.availability.track_file_is_available`
+would leave the view untouched." Once `build_stages` owns that call, `trips.views` no longer
+reads the name and the patch target ceases to exist. Repoint `module_path` at the module
+that now reads it — `gpx.stages` — and **rewrite the comment to match**, since it explains a
+re-export trap whose location has moved; a stale comment here is worse than none
+(`lessons.md` #11).
+
+`fragment` needs no edit *in this phase*: Phase 3 §4's shim keeps
+`context["track_file_available"]` alive, so the guard's assertion is unchanged. It moves in
+Phase 4 §3, with the assertion it quotes. Verify the repointed shape per `test-plan.md` §6.8
+before committing — a shape whose guard stays green is a broken shape.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -528,6 +622,7 @@ kinds and positions, and break-marker suppression when chronology is not establi
 - Marker icon URLs still resolve through staticfiles storage when `STATIC_URL` moves
 - `#map`'s markup is byte-identical to today, fallback paragraph included
 - Static references resolve: `uv run python manage.py collectstatic --noinput` then `uv run pytest tests/test_static_references.py`
+- The bite-proof harness still passes with the repointed risk-#3 shape: `uv run pytest -m bite_proof -v`
 - Quality gates pass: `/python-quality-gates`
 
 #### Manual Verification:
@@ -551,14 +646,20 @@ trip would print the newest stage's distance as the trip's.
 
 ### Changes Required:
 
-#### 1. Detail template
+#### 1. Detail template, and retiring Phase 3's shim
 
-**File**: `trips/templates/trips/trip_detail.html`
+**Files**: `trips/templates/trips/trip_detail.html`, `trips/views.py`, `gpx/views.py`
 
 **Intent**: One structure ties colour, filename, figures and download together, so a rider
 can answer "how long was the orange stage" without counting positions across three lists.
 
-**Contract**: The `{% if track %}` gate becomes `{% if stages %}`. The Route section keeps
+**Contract**: This is where Phase 3 §4's interim shim dies. The three legacy context keys —
+`track`, `stats`, `track_file_available` — are deleted from **both** views in the same edit
+that stops the template reading them, never earlier: the template's gate is what keeps them
+alive, so removing either half alone breaks the page (see Phase 3 §4). Both view docstrings
+drop the shim note.
+
+The `{% if track %}` gate becomes `{% if stages %}`. The Route section keeps
 `#map`, its fallback paragraph and the `json_script` element **byte-identical**. Below it, a
 Stages section loops `stages`, each row rendering: an inline colour swatch (a small span
 whose background is `stage.color`, the palette's only non-map use), `Stage {{ stage.number }}`,
@@ -570,15 +671,36 @@ have not been worked out for this route.") is preserved per stage.
 
 The list is labelled as chronological **only when `chronology_established`**; otherwise it
 carries a short line saying the stages are shown in upload order because the files carry no
-ride timestamps. The upload card's heading and button become "Add a stage" / "Add GPX file"
-unconditionally — there is no replace branch left to switch on.
+ride timestamps. The upload card's heading and button already read "Add a stage" / "Add GPX
+file" unconditionally — Phase 2 changed those two strings when the semantics flipped, so
+there is no replace branch left here to switch on.
 
 A single-stage trip renders one row, so a v1 trip's information is unchanged even though its
 layout is.
 
-#### 2. Stats and detail tests
+#### 2. Delete-confirmation copy
 
-**Files**: `tests/trips/test_trip_detail_stats.py`, `tests/trips/test_trip_detail.py`
+**Files**: `trips/templates/trips/trip_confirm_delete.html`, `tests/trips/test_trip_delete.py`
+
+**Intent**: `:19-20` warns "Its GPX file will be deleted too." — singular, and after this
+change one sentence stands in for five files. The template's own comment says why it exists
+at all: "a name and a date can be retyped, an uploaded GPX file cannot." Under-counting what
+is about to be destroyed is the one place that reasoning fails outright. This is the only gap
+this change opens against the PRD guardrail that existing trips' delete flow is unchanged
+(`prd.md:112-113`) — the *behaviour* is unchanged; the copy stops being true.
+
+**Contract**: Pluralise against the stage count, keeping the `{% if trip.tracks.exists %}`
+branch and the "one idiom, not two" template-branching decision its comment records. Update
+`GPX_WARNING` in `tests/trips/test_trip_delete.py` in step — it pins the exact string, and
+`test_confirmation_page_for_a_trackless_trip_omits_the_gpx_warning` (`:45-61`) is, by its own
+docstring, "the only automated check on the `{% if trip.tracks.exists %}` branch", so it must
+keep discriminating both ways. Add a case proving a multi-stage trip's warning names more
+than one file.
+
+#### 3. Stats and detail tests
+
+**Files**: `tests/trips/test_trip_detail_stats.py`, `tests/trips/test_trip_detail.py`,
+`tests/gpx/test_gpx_upload.py`, `tests/mutations.py`
 
 **Intent**: These pin a single unlabelled stats block; the block is now per stage.
 
@@ -589,7 +711,21 @@ stage whose file is missing renders the unavailable text while its siblings keep
 and the chronological/upload-order wording follows the predicate. Every new request-cycle
 test must assert past its status code or `tests/test_assertion_strength.py` fails the suite.
 
-#### 3. Roadmap and agent-doc sync
+The three assertions on the retired keys move to their per-stage equivalents in this phase,
+together with the shim they read: `tests/trips/test_trip_detail.py:109,134` (both branches
+of file availability — the pair its own docstring insists on keeping separate) and
+`tests/gpx/test_gpx_upload.py:343`, whose point is that the *rejected-upload* re-render
+supplies the same context as a normal visit and so must move in step with it.
+
+`file_always_available`'s `fragment` moves with them. It currently quotes the assertion
+verbatim — `'assert response.context["track_file_available"] is False'` — so retiring that
+key strands it, and `tests/test_suite_bites.py` asserts the guard fails *for the named
+reason*, not merely that it fails. Requote it from the rewritten per-stage assertion in
+`tests/trips/test_trip_detail.py`, and re-verify per `test-plan.md` §6.8: force the guard to
+fail for an unrelated reason and confirm the new fragment stays absent from the `>` / `E `
+lines. (Phase 3 §7 already repointed this shape's `module_path`; this is the other half.)
+
+#### 4. Roadmap and agent-doc sync
 
 **Files**: `context/foundation/roadmap.md`, `AGENTS.md`
 
@@ -611,8 +747,10 @@ stage order is applied at the query site.
 - A stage whose statistics are all null renders the "not worked out" sentence, not four blanks
 - A single-stage trip renders exactly one row and the same figures it renders today
 - The list claims chronological order only when every stage has `started_at`
+- The delete confirmation names more than one file for a multi-stage trip, one for a single-stage trip, and none for a trackless one
 - `#map`'s markup and the `json_script` element are unchanged
 - The assertion-strength audit passes with no new waivers: `uv run pytest tests/test_assertion_strength.py`
+- The bite-proof harness still passes with the requoted risk-#3 fragment: `uv run pytest -m bite_proof -v`
 - Quality gates pass: `/python-quality-gates`
 
 #### Manual Verification:
@@ -623,75 +761,7 @@ stage order is applied at the query site.
 
 ---
 
-## Phase 5: Backfill stage instants for existing rows *(cuttable)*
-
-### Overview
-
-Fill `started_at` / `ended_at` on rows that predate the columns, by re-parsing the bytes still
-in storage. Without this, US-02's own scenario — a trip that *already* has a stage, gaining a
-second — can never establish chronology, because the pre-existing stage has no instant.
-
-### Changes Required:
-
-#### 1. Backfill helper
-
-**File**: `gpx/statistics.py`
-
-**Intent**: The re-parse-from-storage path already exists and is unit-tested; extend it
-rather than adding a second one, so a backfilled row and a freshly uploaded one cannot
-disagree about the same file.
-
-**Contract**: `backfill_track_statistics` also writes the two instants, and `STATS_FIELDS`
-grows to include them — the tuple is what keeps `update_fields`, the migration's null-row
-filter and the management command's from drifting apart. The broad `except Exception` with
-its `logger.exception` and `False` return is unchanged; so is the `update_fields` discipline
-that keeps `points` and the bounds untouched. The module docstring notes it is now pinned by
-migration `0005` as well as `0003`.
-
-#### 2. Data migration
-
-**File**: `gpx/migrations/0005_backfill_gpxtrack_stage_instants.py`
-
-**Intent**: Data-only and separate from `0004`, per the additive-first rule the `0002`/`0003`
-pair established.
-
-**Contract**: `RunPython` importing `backfill_track_statistics` **inside** the function body
-under a broad `except Exception`, so a rename degrades to one logged skip rather than
-breaking the unattended `migrate` that runs at container boot. Filter
-`started_at__isnull=True`, `.only("id", "file", *STATS_FIELDS)` so the `points` blob stays off
-the query, and wrap each row in a savepoint — `Model.save_base` otherwise poisons the outer
-transaction. Reverse is `RunPython.noop`.
-
-#### 3. Management command
-
-**File**: `gpx/management/commands/backfill_gpx_stats.py`
-
-**Intent**: The documented recovery path when a migration ran against a misconfigured
-`MEDIA_ROOT` and filled nothing — a migration cannot be re-applied once recorded.
-
-**Contract**: The null-row filter widens to rows missing *either* statistics or instants;
-`--all` still reprocesses everything. Per-row failures stay a tally, not a crash. `AGENTS.md`'s
-Development Commands row for this command updates to say instants are refilled too.
-
-### Success Criteria:
-
-#### Automated Verification:
-
-- The helper fills both instants from a stored timed file and leaves them null for an untimed one
-- The helper still writes nothing but `STATS_FIELDS` — `points` and the four bounds are unchanged after a run
-- The helper returns `False` and logs, without raising, when the stored file is missing or no longer parses
-- `manage.py backfill_gpx_stats` selects rows missing instants as well as rows missing statistics, and `--all` reprocesses every row
-- Migration guard clean, and `migrate` runs forward and backward on a database seeded with a pre-`0004` row
-- Quality gates pass: `/python-quality-gates`
-
-#### Manual Verification:
-
-- Against a copy of production data, `backfill_gpx_stats` fills instants for existing rows and the tally matches the row count
-- An existing v1 trip, after backfill, correctly orders a newly uploaded earlier-ridden stage ahead of it
-
----
-
-## Phase 6: Distinct stage markers *(cuttable)*
+## Phase 5: Distinct stage markers
 
 ### Overview
 
@@ -699,6 +769,16 @@ Replace Phase 3's shared Leaflet pin with three project-authored SVG pins, so tr
 trip end and stage break are distinguishable without hovering — which is what the Primary
 Success Criterion's "distinct markers" clause asks for and a tooltip cannot deliver on a
 phone.
+
+**Not cuttable, and sequenced ahead of the backfill deliberately.** `prd.md:96-97` makes
+"the three kinds are distinguishable at a glance, **without hovering**, on desktop and at
+phone width" an acceptance criterion, and `prd.md:127` lists distinct start/end/stage-break
+markers as **must-have**. Phase 3 satisfies the *marker* clause but not the *distinct*
+clause — all three kinds share one pin and separate only on hover, which a phone has no
+gesture for. Leaving this cuttable would let every earlier phase go green with the Primary
+Success Criterion unmet. It is also the cheapest of the three tail phases: three text
+assets, three constants, three `STATIC_REFERENCES` entries and no `map.js` change, because
+Phase 3's keyed `icons` map already reduced it to a URL swap.
 
 ### Changes Required:
 
@@ -745,6 +825,108 @@ a rendered page. `map.js` needs no change — it already selects by `kind`.
 - Start, finish and break markers are distinguishable at a glance, without hovering, on desktop and on a phone-width viewport
 - Each pin's tip sits exactly on its coordinate — no vertical offset from a wrong anchor
 - All three render correctly under the hashed manifest after `collectstatic`
+
+---
+
+## Phase 6: Backfill stage instants for existing rows *(cuttable)*
+
+### Overview
+
+Fill `started_at` / `ended_at` on rows that predate the columns, by re-parsing the bytes still
+in storage. Without this, US-02's own scenario — a trip that *already* has a stage, gaining a
+second — can never establish chronology, because the pre-existing stage has no instant.
+
+### Changes Required:
+
+#### 1. Backfill helper
+
+**File**: `gpx/statistics.py`
+
+**Intent**: The re-parse-from-storage path already exists and is unit-tested; extend it
+rather than adding a second one, so a backfilled row and a freshly uploaded one cannot
+disagree about the same file.
+
+**Contract**: `backfill_track_statistics` also writes the two instants, and `STATS_FIELDS`
+grows to include them — the tuple is what keeps the helper's `update_fields` and both
+callers' `.only(...)` narrowing from drifting apart. It is deliberately *not* what the
+null-row filters are derived from: those are chosen per caller and for different reasons
+(§2, §3), and a filter mechanically derived from this tuple is exactly the trap §3 rejects.
+The broad `except Exception` with
+its `logger.exception` and `False` return is unchanged; so is the `update_fields` discipline
+that keeps `points` and the bounds untouched. The module docstring notes it is now pinned by
+migration `0005` as well as `0003`.
+
+#### 2. Data migration
+
+**File**: `gpx/migrations/0005_backfill_gpxtrack_stage_instants.py`
+
+**Intent**: Data-only and separate from `0004`, per the additive-first rule the `0002`/`0003`
+pair established.
+
+**Contract**: `RunPython` importing `backfill_track_statistics` **inside** the function body
+under a broad `except Exception`, so a rename degrades to one logged skip rather than
+breaking the unattended `migrate` that runs at container boot. Filter
+`started_at__isnull=True`, resolve the model with `apps.get_model("gpx", "GpxTrack")`, bind
+the queryset with `.using(schema_editor.connection.alias)`, narrow it with
+`.only("id", "file", *STATS_FIELDS)` and walk it with `.iterator()` so the `points` blob
+stays off the query and out of memory, and wrap each row in its own `transaction.atomic()`
+savepoint. Reverse is `RunPython.noop`. All six elements are `0003`'s, not a subset of them
+— read `gpx/migrations/0003_backfill_gpxtrack_stats.py` and mirror it rather than working
+from this paragraph.
+
+The savepoint is the one whose reason must be reproduced, not restated: without it a single
+row's failure calls `mark_for_rollback_on_error` on the outer transaction, and `migrate`
+prints `OK` having written nothing — the exact shape `0003:56-64` documents.
+
+**`started_at__isnull=True` is a correct filter here and a wrong one for §3.** It is sound
+for a migration, which runs exactly once: the worst case is that every untimed row is
+re-parsed one time for nothing. It is *not* a convergence predicate, because the
+both-or-neither rule (see Critical Implementation Details) makes null permanent for an
+untimed file — unlike `distance_meters`, which `0003:44-46` chose precisely because it is
+the only statistic never legitimately null. There is no instant column with that property,
+so do not carry this filter into the command.
+
+#### 3. Management command
+
+**File**: `gpx/management/commands/backfill_gpx_stats.py`
+
+**Intent**: The documented recovery path when a migration ran against a misconfigured
+`MEDIA_ROOT` and filled nothing — a migration cannot be re-applied once recorded.
+
+**Contract**: **The default filter does not change** — it stays `distance_meters__isnull=True`,
+and `--all` remains the way to refill instants. Per-row failures stay a tally, not a crash.
+
+Widening the default to "missing *either* statistics or instants" is the obvious move and is
+wrong: `started_at` is legitimately null forever for an untimed file, so every such row would
+be permanently pending, re-parsed on every invocation, and the tally would never reach zero.
+That destroys the command's only signal for *nothing left to do* — on the one path documented
+for recovering a `0005` that ran against a misconfigured `MEDIA_ROOT`. A recovery step that
+reports work and converges on nothing is what E-05's restore drill actually found
+(`roadmap.md` E-05: "three documented steps that reported success and recovered nothing"), so
+it is a shape this repo has already been burned by, not a hypothetical.
+
+`--all` covers the real recovery need at zero cost here: production measured 4 rows
+(`roadmap.md` E-11), so "reprocess everything" and "reprocess the ones that need it" are the
+same command in practice, and only one of them can tell the operator when it is done.
+
+`AGENTS.md`'s Development Commands row updates to say instants are refilled too, and that
+`--all` is the invocation that refills them on a row whose statistics are already present.
+
+### Success Criteria:
+
+#### Automated Verification:
+
+- The helper fills both instants from a stored timed file and leaves them null for an untimed one
+- The helper still writes nothing but `STATS_FIELDS` — `points` and the four bounds are unchanged after a run
+- The helper returns `False` and logs, without raising, when the stored file is missing or no longer parses
+- `manage.py backfill_gpx_stats` fills instants under `--all`, and its default run selects only rows missing statistics — an untimed row is *not* selected twice in a row, so the pending count converges
+- Migration guard clean, and `migrate` runs forward and backward on a database seeded with a pre-`0004` row
+- Quality gates pass: `/python-quality-gates`
+
+#### Manual Verification:
+
+- Against a copy of production data, `backfill_gpx_stats --all` fills instants for existing rows and the tally matches the row count
+- An existing v1 trip, after backfill, correctly orders a newly uploaded earlier-ridden stage ahead of it
 
 ---
 
@@ -900,7 +1082,7 @@ box nor the statistics cost anything per point.
 ## Migration Notes
 
 Two migrations, deliberately separate so schema and data stay independently reversible:
-`0004` adds both columns nullable (Phase 1), `0005` backfills from stored files (Phase 5).
+`0004` adds both columns nullable (Phase 1), `0005` backfills from stored files (Phase 6).
 Generate and commit both by hand and verify with `makemigrations --check --dry-run` —
 `manage.py check` passes with a model/schema mismatch and the deploy pipeline runs `migrate`
 unattended at container boot, so a forgotten migration ships green and surfaces as a
@@ -911,7 +1093,7 @@ recorded, so if it runs against a misconfigured `MEDIA_ROOT` it fills nothing an
 `manage.py backfill_gpx_stats` is the documented recovery. Read `DEPLOY.md`'s `MEDIA_ROOT`
 section before deploying this.
 
-If Phase 5 is cut, `0004` ships alone and existing rows keep null instants — legal, handled
+If Phase 6 is cut, `0004` ships alone and existing rows keep null instants — legal, handled
 by the ordering expression, and re-fillable later by the command.
 
 ## References
@@ -961,6 +1143,7 @@ by the ordering expression, and re-fillable later by the command.
 - [ ] 2.8 Deleting one stage removes exactly its own file
 - [ ] 2.9 Bite-proof harness passes with the new shape: `pytest -m bite_proof`
 - [ ] 2.10 Quality gates pass
+- [ ] 2.13 The new shape's `fragment` discriminates: present under the mutation, absent when the guard fails for an unrelated reason
 
 #### Manual
 
@@ -982,6 +1165,7 @@ by the ordering expression, and re-fillable later by the command.
 - [ ] 3.9 `#map`'s markup is byte-identical to today
 - [ ] 3.10 `collectstatic --noinput` then `pytest tests/test_static_references.py` passes
 - [ ] 3.11 Quality gates pass
+- [ ] 3.16 Bite-proof harness passes with the repointed risk-#3 shape: `pytest -m bite_proof`
 
 #### Manual
 
@@ -1003,6 +1187,8 @@ by the ordering expression, and re-fillable later by the command.
 - [ ] 4.7 `#map`'s markup and the `json_script` element are unchanged
 - [ ] 4.8 Assertion-strength audit passes with no new waivers
 - [ ] 4.9 Quality gates pass
+- [ ] 4.13 Bite-proof harness passes with the requoted risk-#3 fragment: `pytest -m bite_proof`
+- [ ] 4.14 The delete confirmation counts files correctly for multi-stage, single-stage and trackless trips
 
 #### Manual
 
@@ -1010,36 +1196,36 @@ by the ordering expression, and re-fillable later by the command.
 - [ ] 4.11 The page reads sensibly at phone width for a 5-stage trip
 - [ ] 4.12 Uploading to a trip with an existing stage returns "Stage added." and the row lands in the right position
 
-### Phase 5: Backfill stage instants for existing rows
+### Phase 5: Distinct stage markers
 
 #### Automated
 
-- [ ] 5.1 The helper fills both instants from a stored timed file and leaves them null for an untimed one
-- [ ] 5.2 The helper still writes nothing but `STATS_FIELDS`
-- [ ] 5.3 The helper returns `False` and logs, without raising, on a missing or unparseable file
-- [ ] 5.4 `backfill_gpx_stats` selects rows missing instants as well as statistics; `--all` reprocesses every row
-- [ ] 5.5 Migration guard clean; `migrate` runs forward and backward over a pre-`0004` row
-- [ ] 5.6 Quality gates pass
+- [ ] 5.1 The payload's three `icons` keys resolve to three different URLs, each following `STATIC_URL`
+- [ ] 5.2 All three SVGs resolve through `finders.find()` and survive `collectstatic --noinput`
+- [ ] 5.3 `pytest tests/test_static_references.py` passes under the production manifest backend
+- [ ] 5.4 Quality gates pass
 
 #### Manual
 
-- [ ] 5.7 Against a copy of production data, the command fills instants and the tally matches the row count
-- [ ] 5.8 An existing v1 trip correctly orders a newly uploaded earlier-ridden stage ahead of it
+- [ ] 5.5 Start, finish and break markers are distinguishable without hovering, on desktop and phone
+- [ ] 5.6 Each pin's tip sits exactly on its coordinate
+- [ ] 5.7 All three render correctly under the hashed manifest after `collectstatic`
 
-### Phase 6: Distinct stage markers
+### Phase 6: Backfill stage instants for existing rows
 
 #### Automated
 
-- [ ] 6.1 The payload's three `icons` keys resolve to three different URLs, each following `STATIC_URL`
-- [ ] 6.2 All three SVGs resolve through `finders.find()` and survive `collectstatic --noinput`
-- [ ] 6.3 `pytest tests/test_static_references.py` passes under the production manifest backend
-- [ ] 6.4 Quality gates pass
+- [ ] 6.1 The helper fills both instants from a stored timed file and leaves them null for an untimed one
+- [ ] 6.2 The helper still writes nothing but `STATS_FIELDS`
+- [ ] 6.3 The helper returns `False` and logs, without raising, on a missing or unparseable file
+- [ ] 6.4 `backfill_gpx_stats --all` fills instants; the default run converges (an untimed row is not selected twice)
+- [ ] 6.5 Migration guard clean; `migrate` runs forward and backward over a pre-`0004` row
+- [ ] 6.6 Quality gates pass
 
 #### Manual
 
-- [ ] 6.5 Start, finish and break markers are distinguishable without hovering, on desktop and phone
-- [ ] 6.6 Each pin's tip sits exactly on its coordinate
-- [ ] 6.7 All three render correctly under the hashed manifest after `collectstatic`
+- [ ] 6.7 Against a copy of production data, `--all` fills instants and the tally matches the row count
+- [ ] 6.8 An existing v1 trip correctly orders a newly uploaded earlier-ridden stage ahead of it
 
 ### Phase 7: Derived trip span and date wording
 

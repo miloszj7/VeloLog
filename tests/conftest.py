@@ -1,10 +1,12 @@
 """Shared pytest-django fixtures for the VeloLog test suite."""
 
 import os
+import shutil
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
+from django.conf import settings as django_settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -101,7 +103,25 @@ def _apply_mutation_shape() -> Iterator[None]:
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         apply_mutation_shape(shapes_by_name[shape_name], monkeypatch)
-        yield
+        try:
+            yield
+        finally:
+            _discard_media_guard_probe_tree()
+
+
+def _discard_media_guard_probe_tree() -> None:
+    """Remove the directory `test_media_storage.py`'s guard test writes its probe under.
+
+    Only the `media_guard_always_clean` shape reaches this: with the misconfiguration
+    check patched to a no-op, `/healthz/`'s short-circuit never fires and the probe write
+    goes through, and `FileSystemStorage` creates the parent directories along the way —
+    only the probe *file* is deleted afterwards. Left behind, the directory makes every
+    later plain-suite run of that guard test fail on its "nothing was created" assertion,
+    invisibly to `git status` (which does not track empty directories). A no-op for every
+    other shape and for a normal run, since the path never exists there.
+    """
+    probe_dir = Path(django_settings.BASE_DIR) / "media-misconfigured-probe"
+    shutil.rmtree(probe_dir, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)

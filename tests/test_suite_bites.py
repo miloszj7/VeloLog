@@ -22,7 +22,12 @@ from typing import NamedTuple
 import pytest
 
 from tests.mutations import MUTATION_SHAPES, MutationShape
-from tests.test_assertion_strength import REPO_ROOT, TEST_DIR, _module_test_functions
+from tests.test_assertion_strength import (
+    REPO_ROOT,
+    TEST_DIR,
+    _class_test_methods,
+    _module_test_functions,
+)
 
 # The `test-plan.md` §2 risk areas this phase claims to cover — named independently of
 # `tests/mutations.py`'s registry so a shape silently dropped from the tuple (rather than
@@ -194,13 +199,13 @@ def _guard_node_function(guard_node_id: str) -> tuple[str, str]:
 
 
 def _all_test_function_names() -> set[tuple[str, str]]:
-    """(relative path, test name) for every `test_*` function under `tests/`.
+    """(relative path, test name) for every `test_*` function or method under `tests/`.
 
-    Reuses Phase 2's AST parse — `_module_test_functions` is the same function
-    `tests/test_assertion_strength.py::_collect_analysis` uses to split a module's top-level
-    defs into tests and helpers — rather than `pytest --collect-only`, which would run a
-    whole-suite collection pass inside the default suite: exactly the cost the `bite_proof`
-    marker and `addopts` exist to keep out of the local edit loop.
+    Reuses Phase 2's AST parse — `_module_test_functions` and `_class_test_methods` are the
+    same functions `tests/test_assertion_strength.py::_collect_analysis` uses to enumerate a
+    module's tests, top-level and class-based — rather than `pytest --collect-only`, which
+    would run a whole-suite collection pass inside the default suite: exactly the cost the
+    `bite_proof` marker and `addopts` exist to keep out of the local edit loop.
     """
     names: set[tuple[str, str]] = set()
     for path in sorted(TEST_DIR.rglob("*.py")):
@@ -210,6 +215,7 @@ def _all_test_function_names() -> set[tuple[str, str]]:
         relative = path.relative_to(REPO_ROOT).as_posix()
         test_fns, _helper_fns = _module_test_functions(tree)
         names.update((relative, fn.name) for fn in test_fns)
+        names.update((relative, name) for name, _fn in _class_test_methods(tree))
     return names
 
 

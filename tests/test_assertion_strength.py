@@ -270,7 +270,15 @@ def _has_behavior_probe(
 ) -> bool:
     for node in _walk_body(fn):
         lineno = getattr(node, "lineno", None)
-        if lineno is None or lineno < last_act_lineno:
+        if lineno is None:
+            continue
+        # A node's *end* line, not its start line, is what decides whether it is at or
+        # after the act. A plain statement written after the act has both on the same side
+        # of the boundary either way, but a `with pytest.raises(...): client.get(url)`
+        # wrapping the act starts on the `with` keyword's line — before the act it contains
+        # — so filtering on `lineno` alone would skip the very block the act is nested in.
+        end_lineno = getattr(node, "end_lineno", lineno) or lineno
+        if end_lineno < last_act_lineno:
             continue
         if isinstance(node, ast.Assert):
             if not _is_status_only_assert(node.test):
@@ -298,6 +306,25 @@ def _module_test_functions(tree: ast.Module) -> tuple[list[FuncDef], list[FuncDe
     return tests, helpers
 
 
+def _class_test_methods(tree: ast.Module) -> list[tuple[str, FuncDef]]:
+    """`(qualified name, method)` for every `test_*` method of a top-level `Test*` class.
+
+    Pytest's default collection (`python_classes = Test*`, left unconfigured in
+    `pyproject.toml`) only picks up classes named this way, so restricting to that prefix
+    matches what pytest would actually run rather than over-counting. `AGENTS.md` documents
+    this shape for integration tests; without this, a class-based test was never in the
+    population at all — not reported as out of scope, just silently never seen.
+    """
+    methods: list[tuple[str, FuncDef]] = []
+    for node in tree.body:
+        if not (isinstance(node, ast.ClassDef) and node.name.startswith("Test")):
+            continue
+        for child in node.body:
+            if isinstance(child, FuncDef) and child.name.startswith("test_"):
+                methods.append((f"{node.name}::{child.name}", child))
+    return methods
+
+
 def _collect_analysis() -> dict[tuple[str, str], bool | None]:
     """Map (relative path, test name) -> probe_found, or `None` if out of population."""
     results: dict[tuple[str, str], bool | None] = {}
@@ -310,13 +337,22 @@ def _collect_analysis() -> dict[tuple[str, str], bool | None]:
         act_helper_names = frozenset(f.name for f in helper_fns if _is_act_helper(f))
         delegating_helper_names = frozenset(f.name for f in helper_fns if _has_nonstatus_assert(f))
 
-        for fn in test_fns:
+        test_entries = [(fn.name, fn) for fn in test_fns] + _class_test_methods(tree)
+        for name, fn in test_entries:
             last_act = _last_act_lineno(fn, act_helper_names)
             if last_act is None:
+                if _client_param_names(fn):
+                    # Takes a client-ish parameter but no act call resolved — most likely a
+                    # request-cycle test reaching the client through a second-level or
+                    # otherwise unresolvable delegation `_is_act_helper` cannot see through.
+                    # Reported as a finding needing a waiver rather than silently excluded,
+                    # so a test this heuristic cannot classify cannot pass the gate by
+                    # construction.
+                    results[(relative, name)] = False
                 continue  # not a request-cycle test — out of population, unexamined
             response_names = _response_variable_names(fn, act_helper_names)
             probe_found = _has_behavior_probe(fn, last_act, response_names, delegating_helper_names)
-            results[(relative, fn.name)] = probe_found
+            results[(relative, name)] = probe_found
     return results
 
 

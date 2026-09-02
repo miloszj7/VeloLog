@@ -40,7 +40,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ID   | Change ID                        | Outcome (user can …)                                                                                       | Prerequisites | PRD refs                                    | Status   |
 | ---- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- | -------- |
 | S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | ready    |
-| S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | in-progress |
+| S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | done |
 | S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view      | S-01           | PRD Fast-follow (whole-trip/per-stage statistics, nice-to-have) | proposed |
 
 ## Baseline
@@ -84,7 +84,7 @@ No foundations are needed. The data model already supports multiple stages per t
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Low — per `## Baseline`, this is a config flip on already-vendored, already-rendering Leaflet code (flip `dragging`/`scrollWheelZoom`/`touchZoom`/`doubleClickZoom`/`keyboard`/`boxZoom`/`zoomControl` and re-enable the zoom control), not a new integration. Sequenced after S-01 in the milestone's priority (per the user's sequencing call) precisely because it's the safe, low-risk item — if time runs out, this is what's still acceptable to finish last or cut.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-03: User can view whole-trip and per-stage statistics (stretch)
 
@@ -255,6 +255,7 @@ item is in `### Details`.
 - **S-03: User can upload a GPX file to a trip and open the trip detail view to see the route drawn on a non-interactive map, with a clear empty state if no file is uploaded yet.** — Archived 2026-08-26 → `context/archive/2026-08-23-upload-gpx-and-view-map/`. Lesson: —.
 - **S-04: User can edit a trip's name, date, and description, or delete the trip entirely.** — Archived 2026-08-27 → `context/archive/2026-08-26-edit-and-delete-trip/`. Lesson: —.
 - **S-05: User can see basic trip stats (distance and duration), calculated from the uploaded GPX file, on the trip detail view.** — Archived 2026-08-28 → `context/archive/2026-08-27-trip-distance-duration-stats/`. Lesson: —.
+- **S-02: User can pan and zoom the trip's map instead of viewing a static, non-interactive image. Applies to every trip, single-stage or multi-stage.** — Archived 2026-09-02 → `context/archive/2026-09-02-interactive-trip-map/`. Lesson: —.
 
 ## Milestone History
 

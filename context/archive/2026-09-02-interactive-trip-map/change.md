@@ -1,10 +1,10 @@
 ---
 change_id: interactive-trip-map
 title: Interactive trip map
-status: impl_reviewed
+status: archived
 created: 2026-09-02
 updated: 2026-09-02
-archived_at: null
+archived_at: 2026-09-02T17:01:43Z
 ---
 
 ## Notes

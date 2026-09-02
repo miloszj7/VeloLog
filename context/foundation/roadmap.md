@@ -121,7 +121,7 @@ No foundations are needed. The codebase baseline is a clean Django scaffold with
 | S-04       | `edit-and-delete-trip`           | Edit and delete a trip                                       | yes                     | [#4](https://github.com/miloszj7/VeloLog/issues/4) | Planned and implemented (Phase 5, `/10x-implement edit-and-delete-trip`) |
 | S-05       | `trip-distance-duration-stats`   | Trip distance/duration stats                                 | yes                     | [#5](https://github.com/miloszj7/VeloLog/issues/5) | Planned and implemented (Phase 5, `/10x-implement trip-distance-duration-stats`) |
 
-Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions. Linear mirror retired 2026-08-31 → `context/archive/foundation/2026-08-31-linear-issues-migration.md`; GitHub Issues is now the sole tracker.
+Migrated to GitHub Issues on 2026-08-22 — see `context/foundation/github-issues-migration.md` for the format, labels, and migration decisions. Linear mirror retired 2026-08-31 → `context/foundation/archive/linear-issues-migration-2026-08-31.md`; GitHub Issues is now the sole tracker.
 
 ## Open Roadmap Questions
 

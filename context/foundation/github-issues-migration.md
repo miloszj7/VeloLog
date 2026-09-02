@@ -14,7 +14,7 @@ issue or changing its labels does **not** update `roadmap.md`'s `Status` field, 
 re-running this migration on an unchanged roadmap would create duplicates (no
 Change-ID-based idempotency check exists).
 
-**2026-08-31 update:** Linear mirror retired → `context/archive/foundation/2026-08-31-linear-issues-migration.md`.
+**2026-08-31 update:** Linear mirror retired → `context/foundation/archive/linear-issues-migration-2026-08-31.md`.
 GitHub Issues is now the single source of truth for roadmap tracking. Manual sync
 adopted: when a GitHub issue with the `roadmap` label is closed, update `roadmap.md`'s
 `Status` field by hand.

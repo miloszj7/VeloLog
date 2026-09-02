@@ -62,8 +62,7 @@ SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pyt
 
 ## Commits & Git Workflow
 
-Follow `@~/.claude/rules/git-workflow.md`: Conventional Commits format, feature branches
-only (never commit straight to `master`), merge with `--no-ff`, never squash. Use the
-`create-pr` skill to open a GitHub/GitLab PR or MR, or complete a local no-remote merge.
+Follow `@~/.claude/rules/git-workflow.md`. Use the `create-pr` skill to open a
+GitHub/GitLab PR or MR, or complete a local no-remote merge.
 
 `.github/workflows/deploy.yml`'s `gates` job runs the vendored-asset integrity check for Leaflet (`sha256sum -c gpx/static/gpx/vendor/SHA256SUMS`) and, separately, for Bootstrap (`sha256sum -c static/vendor/bootstrap/SHA256SUMS`), lint (`ruff`), format (`black`), import order (`isort`), strict typing (`mypy`), `manage.py check`, the migration guard (`makemigrations --check --dry-run`), `collectstatic --noinput`, `pytest --cov`, and — the `Suite credibility` step, running `pytest -m bite_proof` — the bite-proof harness described above, on every pull request to `master` and every push to it. That order is load-bearing: `tests/test_static_references.py` renders a page through the production manifest backend and skips itself when no manifest has been collected, so it only runs because `collectstatic` precedes the test step; `Suite credibility` runs after `Tests` because if the suite itself is red, which test bites is not yet the interesting question. The integrity checks run first, before `uv sync`, because they need nothing from the venv and a tampered asset should fail in seconds. The Railway deploy job runs only if `gates` passes.

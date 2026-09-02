@@ -220,20 +220,20 @@ None — no data model or server-side change.
 
 #### Automated
 
-- [x] 1.1 `uv run pytest tests/trips/test_trip_detail_map.py` passes unchanged
+- [x] 1.1 `uv run pytest tests/trips/test_trip_detail_map.py` passes unchanged — 243c502
 - [x] 1.2 `uv run python manage.py collectstatic --noinput` then `uv run pytest
-      tests/test_static_references.py` passes unchanged
-- [x] 1.3 Full suite stays green: `uv run pytest --cov`
-- [x] 1.4 Lint/format/type gates stay green: `ruff`, `black`, `isort`, `mypy`
+      tests/test_static_references.py` passes unchanged — 243c502
+- [x] 1.3 Full suite stays green: `uv run pytest --cov` — 243c502
+- [x] 1.4 Lint/format/type gates stay green: `ruff`, `black`, `isort`, `mypy` — 243c502
 
 #### Manual
 
-- [x] 1.5 Drag pans the map
-- [x] 1.6 Pinch/double-click zooms the map
-- [x] 1.7 Zoom control (`+`/`-`) zooms the map
-- [x] 1.8 Keyboard pan/zoom works once the map has focus
+- [x] 1.5 Drag pans the map — 243c502
+- [x] 1.6 Pinch/double-click zooms the map — 243c502
+- [x] 1.7 Zoom control (`+`/`-`) zooms the map — 243c502
+- [x] 1.8 Keyboard pan/zoom works once the map has focus — 243c502
 - [x] 1.9 Scroll-wheel zoom is disabled until first click, page scrolls normally over the
-      map beforehand, hint is visible
-- [x] 1.10 After first click, scroll-wheel zoom works and the hint is gone
-- [x] 1.11 Drag cursor shows grab/grabbing correctly
-- [x] 1.12 No-GPX trip still renders the fallback message unchanged
+      map beforehand, hint is visible — 243c502
+- [x] 1.10 After first click, scroll-wheel zoom works and the hint is gone — 243c502
+- [x] 1.11 Drag cursor shows grab/grabbing correctly — 243c502
+- [x] 1.12 No-GPX trip still renders the fallback message unchanged — 243c502

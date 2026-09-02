@@ -151,26 +151,48 @@ def _has_nonstatus_assert(fn: FuncDef) -> bool:
 
 
 def _is_status_only_assert(test: ast.expr) -> bool:
-    """True for `<chain>.status_code <op> <int/bool literal>` and nothing else.
+    """True for a comparison that carries no information beyond `status_code`.
 
-    This is the narrow shape the rule treats as "no information beyond the status code" —
-    anything that does not match it (a header, a body, a DB query, a second attribute, a
-    string literal) is a probe by construction, which is what "references anything beyond
-    `status_code` and integer literals" (Phase 2's contract) means in code.
+    Covers `<chain>.status_code <op> <int/bool literal>`, `<chain>.status_code in/not in
+    <tuple/list of int constants>`, and — fail closed rather than fail open — a comparison
+    whose only non-`status_code` side is a bare name or dotted attribute (`expected_status`,
+    `HTTPStatus.OK`). The AST cannot tell what a name or attribute resolves to, so it cannot
+    be *proven* to add information the way a header, a body, or a DB query would; treating
+    it as a probe by default let both idioms slip past the rule unclassified, passing "by
+    construction" the same way a genuine probe does, which they are not. Anything else (a
+    header, a body, a DB query, a second attribute compared against something other than
+    `status_code`, a string literal) is a probe by construction.
     """
     if not isinstance(test, ast.Compare) or len(test.ops) != 1 or len(test.comparators) != 1:
         return False
-    left, right = test.left, test.comparators[0]
+    op, left, right = test.ops[0], test.left, test.comparators[0]
 
     def is_status_chain(node: ast.expr) -> bool:
         return isinstance(node, ast.Attribute) and node.attr == "status_code"
 
     def is_int_literal(node: ast.expr) -> bool:
-        return isinstance(node, ast.Constant) and isinstance(node.value, int)
+        return isinstance(node, ast.Constant) and isinstance(node.value, (int, bool))
 
-    return (is_status_chain(left) and is_int_literal(right)) or (
-        is_status_chain(right) and is_int_literal(left)
-    )
+    def is_unclassifiable(node: ast.expr) -> bool:
+        return isinstance(node, (ast.Name, ast.Attribute))
+
+    def is_int_constant_collection(node: ast.expr) -> bool:
+        return bool(
+            isinstance(node, (ast.Tuple, ast.List))
+            and node.elts
+            and all(is_int_literal(elt) for elt in node.elts)
+        )
+
+    def is_status_only_value(node: ast.expr) -> bool:
+        return is_int_literal(node) or is_unclassifiable(node)
+
+    if isinstance(op, (ast.Eq, ast.NotEq, ast.Is, ast.IsNot)):
+        return (is_status_chain(left) and is_status_only_value(right)) or (
+            is_status_chain(right) and is_status_only_value(left)
+        )
+    if isinstance(op, (ast.In, ast.NotIn)) and is_status_chain(left):
+        return is_int_constant_collection(right) or is_unclassifiable(right)
+    return False
 
 
 def _dotted_call_name(node: ast.expr) -> str:

@@ -1116,39 +1116,39 @@ by the ordering expression, and re-fillable later by the command.
 
 #### Automated
 
-- [x] 1.1 Migration guard clean: `makemigrations --check --dry-run`
-- [x] 1.2 Migration applies: `manage.py migrate`
-- [x] 1.3 A timed upload stores both instants as UTC-aware values matching the file's first and last `<time>`
-- [x] 1.4 An untimed upload stores null for both, and still stores its distance
-- [x] 1.5 A file with naive timestamps stores null for both rather than a naive instant
-- [x] 1.6 A multi-segment timed file spans first segment start to last segment end
-- [x] 1.7 No naive-datetime `RuntimeWarning` is emitted anywhere in the suite
-- [x] 1.8 Quality gates pass
+- [x] 1.1 Migration guard clean: `makemigrations --check --dry-run` — d8f0d7a
+- [x] 1.2 Migration applies: `manage.py migrate` — d8f0d7a
+- [x] 1.3 A timed upload stores both instants as UTC-aware values matching the file's first and last `<time>` — d8f0d7a
+- [x] 1.4 An untimed upload stores null for both, and still stores its distance — d8f0d7a
+- [x] 1.5 A file with naive timestamps stores null for both rather than a naive instant — d8f0d7a
+- [x] 1.6 A multi-segment timed file spans first segment start to last segment end — d8f0d7a
+- [x] 1.7 No naive-datetime `RuntimeWarning` is emitted anywhere in the suite — d8f0d7a
+- [x] 1.8 Quality gates pass — d8f0d7a
 
 #### Manual
 
-- [x] 1.9 A real timed export shows both instants on the admin change form, both editable
+- [x] 1.9 A real timed export shows both instants on the admin change form, both editable — d8f0d7a
 
 ### Phase 2: ADD semantics and chronological ordering
 
 #### Automated
 
-- [ ] 2.1 A second upload leaves the first row and its stored file intact, asserted after commit
-- [ ] 2.2 A second upload to trip A leaves trip B's tracks untouched
-- [ ] 2.3 Two timed stages uploaded in reverse ride order come back in ride order
-- [ ] 2.4 Two untimed stages come back in upload order
-- [ ] 2.5 A mixed pair returns the timed stage first, untimed appended
-- [ ] 2.6 `chronology_is_established` answers correctly for all-timed, any-untimed, and no stages
-- [ ] 2.7 The `pre_save` receiver removes nothing when a sibling stage is inserted
-- [ ] 2.8 Deleting one stage removes exactly its own file
-- [ ] 2.9 Bite-proof harness passes with the new shape: `pytest -m bite_proof`
-- [ ] 2.10 Quality gates pass
-- [ ] 2.13 The new shape's `fragment` discriminates: present under the mutation, absent when the guard fails for an unrelated reason
+- [x] 2.1 A second upload leaves the first row and its stored file intact, asserted after commit
+- [x] 2.2 A second upload to trip A leaves trip B's tracks untouched
+- [x] 2.3 Two timed stages uploaded in reverse ride order come back in ride order
+- [x] 2.4 Two untimed stages come back in upload order
+- [x] 2.5 A mixed pair returns the timed stage first, untimed appended
+- [x] 2.6 `chronology_is_established` answers correctly for all-timed, any-untimed, and no stages
+- [x] 2.7 The `pre_save` receiver removes nothing when a sibling stage is inserted
+- [x] 2.8 Deleting one stage removes exactly its own file
+- [x] 2.9 Bite-proof harness passes with the new shape: `pytest -m bite_proof`
+- [x] 2.10 Quality gates pass
+- [x] 2.13 The new shape's `fragment` discriminates: present under the mutation, absent when the guard fails for an unrelated reason
 
 #### Manual
 
-- [ ] 2.11 Two files uploaded to one trip both appear in admin and both download links serve their own bytes
-- [ ] 2.12 Deleting the trip leaves neither file; `reconcile_media` reports nothing orphaned
+- [x] 2.11 Two files uploaded to one trip both appear in admin and both download links serve their own bytes
+- [x] 2.12 Deleting the trip leaves neither file; `reconcile_media` reports nothing orphaned
 
 ### Phase 3: Multi-stage rendering
 

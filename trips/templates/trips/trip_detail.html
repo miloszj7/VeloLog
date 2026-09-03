@@ -156,7 +156,7 @@
 
     <div class="card">
         <div class="card-body">
-            <h3 class="h5 card-title">{% if track %}Replace the route{% else %}Add a route{% endif %}</h3>
+            <h3 class="h5 card-title">Add a stage</h3>
             {% comment %}
             `enctype` is not optional: without it the browser posts filenames only, the form
             sees an empty `request.FILES`, and the upload fails as "this field is required".
@@ -171,7 +171,7 @@
                         {{ field.errors }}
                     </div>
                 {% endfor %}
-                <button type="submit" class="btn btn-primary">{% if track %}Replace GPX file{% else %}Upload GPX file{% endif %}</button>
+                <button type="submit" class="btn btn-primary">Add GPX file</button>
             </form>
         </div>
     </div>

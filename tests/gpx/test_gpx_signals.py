@@ -453,6 +453,64 @@ def test_a_raw_save_never_reclaims_anything(
 
 
 @pytest.mark.django_db
+def test_pre_save_removes_nothing_when_a_sibling_stage_is_inserted(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """ADD semantics' correctness argument, pinned as an assertion.
+
+    `gpx/views.py`'s docstring argues that inserting a second stage never touches the
+    first stage's file, because `pre_save` returns immediately for any row whose `pk` is
+    still `None`. This is that argument made concrete: two stages end up on one trip and
+    the first one's file survives, with nothing scheduled for it.
+    """
+    first = make_stored_track(trip, content=b"<gpx>1</gpx>", original_filename="day-1.gpx")
+    first_name = stored_name(first)
+    assert default_storage.exists(first_name)
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        second = GpxTrack.objects.create(
+            trip=trip,
+            file="gpx/1/1/inserted.gpx",
+            points=[],
+            min_latitude=0.0,
+            min_longitude=0.0,
+            max_latitude=0.0,
+            max_longitude=0.0,
+            original_filename="day-2.gpx",
+        )
+
+    assert callbacks == []
+    assert GpxTrack.objects.filter(trip=trip).count() == 2
+    assert default_storage.exists(first_name)
+    assert GpxTrack.objects.filter(pk=second.pk).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_one_stage_removes_only_its_own_file(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    """Two live stages on one trip, and a delete scoped to only one of them.
+
+    `post_delete` is row-scoped by construction, but ADD semantics is the first place two
+    stages on one trip is a shape a test builds directly rather than through a replace.
+    """
+    first = make_stored_track(trip, content=b"<gpx>1</gpx>", original_filename="day-1.gpx")
+    second = make_stored_track(trip, content=b"<gpx>2</gpx>", original_filename="day-2.gpx")
+    first_name, second_name = stored_name(first), stored_name(second)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        first.delete()
+
+    assert not default_storage.exists(first_name)
+    assert default_storage.exists(second_name)
+    assert GpxTrack.objects.filter(pk=second.pk).exists()
+
+
+@pytest.mark.django_db
 def test_a_cleanup_failure_does_not_fail_a_replacement_that_already_committed(
     trip: Trip,
     make_stored_track: StoredTrackFactory,

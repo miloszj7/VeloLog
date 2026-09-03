@@ -153,7 +153,7 @@ def test_a_valid_upload_returns_to_the_detail_page_with_a_confirmation(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert "Route uploaded." in body
+    assert "Stage added." in body
     assert "alps-day-1.gpx" in body
     assert "No route yet" not in body
     # The download link is the only route back to the original file — a `MEDIA_URL` path
@@ -368,18 +368,18 @@ def test_a_rejected_uploads_rerender_still_shows_the_existing_tracks_live_downlo
 
 
 @pytest.mark.django_db
-def test_a_second_upload_replaces_the_first_and_removes_its_file(
+def test_a_second_upload_adds_a_stage_and_keeps_the_first_file(
     auth_client: Client,
     trip: Trip,
     gpx_bytes: GpxBytesReader,
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
-    """One track per trip, and no orphan left on the volume.
+    """A second upload adds a stage; it does not replace the first.
 
-    The superseded file is deleted through `transaction.on_commit`, and pytest-django
-    wraps each test in a transaction that never commits — so without
-    `django_capture_on_commit_callbacks(execute=True)` the deferred delete is silently
-    skipped and this test passes while proving nothing about it.
+    `django_capture_on_commit_callbacks(execute=True)` still wraps the request even
+    though a healthy upload schedules nothing: it is what would surface a leftover
+    `transaction.on_commit` delete if one were reinstated, and this is the guard node the
+    `upload_replaces_instead_of_adding` mutation shape in `tests/mutations.py` names.
     """
     auth_client.post(
         upload_url(trip),
@@ -396,53 +396,15 @@ def test_a_second_upload_replaces_the_first_and_removes_its_file(
         )
 
     assert response.status_code == 302
-    replacement = GpxTrack.objects.get()
-    assert replacement.pk != first.pk
-    assert replacement.original_filename == "second.gpx"
-    assert replacement.points == [[49.30, 19.95], [49.29, 19.93]]
-    assert default_storage.exists(stored_name(replacement))
-    assert not default_storage.exists(first_file_name)
-
-
-@pytest.mark.django_db
-def test_a_cleanup_failure_does_not_fail_an_upload_that_already_committed(
-    auth_client: Client,
-    trip: Trip,
-    gpx_bytes: GpxBytesReader,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An unmounted volume must not turn a stored upload into a 500.
-
-    The deferred delete runs inside the request, after the commit. Left unguarded, a
-    storage error there gives the user a failure for an upload the database has already
-    accepted — a response that contradicts the state of the system. The orphaned file is
-    the cost; the wrong answer is not.
-    """
-
-    def refuse_delete(self: object, name: str) -> None:
-        raise PermissionError(name)
-
-    auth_client.post(
-        upload_url(trip),
-        {"file": SimpleUploadedFile("first.gpx", gpx_bytes("valid-track.gpx"))},
-    )
-    first = GpxTrack.objects.get()
-    first_file_name = stored_name(first)
-    monkeypatch.setattr(
-        "django.core.files.storage.FileSystemStorage.delete", refuse_delete, raising=True
-    )
-
-    with django_capture_on_commit_callbacks(execute=True):
-        response = auth_client.post(
-            upload_url(trip),
-            {"file": SimpleUploadedFile("second.gpx", gpx_bytes("second-track.gpx"))},
-        )
-
-    assert response.status_code == 302
-    assert GpxTrack.objects.get().original_filename == "second.gpx"
-    # The row is retired either way; only the file survives the refusal.
+    assert GpxTrack.objects.filter(
+        pk=first.pk
+    ).exists(), "the first stage's row was deleted instead of kept when a second stage was added"
+    second = GpxTrack.objects.get(original_filename="second.gpx")
+    assert second.pk != first.pk
+    assert second.points == [[49.30, 19.95], [49.29, 19.93]]
+    assert GpxTrack.objects.filter(trip=trip).count() == 2
     assert default_storage.exists(first_file_name)
+    assert default_storage.exists(stored_name(second))
 
 
 @pytest.mark.django_db
@@ -453,10 +415,13 @@ def test_a_second_upload_leaves_another_trips_track_alone(
     gpx_bytes: GpxBytesReader,
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
-    """The replace is scoped to the trip being uploaded to, not to the rider's tracks.
+    """Adding a stage is scoped to the trip being uploaded to, not to the rider's tracks.
 
-    An unscoped "delete the other tracks" would pass every assertion in the test above
-    and quietly destroy the rest of the rider's trips.
+    Two stages accumulating on `trip` — rather than one, as a single upload would leave —
+    is what proves accumulation, not replacement, is what stays scoped: an unscoped
+    "delete the other tracks" bug would pass every assertion about `trip` here and
+    quietly destroy the rest of the rider's trips regardless of how many uploads `trip`
+    itself had received.
     """
     other_trip = Trip.objects.create(name="Pyrenees Loop", date="2026-07-01", owner=rider)
     auth_client.post(
@@ -465,15 +430,19 @@ def test_a_second_upload_leaves_another_trips_track_alone(
     )
     untouched = GpxTrack.objects.get(trip=other_trip)
 
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("alps-day-1.gpx", gpx_bytes("valid-track.gpx"))},
+    )
     with django_capture_on_commit_callbacks(execute=True):
         auth_client.post(
             upload_url(trip),
-            {"file": SimpleUploadedFile("alps.gpx", gpx_bytes("valid-track.gpx"))},
+            {"file": SimpleUploadedFile("alps-day-2.gpx", gpx_bytes("second-track.gpx"))},
         )
 
     assert GpxTrack.objects.filter(pk=untouched.pk).exists()
     assert default_storage.exists(stored_name(untouched))
-    assert GpxTrack.objects.filter(trip=trip).count() == 1
+    assert GpxTrack.objects.filter(trip=trip).count() == 2
 
 
 @pytest.mark.django_db

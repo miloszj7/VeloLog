@@ -86,6 +86,27 @@ def _media_guard_always_clean() -> Callable[[], None]:
     return media_root_misconfiguration
 
 
+def _upload_replaces_instead_of_adding() -> Callable[[Any, Any], Any]:
+    # Deferred import for the reason `_unscoped_trip_detail_queryset` gives above: this
+    # factory only runs once Django is configured.
+    def form_valid(self: Any, form: Any) -> Any:
+        from django.db import transaction
+
+        from gpx.views import GpxUploadView
+
+        form.instance.trip = self.trip
+        with transaction.atomic():
+            # The read-then-delete this class's `form_valid` used to perform under
+            # replace semantics — reinstated here only to prove the guard test below
+            # goes red if it ever comes back for real.
+            superseded = list(self.trip.tracks.select_for_update())
+            response = super(GpxUploadView, self).form_valid(form)
+            self.trip.tracks.filter(pk__in=[track.pk for track in superseded]).delete()
+        return response
+
+    return form_valid
+
+
 # (name, risk, patch target, replacement factory, guard node id, discriminating fragment).
 # See tests/test_suite_bites.py::test_every_risk_area_has_a_shape_and_every_guard_node_resolves
 # for the asserted claim that every risk area named here actually has coverage, and that
@@ -169,6 +190,22 @@ MUTATION_SHAPES: tuple[MutationShape, ...] = (
             "test_healthz_fails_when_media_root_is_inside_base_dir_and_debug_is_false"
         ),
         fragment="assert response.status_code == 500",
+    ),
+    MutationShape(
+        name="upload_replaces_instead_of_adding",
+        risk="#1",
+        # A class attribute, resolved through the dotted-attribute form
+        # `unscoped_trip_detail_queryset` above already established.
+        module_path="gpx.views",
+        attribute="GpxUploadView.form_valid",
+        replacement=_upload_replaces_instead_of_adding,
+        guard_node_id=(
+            "tests/gpx/test_gpx_upload.py::"
+            "test_a_second_upload_adds_a_stage_and_keeps_the_first_file"
+        ),
+        fragment=(
+            "the first stage's row was deleted instead of kept when a second stage " "was added"
+        ),
     ),
 )
 

@@ -17,6 +17,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from gpx.availability import track_file_is_available
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
+from gpx.stages import ordered_stage_tracks
 from gpx.statistics import build_trip_stats
 from trips.forms import TripForm
 from trips.models import Trip
@@ -93,7 +94,7 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         displayed" for the first, the re-upload sentence for the second.
         """
         context = super().get_context_data(**kwargs)
-        track = self.object.tracks.first()
+        track = ordered_stage_tracks(self.object).first()
         context["track"] = track
         context["map_config"] = build_map_config(track)
         context["stats"] = build_trip_stats(track)

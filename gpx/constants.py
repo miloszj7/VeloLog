@@ -69,14 +69,18 @@ MIN_ELEVATED_POINTS = 2
 # the cost of being generous here is a file surviving one run — never a file deleted in flight.
 ORPHAN_MIN_AGE_MINUTES = 60
 
-# Paths of the Leaflet marker images `gpx/map_config.py` hands to the template, relative to
-# a static root. Resolved through `static()` at render — never written out as literal URLs —
-# because `CompressedManifestStaticFilesStorage` serves these under content-hashed names, so
+# Path of the Leaflet marker shadow `gpx/map_config.py` hands to the template, relative to
+# a static root. Resolved through `static()` at render — never written out as a literal URL —
+# because `CompressedManifestStaticFilesStorage` serves it under a content-hashed name, so
 # a hardcoded URL 404s in production while resolving fine under DEBUG. Leaflet's *default*
-# icon builds these URLs at runtime, which the hashed manifest never rewrites; naming them
-# here and passing them through the config is what keeps them off that path.
-MARKER_ICON = "gpx/vendor/leaflet/images/marker-icon.png"
-MARKER_ICON_RETINA = "gpx/vendor/leaflet/images/marker-icon-2x.png"
+# icon builds these URLs at runtime, which the hashed manifest never rewrites; naming this
+# here and passing it through the config is what keeps it off that path.
+#
+# The vendored `marker-icon.png` / `marker-icon-2x.png` beside it have no constant and no
+# reference: since Phase 5 every pin is a project-authored SVG below, and the default pin
+# they belong to is never built. They stay on disk as part of the upstream Leaflet drop
+# `SHA256SUMS` pins — removing them would fail that integrity check for no gain — but a
+# name here would assert a consumer that does not exist.
 MARKER_SHADOW = "gpx/vendor/leaflet/images/marker-shadow.png"
 
 # Project-authored pin SVGs, one per marker kind, replacing the shared default pin above

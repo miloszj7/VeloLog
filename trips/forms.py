@@ -31,8 +31,16 @@ class TripForm(_TripFormBase):
         # `labels` is deliberately not used. The auto-derived label is already "Date"; what
         # was missing is the sentence saying *which* date, which is what the future-date
         # rule below now enforces.
+        #
+        # "Started", not "happened": a multi-day tour does not happen on *a* day, and this
+        # field stayed a single `DateField` precisely because the tour's real span is
+        # derived from the stages instead of stored (`gpx/stages.py`'s `trip_span`, roadmap
+        # E-10). Start is also the semantic `clean_date` below already implements — it
+        # compares against `localdate() + FUTURE_TRIP_DATE_TOLERANCE`, which is a claim
+        # about when the riding began — so the wording follows the rule rather than
+        # obliging it to change.
         help_texts = {
-            "date": "The day the ride happened — VeloLog is a diary, not a planner.",
+            "date": "The day the tour started — VeloLog is a diary, not a planner.",
         }
 
     def clean_date(self) -> date:

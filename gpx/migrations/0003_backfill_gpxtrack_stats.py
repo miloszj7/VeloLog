@@ -12,6 +12,21 @@ from django.db.migrations.state import StateApps
 
 logger = logging.getLogger(__name__)
 
+# The statistics columns as they exist at *this* migration's schema state — the four
+# `0002` added, and no more. Pinned here rather than imported from `gpx.statistics`,
+# whose `STATS_FIELDS` tracks the current model and grows: `0004` added
+# `started_at`/`ended_at` and they joined that tuple. Narrowing the historical queryset
+# below with a name the historical model does not carry raises `FieldDoesNotExist` out of
+# `.only()` — from `pending.iterator()`, *outside* the per-row guard — so `migrate` would
+# fail outright on every fresh database, taking the container boot with it. A migration's
+# field list is history, not configuration; see `STATS_FIELDS`' own docstring.
+STATS_COLUMNS_AT_0002 = (
+    "distance_meters",
+    "duration_seconds",
+    "elevation_gain_meters",
+    "elevation_loss_meters",
+)
+
 
 def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
     """Refill every row whose statistics are still null, best effort.
@@ -31,7 +46,7 @@ def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> 
     the triple break described above. `ImportError` alone would let all three through.
     """
     try:
-        from gpx.statistics import STATS_FIELDS, backfill_track_statistics
+        from gpx.statistics import backfill_track_statistics
     except Exception:
         logger.exception(
             "gpx.statistics is unavailable; leaving existing track statistics null. "
@@ -51,7 +66,7 @@ def backfill_stats(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> 
     # megabytes once hydrated into Python lists — which nothing below reads.
     # `save(update_fields=...)` is happy on a deferred instance, so this costs nothing, and
     # `.iterator()` keeps the result set itself from being materialized in one go.
-    pending = tracks.filter(distance_meters__isnull=True).only("id", "file", *STATS_FIELDS)
+    pending = tracks.filter(distance_meters__isnull=True).only("id", "file", *STATS_COLUMNS_AT_0002)
     for track in pending.iterator():
         try:
             # The inner `atomic()` is a savepoint, and it is what makes the broad catch

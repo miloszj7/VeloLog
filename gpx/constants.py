@@ -16,9 +16,22 @@ ALLOWED_GPX_EXTENSIONS = (".gpx",)
 # size cap this bounds the quantity that actually drives render cost: the `points` column is
 # re-read and inlined into the trip detail page on every view. A 10 MB file of minimal
 # `<trkpt>` elements parses to ~262,000 points and a 6 MB JSON payload — an upload that
-# succeeds and then makes the page it belongs to unrenderable. Provisional: calibrated
-# against that synthetic worst case (~24 bytes of JSON per point, so this caps the payload
-# at ~2.4 MB), not yet against a real multi-day tour export.
+# succeeds and then makes the page it belongs to unrenderable. Calibrated against that
+# synthetic worst case (~24 bytes of JSON per point, so this caps the payload at ~2.4 MB
+# per stage) and, since 2026-09-03, against a real one. Browser time-to-interactive was
+# *not* instrumented — the observation is only that the page draws without perceptible
+# delay — so the payload figure below is the proxy, and the honest one: it is what a
+# thinning algorithm would reduce and what a slow device would be spending its time on.
+#
+# **Measured, on a real three-day tour** (3 stages, 123 km, Garmin exports): 8,330 points
+# total, a 178 KiB inlined payload inside a 186 KiB page, rendered server-side in 67 ms.
+# That is ~21.9 bytes of JSON per point — the synthetic figure holds — and ~2,800 points
+# per riding day at this rider's sampling density. The number that matters is the ratio:
+# a single stage at this cap would be roughly **25 riding days in one file**, a shape no
+# tour produces, so the cap is nowhere near a real tour's path. Nothing to thin, and no
+# backlog row opened. Re-measure if either input changes — a denser recorder (1 Hz rather
+# than per-second-of-movement) or a rider who uploads a whole tour as one file — because
+# both move real usage toward the cap without the cap itself changing.
 MAX_GPX_POINTS = 100_000
 
 # Decimal places kept for each stored coordinate. Five is roughly a metre — finer than a
@@ -56,12 +69,43 @@ MIN_ELEVATED_POINTS = 2
 # the cost of being generous here is a file surviving one run — never a file deleted in flight.
 ORPHAN_MIN_AGE_MINUTES = 60
 
-# Paths of the Leaflet marker images `gpx/map_config.py` hands to the template, relative to
-# a static root. Resolved through `static()` at render — never written out as literal URLs —
-# because `CompressedManifestStaticFilesStorage` serves these under content-hashed names, so
+# Path of the Leaflet marker shadow `gpx/map_config.py` hands to the template, relative to
+# a static root. Resolved through `static()` at render — never written out as a literal URL —
+# because `CompressedManifestStaticFilesStorage` serves it under a content-hashed name, so
 # a hardcoded URL 404s in production while resolving fine under DEBUG. Leaflet's *default*
-# icon builds these URLs at runtime, which the hashed manifest never rewrites; naming them
-# here and passing them through the config is what keeps them off that path.
-MARKER_ICON = "gpx/vendor/leaflet/images/marker-icon.png"
-MARKER_ICON_RETINA = "gpx/vendor/leaflet/images/marker-icon-2x.png"
+# icon builds these URLs at runtime, which the hashed manifest never rewrites; naming this
+# here and passing it through the config is what keeps it off that path.
+#
+# The vendored `marker-icon.png` / `marker-icon-2x.png` beside it have no constant and no
+# reference: since Phase 5 every pin is a project-authored SVG below, and the default pin
+# they belong to is never built. They stay on disk as part of the upstream Leaflet drop
+# `SHA256SUMS` pins — removing them would fail that integrity check for no gain — but a
+# name here would assert a consumer that does not exist.
 MARKER_SHADOW = "gpx/vendor/leaflet/images/marker-shadow.png"
+
+# Project-authored pin SVGs, one per marker kind, replacing the shared default pin above
+# for the "start" / "finish" / "break" entries in `gpx/map_config.py`'s `icons` map — the
+# PRD's "distinct markers, without hovering" acceptance criterion (`prd.md:96-97,127`).
+# Text assets, not vendored: no third-party licence to clear and no `SHA256SUMS` entry.
+# One file serves both pixel densities (`iconRetinaUrl` points at the same path as
+# `iconUrl`), and the vendored PNG shadow above is still used for all three.
+MARKER_STAGE_START = "gpx/markers/stage-start.svg"
+MARKER_STAGE_FINISH = "gpx/markers/stage-finish.svg"
+MARKER_STAGE_BREAK = "gpx/markers/stage-break.svg"
+
+# Hues cycled across a trip's stages when drawing its route, keyed by stage index — stage 7
+# reuses stage 1's colour. The design system (`design-system.md` "Stage Route Palette")
+# forbids additional colours everywhere except this one bounded exception: map polylines and
+# their stage-list swatches, never interface chrome. The first entry is deliberately the
+# system's own accent (`--color-accent: #f97316`), so a single-stage trip draws in the colour
+# the system already specifies — and this is also where the pre-existing `#ff7800` drift in
+# `gpx/static/gpx/map.js` gets reconciled to that accent. The rest are chosen to stay
+# distinguishable from each other and legible over the OpenStreetMap basemap.
+STAGE_COLORS: tuple[str, ...] = (
+    "#f97316",  # accent orange — stage 1, matches the design system exactly
+    "#2563eb",  # blue
+    "#16a34a",  # green
+    "#dc2626",  # red
+    "#9333ea",  # purple
+    "#0891b2",  # teal
+)

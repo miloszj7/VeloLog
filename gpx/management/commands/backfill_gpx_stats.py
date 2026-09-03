@@ -1,11 +1,14 @@
 """`manage.py backfill_gpx_stats` — the recovery path for a backfill that filled nothing.
 
-Migration `0003` runs once, unattended, at container boot, and its most likely failure is
-a misconfigured `MEDIA_ROOT` — the one operational fault this repo has escalated to a
-Hard Rule in `AGENTS.md`, documented in `DEPLOY.md` and wired into `/healthz/`. If that
-deploy is the deploy `0003` applies on, the migration reads no files, fills nothing, and
-can never be re-run: a migration cannot be re-applied once recorded. This command is what
-makes that one invocation to recover instead of re-uploading every file by hand.
+Migrations `0003` (the four statistics) and `0005` (the two stage instants) each run once,
+unattended, at container boot, and their most likely failure is a misconfigured
+`MEDIA_ROOT` — the one operational fault this repo has escalated to a Hard Rule in
+`AGENTS.md`, documented in `DEPLOY.md` and wired into `/healthz/`. If that deploy is the
+deploy they apply on, they read no files, fill nothing, and can never be re-run: a
+migration cannot be re-applied once recorded. This command is what makes that one
+invocation to recover instead of re-uploading every file by hand — with `--all` for the
+instants, since the default filter below cannot reach a row whose statistics already
+landed.
 
 It carries no computation of its own — every line of that lives in `gpx/statistics.py`,
 the same helper the migration calls, so the two cannot drift.
@@ -23,7 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Recompute the statistics columns on stored GPX tracks from their files."
+    help = (
+        "Recompute the statistics columns and stage instants on stored GPX tracks "
+        "from their files."
+    )
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
@@ -31,7 +37,9 @@ class Command(BaseCommand):
             action="store_true",
             help=(
                 "Reprocess every track, not only those whose statistics are null — for a "
-                "track whose file was replaced or whose stored figures are stale."
+                "track whose file was replaced or whose stored figures are stale, and the "
+                "only way to refill stage instants on a row whose statistics are already "
+                "present."
             ),
         )
 
@@ -46,10 +54,15 @@ class Command(BaseCommand):
         """
         tracks = GpxTrack.objects.all()
         if not options["all"]:
-            # The same probe the migration uses, and for the same reason: `distance_meters`
-            # is the one statistic that is never null once computed, so the other three
-            # would select rows whose file simply carried no `<ele>` or `<time>` over and
-            # over again.
+            # `0003`'s probe, for `0003`'s reason: `distance_meters` is the one column a
+            # backfill writes that is never null once computed, so any other would select
+            # rows whose file simply carried no `<ele>` or no `<time>` over and over
+            # again. `0005` filters on `started_at` instead and is right to — it runs
+            # exactly once, so re-parsing every untimed row one time for nothing is its
+            # whole cost. Here it would be permanent: an untimed row would be pending on
+            # every invocation and the tally could never reach zero, which is this
+            # command's only signal that there is nothing left to do. `--all` is the path
+            # that refills instants, and it converges by being finite.
             tracks = tracks.filter(distance_meters__isnull=True)
 
         # Deferred for the same reason as in migration `0003`: the `points` blob is the

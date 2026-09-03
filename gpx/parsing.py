@@ -6,6 +6,7 @@ the security surface is one reviewable file rather than logic spread through a f
 
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import gpxpy
 from gpxpy.gpx import GPX, GPXException, GPXXMLSyntaxException
@@ -50,6 +51,8 @@ class TrackStatistics:
     duration_seconds: float | None
     elevation_gain_meters: float | None
     elevation_loss_meters: float | None
+    started_at: datetime | None
+    ended_at: datetime | None
 
 
 def _has_elevation_data(gpx: GPX) -> bool:
@@ -113,15 +116,31 @@ def track_statistics(gpx: GPX) -> TrackStatistics:
     # one-point file, so gating on `get_duration() is None` would store the exact zero
     # this gate exists to prevent. `get_time_bounds().start_time` is `None` exactly when
     # no point carried a `<time>`.
+    time_bounds = gpx.get_time_bounds()
     duration_seconds: float | None = None
-    if gpx.get_time_bounds().start_time is not None:
+    if time_bounds.start_time is not None:
         duration_seconds = gpx.get_duration()
+
+    # gpxpy hands back `SimpleTZ('Z')`-aware datetimes for Z-suffixed timestamps and
+    # *naive* ones for offset-less timestamps. A naive value saved under `USE_TZ=True`
+    # warns and is read back as UTC — a silently wrong instant, worse than none — so a
+    # naive value is treated as absent, together with its partner: a stage carrying one
+    # instant but not the other would be a half-timed stage no consumer has to handle.
+    start, end = time_bounds.start_time, time_bounds.end_time
+    started_at: datetime | None
+    ended_at: datetime | None
+    if start is None or end is None or start.tzinfo is None or end.tzinfo is None:
+        started_at = ended_at = None
+    else:
+        started_at, ended_at = start.astimezone(UTC), end.astimezone(UTC)
 
     return TrackStatistics(
         distance_meters=distance_meters,
         duration_seconds=duration_seconds,
         elevation_gain_meters=elevation_gain_meters,
         elevation_loss_meters=elevation_loss_meters,
+        started_at=started_at,
+        ended_at=ended_at,
     )
 
 
@@ -165,6 +184,17 @@ class ParsedTrack:
     """
     elevation_loss_meters: float | None
     """Total descent in metres, or `None` on the same terms as `elevation_gain_meters`."""
+    started_at: datetime | None
+    """The first recorded GPS instant, normalised to UTC, or `None` when unavailable.
+
+    Both-or-neither with `ended_at`: a file yielding one instant but not the other is
+    treated as having neither, so no consumer has to handle a half-timed stage.
+    Naive-is-absent: gpxpy hands back naive datetimes for timestamps with no offset, and
+    storing one under `USE_TZ=True` would warn and be silently interpreted as UTC — a
+    wrong instant, worse than none — so a naive value is treated the same as no value.
+    """
+    ended_at: datetime | None
+    """The last recorded GPS instant, normalised to UTC, on the same terms as `started_at`."""
 
     def json_points(self) -> list[list[float]]:
         """Return the points in the shape `GpxTrack.points` stores and the map reads.
@@ -309,4 +339,6 @@ def parse_gpx(text: str) -> ParsedTrack:
         duration_seconds=statistics.duration_seconds,
         elevation_gain_meters=statistics.elevation_gain_meters,
         elevation_loss_meters=statistics.elevation_loss_meters,
+        started_at=statistics.started_at,
+        ended_at=statistics.ended_at,
     )

@@ -32,20 +32,26 @@ from django.test import Client
 from django.urls import reverse
 from pytest_django.fixtures import Settings
 
-from gpx.constants import MARKER_ICON, MARKER_ICON_RETINA, MARKER_SHADOW
+from gpx.constants import (
+    MARKER_SHADOW,
+    MARKER_STAGE_BREAK,
+    MARKER_STAGE_FINISH,
+    MARKER_STAGE_START,
+)
 from tests.conftest import TrackFactory
 from trips.models import Trip
 from velo_log.settings import STATIC_ROOT
 from velo_log.settings import STORAGES as PRODUCTION_STORAGES
 
-# The three marker paths are imported rather than restated so this cannot drift from the
-# code it guards. The four below are literals because they are written in templates, where
+# The four marker paths are imported rather than restated so this cannot drift from the
+# code it guards. The seven below are literals because they are written in templates, where
 # there is no constant to import; the manifest render at the bottom of this file is what
 # covers a template that stops agreeing with them.
 STATIC_REFERENCES = (
-    MARKER_ICON,
-    MARKER_ICON_RETINA,
     MARKER_SHADOW,
+    MARKER_STAGE_START,
+    MARKER_STAGE_FINISH,
+    MARKER_STAGE_BREAK,
     "css/style.css",
     "css/theme.css",
     "gpx/map.js",

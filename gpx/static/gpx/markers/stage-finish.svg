@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 41" width="25" height="41">
+  <!-- Trip finish: full pin, solid dark red, white square at the head — a square reads
+       as distinct from the start pin's dot even in a colour-blind-hostile screenshot,
+       not only by hue. Same 25x41 pin geometry as stage-start.svg. -->
+  <path d="M12.5 0.5C5.87 0.5 0.5 5.87 0.5 12.5c0 9.02 12 27.3 12 27.3s12-18.28 12-27.3C24.5 5.87 19.13 0.5 12.5 0.5z"
+        fill="#991b1b" stroke="#ffffff" stroke-width="1.5"/>
+  <rect x="9" y="9" width="7" height="7" fill="#ffffff"/>
+</svg>

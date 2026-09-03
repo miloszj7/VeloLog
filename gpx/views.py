@@ -4,16 +4,14 @@ from typing import TYPE_CHECKING, Any, cast
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db import transaction
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views.generic import CreateView, View
 
-from gpx.availability import track_file_is_available
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
-from gpx.statistics import build_trip_stats
+from gpx.stages import build_stages, chronology_is_established, trip_span
 from trips.models import Trip
 
 logger = logging.getLogger(__name__)
@@ -27,7 +25,14 @@ else:
 
 
 class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadViewBase):
-    """Attaches a GPX track to one of the requesting user's own trips, replacing any existing one.
+    """Attaches a new GPX stage to one of the requesting user's own trips.
+
+    Every upload **adds** a stage; none of them supersede what is already there.
+    `gpx/stages.py` is what orders a trip's stages afterwards — chronologically by GPS
+    instant where one was recorded, by upload order otherwise — so this view need not
+    care what position the new row lands in. No path through this view ever deletes a
+    `GpxTrack` row or its file; `gpx/signals.py`'s `post_delete` receiver is the only
+    place a stored file is ever removed for that reason, and it stays that way.
 
     The view lives in `gpx/` but renders a `trips/` template. That cross-app reference is
     deliberate: the model, parsing and validation belong to `gpx/`, while the page the
@@ -37,7 +42,7 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
 
     form_class = GpxUploadForm
     template_name = "trips/trip_detail.html"
-    success_message = "Route uploaded."
+    success_message = "Stage added."
     # POST-only: the form is served from the trip detail page, and this URL is nothing
     # but its target. A GET here would render a second, unlinked copy of that page.
     http_method_names = ["post"]
@@ -68,58 +73,46 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Supply what `trips/trip_detail.html` needs when re-rendering with errors.
 
-        Including the map, stats, and file-availability blobs: this path renders the same
-        page as `TripDetailView`, so a rider whose upload was rejected must still see the
-        route and the figures they already had, not the template's no-route-to-draw branch,
-        not its "these were never computed" sentence, and not a false "file unavailable"
-        marker over a track whose file is perfectly healthy.
+        Including the map, chronology and span blobs: this path renders the same page as
+        `TripDetailView`, so a rider whose upload was rejected must still see every stage
+        they already had, not the template's no-route-to-draw branch, not a false "file
+        unavailable" marker over a track whose file is perfectly healthy, and not a tour
+        that appears to shrink to a single day because one key was missed here.
         """
         context = super().get_context_data(**kwargs)
-        track = self.trip.tracks.first()
+        stages = build_stages(self.trip)
+        tracks = [stage.track for stage in stages]
         context["trip"] = self.trip
-        context["track"] = track
-        context["map_config"] = build_map_config(track)
-        context["stats"] = build_trip_stats(track)
-        context["track_file_available"] = track_file_is_available(track)
+        context["stages"] = stages
+        context["map_config"] = build_map_config(stages)
+        context["chronology_established"] = chronology_is_established(tracks)
+        context["trip_span"] = trip_span(tracks)
         return context
 
     def get_success_url(self) -> str:
         return self.trip.get_absolute_url()
 
     def form_valid(self, form: GpxUploadForm) -> HttpResponse:
-        """Persist the new track, then retire the rows it supersedes.
+        """Persist the new stage. Nothing else on the trip is touched.
 
-        The new row and its file are saved **first**; the reverse order loses both if the
-        new save fails.
+        This used to open a transaction, read every existing track on the trip, and
+        delete that pk set once the new row was saved — replace semantics, not add. That
+        block is gone outright, not merely disabled: the multi-statement write it guarded
+        no longer exists, so `transaction.atomic()` has nothing left to make atomic. The
+        storage-write orphan window it never covered (a process dying between the file
+        write and the commit) was never this block's job either — `manage.py
+        reconcile_media` is the backstop for that, unchanged.
 
-        Removing the superseded *files* is no longer this method's business — the
-        `post_delete` receiver in `gpx/signals.py` schedules that for every row the delete
-        below removes, and it does so on commit for the reasons its docstring gives. That
-        is strictly stronger than scheduling the cleanup here was: the receiver fires once
-        per row actually deleted, so the cleanup set equals the delete set by
-        construction, rather than by this method taking care to reuse one snapshot for
-        both.
+        Do **not** reinstate a delete here as "cleanup". `gpx/signals.py`'s `post_delete`
+        receiver is the only path that ever removes a stage's file, fired once per row a
+        delete actually removes — reintroducing a delete in this method would put a
+        second, competing path back in, and against a trip that already has a stage that
+        path destroys it.
         """
         # The parsed route is already on the instance — `GpxUploadForm.clean_file` puts
         # it there. Ownership is the one thing the form cannot know.
         form.instance.trip = self.trip
-
-        with transaction.atomic():
-            # Read inside the transaction, and before the insert below so the new row is
-            # not in it. Both halves matter: read outside, and two concurrent uploads to
-            # one trip each see the same predecessor, so the second deletes rows the
-            # first has already deleted while leaving its own predecessor in place.
-            # Deleting by this explicit pk set rather than by `exclude(pk=...)` is what
-            # bounds the delete to the rows this request observed. `select_for_update` is
-            # a no-op on SQLite, so today the pk set is the half carrying the fix; it
-            # earns its place if the database ever changes.
-            superseded = list(self.trip.tracks.select_for_update())
-
-            # Saves the row and writes the file, adds the success message, and returns
-            # the redirect to `get_success_url`.
-            response = super().form_valid(form)
-            self.trip.tracks.filter(pk__in=[track.pk for track in superseded]).delete()
-        return response
+        return super().form_valid(form)
 
 
 class GpxDownloadView(LoginRequiredMixin, View):

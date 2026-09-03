@@ -3,6 +3,7 @@ project: VeloLog
 version: 4
 status: draft
 created: 2026-09-02
+updated: 2026-09-02
 context_type: brownfield
 product_type: web-app
 target_scale:
@@ -46,7 +47,7 @@ Two gaps remain between v1 and the original core insight — that a trip is a fi
 A user opens an existing trip, uploads a second (and further) GPX file as an additional stage, and the trip detail view renders all stages as visually distinct, chronologically-ordered segments on an interactive (pan/zoom) map, with distinct markers for the trip's start, end, and each inter-stage boundary ("stage break"). A single-GPX v1 trip continues to render correctly, unchanged, on the same interactive map.
 
 ### Secondary
-None promoted for this change — whole-trip/per-stage statistics and standalone accommodation waypoints are explicitly fast-follow (see Non-Goals).
+None promoted for this change — whole-trip statistics aggregation and standalone accommodation waypoints are explicitly fast-follow (see Non-Goals). Per-stage figures were listed here as fast-follow too until 2026-09-02; they are not a promoted criterion either, but they now ship as a correctness consequence of rendering several stages at once, not as a deferred feature.
 
 ### Guardrails
 - **Data never lost**: every uploaded stage file is durably stored and retrievable, the same guarantee as v1.
@@ -61,7 +62,58 @@ None promoted for this change — whole-trip/per-stage statistics and standalone
 - **When** they upload a second GPX file to the same trip and open the trip detail view
 - **Then** they see both stages as visually distinct, chronologically-ordered segments on an interactive map, with markers at the trip's start, end, and the "stage break" between the two stages
 
-# TODO: US-02 has no separate Acceptance Criteria checklist beyond its Given/When/Then — see Open Questions.
+#### Acceptance Criteria
+
+Backfilled 2026-09-02 from `context/changes/multi-stage-gpx-upload/plan.md` (Phase 2's
+guardrail criteria, Phase 3's rendering criteria, Phase 4's stage-list criteria), which
+worked out the concrete content while planning S-01. Every item below is rider-observable
+on the trip detail page — implementation-level checks stay in the plan's own success
+criteria and are not duplicated here.
+
+**Accumulation (the guardrail)**
+
+- Uploading a GPX file to a trip that already has one **adds** a stage: the earlier stage's
+  record and its stored file both survive, and both stay downloadable as their original bytes.
+- Uploading to one trip never alters, reorders or removes another trip's stages.
+- Deleting the trip removes every stage's file; no stage file is left unreferenced in storage.
+
+**Chronological order**
+
+- Stages are ordered by the GPS instant recorded in the file, not by upload time — uploading
+  a later-ridden file first still shows the earlier-ridden stage first, on both the map and
+  the stage list.
+- A stage whose file carries no timestamps is placed after every timed stage, in upload order,
+  and the page states that the order is upload order instead of claiming it is chronological.
+
+**Merged interactive map**
+
+- Every stage draws on one pan/zoom map as its own segment, each in its own colour from a
+  bounded palette; a colour repeats only past the palette's length.
+- The map's initial view frames the **whole trip** — its bounding box spans every stage, not
+  the extent of any single one.
+- Markers are exactly one at the trip's start, one at the trip's end, and one "stage break"
+  at each boundary between consecutive stages; the three kinds are distinguishable at a
+  glance, without hovering, on desktop and at phone width.
+- Stage-break markers appear only when every stage carries a GPS timestamp — upload order is
+  not evidence that a rider stopped in one place and resumed in another.
+
+**Per-stage detail**
+
+- Below the map, one row per stage in the same order as the map, each carrying a colour
+  swatch matching its segment, the file's original name, that stage's own distance /
+  recorded time / elevation figures, and its own download link.
+- A figure the file cannot support renders the existing "not recorded" wording rather than a
+  zero or a blank; a stage with no figures at all renders the existing "not worked out"
+  sentence.
+- A stage whose stored file has gone missing renders the file-unavailable text while its
+  sibling stages keep working download links.
+
+**v1 trips unaffected**
+
+- A trip with exactly one stage renders one segment, one stage row, and the same figures it
+  renders today; its edit and delete flows are unchanged.
+- A trip with no stage at all renders v1's empty state unchanged.
+- No manual action is required from the rider for an existing v1 trip to satisfy the above.
 
 ## Scope of Change
 
@@ -78,7 +130,7 @@ None promoted for this change — whole-trip/per-stage statistics and standalone
 
 ### Fast-follow (parked for this change — pick up only if the week's core scope finishes early)
 - [new, deferred] User can add an accommodation waypoint (description, photo) between stages, as its own record rather than an inferred map marker. Priority: nice-to-have.
-- [new, deferred] User can view whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view. Priority: nice-to-have.
+- [new, deferred] User can view **whole-trip** aggregated statistics (distance, duration, elevation) on the trip detail view, alongside the per-stage figures this change ships. Priority: nice-to-have. Narrowed 2026-09-02 — see Non-Goals.
 
 ## Constraints & Compatibility
 
@@ -104,9 +156,9 @@ Unchanged from v1: the trip map renders and the page reaches an interactive stat
 
 - **No accommodation waypoint entity in this change**: a standalone record with description/photo, placed between stages, is fast-follow, not built this week. Only the generic "stage break" marker ships.
 - **No manual stage reordering**: stage order is always derived from GPS timestamp; there is no drag-to-reorder UI or manual override in this change.
-- **No whole-trip/per-stage statistics in this change**: fast-follow — existing single-file distance/duration/elevation stats are not extended to multi-stage aggregation this week (v1's stats display continues to reflect only what it already covers).
+- **No whole-trip statistics aggregation in this change**: fast-follow — no trip total for distance, duration or elevation is computed this week. Narrowed 2026-09-02, from "no whole-trip/per-stage statistics": **per-stage** figures are not deferrable, because once a trip holds several stages the existing single stats block would print one arbitrary stage's distance under a heading a rider reads as the trip's — a wrong number of the same family the undifferentiated-polyline revision above already rejected. Attributing each figure to its own stage is therefore a correctness consequence of multi-stage rendering, not the fast-follow feature; the aggregation across stages is what stays parked, together with the partial-data rule it needs (a trip total must not be summed over stages where a figure is missing, or a `NULL` silently becomes a zero).
 - **No product type or scale change**: still a responsive web app at small/solo scale; unchanged from v1.
 
 ## Open Questions
 
-1. **US-02 has no separate Acceptance Criteria checklist beyond its Given/When/Then.** — Owner: user. By: before implementation planning. Block: no — the Given/When/Then is sufficient to scope the change, but an explicit checklist would tighten testability.
+1. ~~**US-02 has no separate Acceptance Criteria checklist beyond its Given/When/Then.**~~ — **Resolved 2026-09-02.** US-02 now carries an explicit Acceptance Criteria checklist, backfilled from S-01's implementation plan rather than authored fresh: planning the slice produced the concrete, rider-observable content the question was asking for, so writing it down was cheap and the criteria are grounded in what will actually be built. Answering it also forced one PRD amendment — Non-Goal #3 narrowed from "no whole-trip/per-stage statistics" to whole-trip aggregation only, because per-stage attribution turned out to be a correctness consequence of multi-stage rendering rather than a separable feature. Two criteria are worth watching during implementation, because both depend on plan phases marked cuttable under the 2026-09-10 deadline — a cut leaves a named criterion unmet rather than merely unpolished. (a) *Markers distinguishable at a glance* needs the three project-authored pins; cut, all three kinds share one pin and are separable only by hovering, which the criterion explicitly rules out. (b) *Chronological order and stage-break markers on a trip that already has a stage* — US-02's own scenario — needs the backfill that fills ride instants onto stages uploaded before this change; cut, such a trip falls back to upload-order wording and no break markers until its rows are refilled, so the criterion holds for new trips but not for the pre-existing one the story starts from.

@@ -3,12 +3,14 @@
 Nothing calls into this module by name — `GpxConfig.ready` imports it so the `@receiver`
 decorators below run. That placement is what makes cleanup a property of the *model*
 rather than of one view or one `ModelAdmin`: a trip cascade, the admin's `delete_selected`
-bulk action, an upload replacing its predecessor, a bare `QuerySet.delete()` and a file
-replaced on a row that stays all go through this module.
+bulk action, a bare `QuerySet.delete()` and a file replaced on a row that stays all go
+through this module.
 
 The two receivers split the lifecycle between them. `post_delete` covers a file whose row
-is gone; `pre_save` covers a file superseded on a row that survives, which is what the
-admin change form does. Both schedule their storage work with `transaction.on_commit`,
+is gone; `pre_save` covers a file superseded on a row that survives — the admin change
+form and a direct `FieldFile.save()`, which are the only two paths that still supersede
+anything, since an upload now *adds* a stage rather than replacing the trip's existing
+one. Both schedule their storage work with `transaction.on_commit`,
 never inline, for the reason `discard_file_by_key` gives.
 """
 
@@ -158,9 +160,11 @@ def discard_superseded_file_of_saved_track(
         # and deleting the file a `loaddata` row names would destroy what it restores.
         return
     if instance.pk is None:
-        # The insert path — every upload. Returning here is what keeps this receiver off
-        # `GpxUploadView.form_valid`, whose superseded rows are *deleted* and so already
-        # covered by `discard_file_of_deleted_track`, and costs the hot path zero queries.
+        # The insert path — and every upload is an INSERT, because `GpxUploadView`
+        # *adds* a stage: it supersedes no row and so leaves no file to reclaim. Returning
+        # here is what keeps this receiver off that hot path at a cost of zero queries.
+        # What does reach the lookup below is the admin change form and a direct
+        # `FieldFile.save()` on a surviving row.
         return
     update_fields = kwargs.get("update_fields")
     if update_fields is not None and "file" not in update_fields:

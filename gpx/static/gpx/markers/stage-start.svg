@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 41" width="25" height="41">
+  <!-- Trip start: full pin, solid green, white dot at the head so the kind reads at a
+       glance without hovering (prd.md:96-97). Leaflet's stock 25x41 pin geometry, point
+       at the bottom centre, matches the existing iconSize/iconAnchor/popupAnchor values
+       so no anchor math changes when this replaces the shared default pin. -->
+  <path d="M12.5 0.5C5.87 0.5 0.5 5.87 0.5 12.5c0 9.02 12 27.3 12 27.3s12-18.28 12-27.3C24.5 5.87 19.13 0.5 12.5 0.5z"
+        fill="#16a34a" stroke="#ffffff" stroke-width="1.5"/>
+  <circle cx="12.5" cy="12.5" r="5" fill="#ffffff"/>
+</svg>

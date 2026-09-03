@@ -182,7 +182,7 @@ def test_date_field_renders_its_help_text(auth_client: Client) -> None:
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert "The day the ride happened" in body
+    assert "The day the tour started" in body
     assert 'id="id_date_helptext"' in body
     assert 'aria-describedby="id_date_helptext"' in body
 

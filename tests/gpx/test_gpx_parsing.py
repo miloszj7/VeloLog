@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import gpxpy
 import gpxpy.parser
 import pytest
@@ -220,6 +222,64 @@ def test_two_elevated_points_are_enough_to_report_a_climb() -> None:
 
     assert parsed.elevation_gain_meters is not None
     assert parsed.elevation_loss_meters is not None
+
+
+def test_a_timed_file_stores_its_first_and_last_instants_as_utc(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """The instants come from `get_time_bounds()`, normalised to UTC-aware values."""
+    parsed = parse_gpx_bytes(gpx_bytes("timed-track.gpx"))
+
+    assert parsed.started_at == datetime(2026, 6, 1, 8, 0, 0, tzinfo=UTC)
+    assert parsed.ended_at == datetime(2026, 6, 1, 9, 0, 0, tzinfo=UTC)
+
+
+def test_an_untimed_file_stores_no_instants_but_still_stores_distance(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """`valid-track.gpx` carries no `<time>` at all — both instants stay absent."""
+    parsed = parse_gpx_bytes(gpx_bytes("valid-track.gpx"))
+
+    assert parsed.started_at is None
+    assert parsed.ended_at is None
+    assert parsed.distance_meters == pytest.approx(3661.09, abs=0.01)
+
+
+def test_naive_timestamps_are_stored_as_no_usable_instant(
+    recwarn: pytest.WarningsRecorder,
+) -> None:
+    """Offset-less timestamps yield naive datetimes from gpxpy — treated as absent.
+
+    Storing a naive value under `USE_TZ=True` would warn and be silently interpreted as
+    UTC, a wrong instant that is worse than none. This is the shape that gate exists to
+    prevent: assert both that the pair stays `None` and that no such warning fires.
+    """
+    text = (
+        '<?xml version="1.0"?><gpx version="1.1" creator="test"><trk><trkseg>'
+        '<trkpt lat="50.06" lon="19.94"><time>2026-06-01T08:00:00</time></trkpt>'
+        '<trkpt lat="50.07" lon="19.95"><time>2026-06-01T09:00:00</time></trkpt>'
+        "</trkseg></trk></gpx>"
+    )
+
+    parsed = parse_gpx(text)
+
+    assert parsed.started_at is None
+    assert parsed.ended_at is None
+    assert not any(issubclass(w.category, RuntimeWarning) for w in recwarn.list)
+
+
+def test_a_multi_segment_timed_file_spans_first_segment_start_to_last_segment_end(
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """The instant pair is a whole-file span, unlike `duration_seconds`' segment sum.
+
+    `two-segment-track.gpx` runs 08:00-09:00 and 15:00-16:00 — the instants must cover
+    the full 08:00-to-16:00 range, not either segment alone.
+    """
+    parsed = parse_gpx_bytes(gpx_bytes("two-segment-track.gpx"))
+
+    assert parsed.started_at == datetime(2026, 6, 1, 8, 0, 0, tzinfo=UTC)
+    assert parsed.ended_at == datetime(2026, 6, 1, 16, 0, 0, tzinfo=UTC)
 
 
 def test_malformed_xml_is_a_syntax_error(gpx_bytes: GpxBytesReader) -> None:

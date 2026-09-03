@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 41" width="25" height="41">
+  <!-- Stage break: visually subordinate to start/finish — a small hollow pin rather than
+       a full solid one, since a tour has exactly one start and one end but potentially
+       many breaks (gpx/map_config.py's "break" markers, one per inter-stage boundary).
+       Same 25x41 viewBox and bottom-centre tip as the other two, so iconAnchor stays
+       correct even though the drawn shape is smaller. -->
+  <path d="M12.5 41C12.5 41 12.5 30 12.5 30" stroke="#6b7280" stroke-width="2"/>
+  <circle cx="12.5" cy="23" r="7" fill="#ffffff" stroke="#6b7280" stroke-width="2.5"/>
+</svg>

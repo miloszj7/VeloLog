@@ -1,8 +1,17 @@
-"""The two ends of the four statistics columns: refilling them, and shaping them for display.
+"""The two ends of the derived-at-parse columns: refilling them, and shaping them for display.
 
 One module rather than two because both halves are defined by the same column set, and the
 zero-versus-null distinction those columns exist to preserve has to be honoured identically
-at both ends. `STATS_FIELDS` below names the set once; `build_trip_stats` reads exactly it.
+at both ends.
+
+The two halves no longer cover the *same* columns, and the difference is deliberate.
+`STATS_FIELDS` names everything a backfill writes — the four statistics plus the two stage
+instants `0004` added — because all six are filled from one parse and a row filled by
+halves is a row that can disagree with itself. `build_trip_stats` reads only the four
+statistics, because the instants are not display figures: they are read by
+`gpx.stages.ordered_stage_tracks` and `chronology_is_established` to decide stage order and
+whether that order is evidence. Refilling and displaying are therefore sized differently on
+purpose; do not "tidy" either list towards the other.
 
 Refilling
 ---------
@@ -17,21 +26,24 @@ This is application code rather than logic living inside the migration that need
 one reason: migrations run against an empty in-memory database under `pytest`, so a data
 migration proves nothing about itself. The helper below is unit-tested directly.
 
-**Pinned by `gpx/migrations/0003_backfill_gpxtrack_stats.py`**, which imports it inside
-its `RunPython` body, and by `manage.py backfill_gpx_stats`. It cannot be deleted while
-that migration exists: a replay on a fresh database would degrade to one logged skip and
-leave every pre-existing row's statistics null. Renaming it is survivable — the
-migration's import sits under a guard, deliberately — but silent, which is worse than a
-break.
+**Pinned by two migrations** — `gpx/migrations/0003_backfill_gpxtrack_stats.py` for the
+four statistics and `gpx/migrations/0005_backfill_gpxtrack_stage_instants.py` for the two
+instants — each importing it inside its own `RunPython` body, and by
+`manage.py backfill_gpx_stats`. It cannot be deleted while either exists: a replay on a
+fresh database would degrade to one logged skip per row and leave every pre-existing row's
+statistics null, and its instants with them. Renaming it is survivable — both imports sit
+under a guard, deliberately — but silent, which is worse than a break.
 
 Displaying
 ----------
 
-`build_trip_stats` mirrors `gpx/map_config.py`'s `build_map_config` exactly — same
-`GpxTrack | None` in, same "or `None` when there is nothing to show" out — so the detail
-template is handed a finished blob and does no arithmetic of its own. That is the same
-reason the map blob is built outside the two views: two views render
-`trips/trip_detail.html`, and a value derived in a template would have to be derived twice.
+`build_trip_stats` shares `gpx/map_config.py`'s `build_map_config` "or `None` when there is
+nothing to show" discipline — the template is handed a finished blob or `None`, and does no
+arithmetic of its own — but not its input type: `build_map_config` takes `Sequence[Stage]`
+(one call, all stages) while `build_trip_stats` deliberately keeps its single-track
+signature, called once per stage by `gpx.stages.build_stages`. Both live outside the two
+views for the same reason: two views render `trips/trip_detail.html`, and a value derived
+in a template would have to be derived twice.
 """
 
 import logging
@@ -49,14 +61,45 @@ STATS_FIELDS = (
     "duration_seconds",
     "elevation_gain_meters",
     "elevation_loss_meters",
+    "started_at",
+    "ended_at",
 )
 """The only columns a backfill ever writes.
 
-Named once so the helper's `update_fields`, the migration's null-row filter and the
-management command's cannot drift apart — and so it stays visible that `points` and the
-four bounds are not in the list. Those are what the map draws, they are already correct,
-and a backfill has no business rewriting them.
+Named once so the helper's `update_fields` and the management command's `.only(...)`
+narrowing cannot drift apart — and so it stays visible that `points` and the four bounds
+are not in the list. Those are what the map draws, they are already correct, and a
+backfill has no business rewriting them.
+
+**Not for a migration's narrowing.** This tuple tracks the *current* model, and it grows:
+the two instants joined it after `0004` added the columns. A data migration runs at the
+schema state its own dependencies left behind, so it must pin its own field list —
+`gpx/migrations/0003_backfill_gpxtrack_stats.py` explains what narrowing a historical
+queryset with a name from here costs, and `0005` carries its own pin for the same reason
+even though today the two agree. `_writable_stats_fields` is the other half of the same
+rule, for the `update_fields` the shared helper builds.
 """
+
+
+def _writable_stats_fields(track: GpxTrack) -> list[str]:
+    """The subset of `STATS_FIELDS` that exists on `track`'s own model.
+
+    Args:
+        track: The row about to be saved. A live `GpxTrack` carries every field in
+            `STATS_FIELDS`; the historical instance a data migration passes may not.
+
+    Returns:
+        The field names safe to name in that row's `update_fields`, in `STATS_FIELDS`
+        order.
+
+    A strict subset only under a data migration: `0003` runs at a schema state predating
+    `started_at`/`ended_at`, and `Model.save` rejects an `update_fields` naming a field its
+    model does not have. Raising there would be caught by that migration's per-row guard
+    and degrade it to one logged skip per row — `migrate` printing OK having filled
+    nothing, which is the failure shape `0003` was written to avoid.
+    """
+    present = {field.name for field in track._meta.fields}
+    return [name for name in STATS_FIELDS if name in present]
 
 
 def backfill_track_statistics(track: GpxTrack) -> bool:
@@ -64,9 +107,10 @@ def backfill_track_statistics(track: GpxTrack) -> bool:
 
     Args:
         track: The row to refill. May be the historical model instance a data migration
-            passes rather than a real `GpxTrack` — nothing here touches anything but
-            `file` and the four statistics columns, all of which exist in every version
-            of the schema that has the columns at all.
+            passes rather than a real `GpxTrack` — nothing here reads anything but `file`,
+            and nothing is *written* that the instance's own model does not have, because
+            `_writable_stats_fields` builds `update_fields` from that model rather than
+            from `STATS_FIELDS` directly.
 
     Returns:
         Whether the row was refilled. `False` means the file could not be read or no
@@ -98,11 +142,18 @@ def backfill_track_statistics(track: GpxTrack) -> bool:
     track.duration_seconds = parsed.duration_seconds
     track.elevation_gain_meters = parsed.elevation_gain_meters
     track.elevation_loss_meters = parsed.elevation_loss_meters
+    # Both-or-neither and naive-is-absent are settled at the parse boundary
+    # (`gpx/parsing.py`), so a backfilled row and a freshly uploaded one cannot disagree
+    # about the same file. Assigned unconditionally even under a migration whose model has
+    # no such column — that just sets a Python attribute, and `_writable_stats_fields`
+    # keeps it out of the write.
+    track.started_at = parsed.started_at
+    track.ended_at = parsed.ended_at
     # `update_fields` naming only the statistics is the whole safety property of the
     # backfill: a bare `save()` would rewrite `points` and the bounds from this in-memory
     # instance, so a bug anywhere upstream of here could damage the route on a row that
     # was rendering perfectly well.
-    track.save(update_fields=list(STATS_FIELDS))
+    track.save(update_fields=_writable_stats_fields(track))
     return True
 
 

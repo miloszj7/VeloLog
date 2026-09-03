@@ -12,12 +12,18 @@ the value the statistics layer exists to keep distinct from "the file did not ca
 """
 
 import logging
+from datetime import UTC, datetime
+from importlib import import_module
 
 import pytest
 from django.core.management import call_command
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 
 from gpx.models import GpxTrack
 from gpx.statistics import (
+    STATS_FIELDS,
+    _writable_stats_fields,
     backfill_track_statistics,
     build_trip_stats,
     format_distance,
@@ -37,6 +43,17 @@ TIMED_TRACK_SECONDS = 3600.0
 # A value no fixture could ever produce, so a test asserting it survived is asserting that
 # nothing recomputed the row rather than that a recomputation happened to agree.
 SENTINEL_DISTANCE_METERS = 1.0
+# The same 08:00 → 09:00 span as `TIMED_TRACK_SECONDS`, read as the absolute instants
+# rather than as a relative length. Both are `Z`-suffixed in the fixture, so the stored
+# values must come back as UTC-aware.
+TIMED_TRACK_STARTED_AT = datetime(2026, 6, 1, 8, 0, tzinfo=UTC)
+TIMED_TRACK_ENDED_AT = datetime(2026, 6, 1, 9, 0, tzinfo=UTC)
+# Imported by path because the module name starts with a digit, so it is not a legal
+# dotted import. Reaching into the migration is deliberate: `STATS_COLUMNS_AT_0002` is a
+# pin, and a pin nothing asserts against is just a comment.
+STATS_COLUMNS_AT_0002 = import_module(
+    "gpx.migrations.0003_backfill_gpxtrack_stats"
+).STATS_COLUMNS_AT_0002
 
 
 @pytest.mark.django_db
@@ -130,6 +147,125 @@ def test_a_backfill_never_touches_the_points_or_the_bounds(
     assert track.min_longitude == GPX_BOUNDS["min_longitude"]
     assert track.max_latitude == GPX_BOUNDS["max_latitude"]
     assert track.max_longitude == GPX_BOUNDS["max_longitude"]
+
+
+@pytest.mark.django_db
+def test_backfilling_a_timed_track_fills_both_stage_instants(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """A backfilled row and a freshly uploaded one must agree about the same file.
+
+    The instants are what `gpx.stages.chronology_is_established` reads, so a row this
+    helper leaves null can never take part in a chronological claim however many timed
+    stages join it later. Asserted as exact UTC-aware values, not merely as non-null: a
+    naive or offset-shifted instant is the failure this column's parse rule exists to
+    prevent, and `is not None` would pass on one.
+    """
+    track = make_stored_track(trip, content=gpx_bytes("timed-track.gpx"))
+    assert track.started_at is None
+
+    assert backfill_track_statistics(track) is True
+
+    track.refresh_from_db()
+    assert track.started_at == TIMED_TRACK_STARTED_AT
+    assert track.ended_at == TIMED_TRACK_ENDED_AT
+
+
+@pytest.mark.django_db
+def test_backfilling_an_untimed_track_leaves_both_stage_instants_null(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """Both-or-neither, on the backfill path as at the parse boundary.
+
+    `valid-track.gpx` carries `<ele>` but no `<time>`, so the three elevation/distance
+    columns fill and both instants stay null — permanently, since nothing about that file
+    will ever yield one. That permanence is why the management command's default filter
+    stays on `distance_meters`: a filter on `started_at` would re-select this row forever.
+    """
+    track = make_stored_track(trip, content=gpx_bytes("valid-track.gpx"))
+
+    assert backfill_track_statistics(track) is True
+
+    track.refresh_from_db()
+    assert track.distance_meters == pytest.approx(FIXTURE_DISTANCE_METERS, abs=0.01)
+    assert track.started_at is None
+    assert track.ended_at is None
+
+
+@pytest.mark.django_db
+def test_the_written_columns_narrow_to_the_ones_the_rows_own_model_carries() -> None:
+    """The guard on migration `0003`, which no other test in this suite can reach.
+
+    This module's own docstring explains why: migrations run against an empty database
+    here, so `0003`'s data loop never executes and cannot be exercised end to end. What
+    *is* reachable is the reason it would break — `STATS_FIELDS` tracks the current model
+    and grew when `0004` added the instants, while `0003` runs at `0002`'s state, where
+    those columns do not exist. Naming one in that row's `update_fields` raises
+    `ValueError`, `0003`'s per-row guard swallows it, and `migrate` prints OK having
+    filled nothing.
+
+    The historical model comes from the real migration graph rather than a hand-built
+    stand-in, so this stays true if the graph is reordered instead of asserting a
+    yesterday's-shape snapshot.
+    """
+    executor = MigrationExecutor(connection)
+    at_0002 = executor.loader.project_state(("gpx", "0002_gpxtrack_stats"))
+    historical_track = at_0002.apps.get_model("gpx", "GpxTrack")
+
+    assert _writable_stats_fields(historical_track()) == [
+        "distance_meters",
+        "duration_seconds",
+        "elevation_gain_meters",
+        "elevation_loss_meters",
+    ]
+    # The live model carries every one of them, so nothing is silently dropped in the
+    # case that actually runs in production.
+    assert _writable_stats_fields(GpxTrack()) == list(STATS_FIELDS)
+
+
+@pytest.mark.django_db
+def test_the_pinned_migration_columns_match_the_state_that_migration_runs_at() -> None:
+    """`0003` pins its own field list; this is what keeps the pin honest.
+
+    A pinned tuple solves the drift in one direction and invites it in the other — the
+    names could rot against `0002`'s actual schema with nothing to say so. Asserting it
+    against the migration graph's own state is what makes the pin a fact rather than a
+    comment.
+    """
+    executor = MigrationExecutor(connection)
+    at_0002 = executor.loader.project_state(("gpx", "0002_gpxtrack_stats"))
+    historical_fields = {
+        field.name for field in at_0002.apps.get_model("gpx", "GpxTrack")._meta.fields
+    }
+
+    assert set(STATS_COLUMNS_AT_0002) <= historical_fields
+    assert "started_at" not in historical_fields
+
+
+@pytest.mark.django_db
+def test_the_command_fills_stage_instants_under_all(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    gpx_bytes: GpxBytesReader,
+) -> None:
+    """`--all` is the documented recovery for a row whose statistics are already present.
+
+    The default filter cannot reach such a row — that is deliberate and load-bearing, so
+    the pending count converges — which makes `--all` the only path that refills instants
+    on a row that predates the columns and was caught by an earlier statistics backfill.
+    """
+    track = make_stored_track(trip, content=gpx_bytes("timed-track.gpx"))
+    GpxTrack.objects.filter(pk=track.pk).update(distance_meters=FIXTURE_DISTANCE_METERS)
+
+    call_command("backfill_gpx_stats", "--all")
+
+    track.refresh_from_db()
+    assert track.started_at == TIMED_TRACK_STARTED_AT
+    assert track.ended_at == TIMED_TRACK_ENDED_AT
 
 
 @pytest.mark.django_db

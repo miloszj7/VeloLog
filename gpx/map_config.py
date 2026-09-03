@@ -68,6 +68,12 @@ def build_map_config(stages: Sequence[Stage]) -> dict[str, Any] | None:
         ],
     ]
 
+    # Unconditional, unlike the breaks below, and the asymmetry is deliberate: a drawn
+    # route has a first and a last point under *any* ordering, so these two pins describe
+    # the line on screen and stay true whichever order the stages are in. A break is a
+    # different kind of claim — a positive assertion that the rider stopped here and
+    # resumed there — which upload order cannot support. Hence one predicate gating the
+    # second pair and not the first.
     markers = [
         {"kind": "start", "point": drawable[0].track.points[0], "title": "Start"},
         {"kind": "finish", "point": drawable[-1].track.points[-1], "title": "Finish"},

@@ -288,8 +288,12 @@ def test_the_instants_migrations_pinned_columns_match_the_state_it_runs_at() -> 
     live `STATS_FIELDS` happen to agree, and the pin looks like duplication. It is not:
     the next column added to `STATS_FIELDS` is the one that would break `0005`'s `.only()`
     the way `0004`'s two instants broke `0003`'s, out of `pending.iterator()` and outside
-    the per-row guard. Equality rather than a subset, because a name `0004`'s model does
-    not carry is exactly that failure.
+    the per-row guard.
+
+    Two assertions, and the second is the one that matters: the subset check below is the
+    cheap half, and it is a *subset* deliberately. The equality that catches the real
+    failure — a name `0004`'s model does not carry — is
+    `_writable_stats_fields(historical_track()) == list(STATS_COLUMNS_AT_0004)`.
     """
     executor = MigrationExecutor(connection)
     at_0004 = executor.loader.project_state(("gpx", "0004_gpxtrack_stage_instants"))

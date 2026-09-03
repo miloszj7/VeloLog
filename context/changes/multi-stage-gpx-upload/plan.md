@@ -415,6 +415,28 @@ distinctive enough to serve as the mutation `fragment`.
 point — cross-trip isolation still matters — but its expectations change from
 one-track-replaced to two-tracks-accumulated.
 
+**Addendum, recorded at implementation review (F7).** A *third* test was deleted during
+implementation without a clause here authorising it:
+`test_a_cleanup_failure_does_not_fail_an_upload_that_already_committed`. It monkeypatched
+`FileSystemStorage.delete` to prove that a deferred delete failing after commit did not 500
+an upload that had already succeeded — a guarantee about the delete this phase removes, so
+with no delete scheduled on the upload path the test had no subject left. **No coverage was
+lost**: the same guarantee for the path that *does* still schedule a delete is asserted by
+`tests/gpx/test_gpx_signals.py::test_a_cleanup_failure_does_not_fail_a_replacement_that_already_committed`,
+which this change leaves untouched. Recorded rather than reverted, because deleting a test
+is exactly the kind of decision that should be visible in the plan instead of discovered by
+reading a diff.
+
+**Addendum, added at implementation review (F4).** One test this phase's criteria implied but
+that was never written: `test_two_uploads_in_reverse_ride_order_come_back_in_ride_order`,
+which uploads `timed-track-day-2.gpx` and *then* `timed-track.gpx` through the real form and
+asserts `ordered_stage_tracks` returns day 1 first. Criterion 2.3 was otherwise met only
+against hand-set columns, leaving `clean_file` → `started_at` → ordering unjoined and
+`tests/gpx/fixtures/timed-track-day-2.gpx` — added by Phase 1 §5 precisely so ride order
+could contradict upload order — referenced by nothing. Verified to bite: dropping the
+`started_at` term from `ordered_stage_tracks` fails it with "stages came back in upload order
+rather than ride order".
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -1079,6 +1101,24 @@ Two cheap wins are already in hand: bounds are aggregated from stored scalar col
 than computed from points, and `build_trip_stats` reads plain columns — so neither the map
 box nor the statistics cost anything per point.
 
+**Added at implementation review (F10): the one per-stage cost this section originally
+omitted.** `build_stages` calls `track_file_is_available` once per stage, and that helper
+does touch storage — `track.file.storage.exists(track.file.name)` (`gpx/availability.py:27`)
+— so an N-stage trip makes **N storage calls per render**, on the detail path and on the
+rejected-upload re-render alike. Accepted deliberately: under `FileSystemStorage` on the
+mounted volume each is an `os.path.exists`, and the accuracy it buys is per-stage rather
+than per-trip, which is the whole point of the stage list showing one dead link beside live
+siblings rather than condemning the lot.
+
+The assumption to watch is the storage backend, not the stage count: **the day `MEDIA_ROOT`
+moves to an object store, these become N network round-trips on every page view** and want
+batching or caching before they want anything else. There is no DB N+1 here to confuse it
+with — `build_stages` materialises `ordered_stage_tracks` once with `list(...)`, both views
+call it once and pass the tuple to `build_map_config`, and every figure after that is read
+off an already-loaded instance. `tests/trips/test_trip_detail_stats.py`'s
+`DETAIL_PAGE_QUERIES` pins the query count, though only against a single-stage trip — see
+the review's Notes.
+
 ## Migration Notes
 
 Two migrations, deliberately separate so schema and data stay independently reversible:
@@ -1095,6 +1135,26 @@ section before deploying this.
 
 If Phase 6 is cut, `0004` ships alone and existing rows keep null instants — legal, handled
 by the ordering expression, and re-fillable later by the command.
+
+**Amended at implementation review (F2).** That last clause was false as first written: the
+command refills only what `STATS_FIELDS` names, and Phase 6 §1 is where the two instants
+join that tuple — so with Phase 6 cut there was no fill path at all, and US-02's own
+scenario (an existing trip gaining a second stage) could never establish chronology. Phase
+6 §1's `STATS_FIELDS` widening was therefore pulled forward into phases 1-5, which makes the
+sentence true: `manage.py backfill_gpx_stats --all` now refills instants. Phase 6 keeps
+migration `0005` (the unattended fill at container boot) and its own success criteria; only
+§1's tuple and helper landed early.
+
+Pulling it forward exposed a latent trap worth recording, because it predates this change:
+`0003` narrowed its historical queryset with `.only("id", "file", *STATS_FIELDS)`, importing
+a **live** constant into a migration that runs at `0002`'s schema state. The moment that
+tuple grew, `.only()` raised `FieldDoesNotExist` from `pending.iterator()` — outside the
+per-row guard — failing `migrate` outright on every fresh database, which is a failed
+container boot. `0003` now pins its own `STATS_COLUMNS_AT_0002`, and
+`gpx.statistics._writable_stats_fields` builds `update_fields` from the row's own model so
+the shared helper stays safe under either schema state. The rule: **a migration's field list
+is history, not configuration** — never narrow or write a historical queryset with a name
+imported from live application code.
 
 ## References
 
@@ -1172,7 +1232,7 @@ by the ordering expression, and re-fillable later by the command.
 - [x] 3.12 Three visibly distinct coloured segments in ride order, markers at start, end and both breaks — ac6ff25
 - [x] 3.13 Every hue is legible over the OSM basemap at tour extent and street zoom — ac6ff25
 - [x] 3.14 A single-stage v1 trip looks unchanged — ac6ff25
-- [x] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable — ac6ff25
+- [ ] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable — **unchecked at implementation review (F3): the criterion's deliverable is a recorded number and none was written down.** `gpx/constants.py:16-22` still reads "not yet against a real multi-day tour export", `## Performance Considerations` below still says the calibration is forthcoming, and no backlog row was opened. This is the one criterion outstanding across Phases 1-5; it needs a real export uploaded and the page observed, then the two figures written into `gpx/constants.py`
 
 ### Phase 4: Stage list and per-stage statistics
 
@@ -1200,16 +1260,16 @@ by the ordering expression, and re-fillable later by the command.
 
 #### Automated
 
-- [x] 5.1 The payload's three `icons` keys resolve to three different URLs, each following `STATIC_URL`
-- [x] 5.2 All three SVGs resolve through `finders.find()` and survive `collectstatic --noinput`
-- [x] 5.3 `pytest tests/test_static_references.py` passes under the production manifest backend
-- [x] 5.4 Quality gates pass
+- [x] 5.1 The payload's three `icons` keys resolve to three different URLs, each following `STATIC_URL` — 6913a5e
+- [x] 5.2 All three SVGs resolve through `finders.find()` and survive `collectstatic --noinput` — 6913a5e
+- [x] 5.3 `pytest tests/test_static_references.py` passes under the production manifest backend — 6913a5e
+- [x] 5.4 Quality gates pass — 6913a5e
 
 #### Manual
 
-- [x] 5.5 Start, finish and break markers are distinguishable without hovering, on desktop and phone
-- [x] 5.6 Each pin's tip sits exactly on its coordinate
-- [x] 5.7 All three render correctly under the hashed manifest after `collectstatic`
+- [x] 5.5 Start, finish and break markers are distinguishable without hovering, on desktop and phone — 6913a5e
+- [x] 5.6 Each pin's tip sits exactly on its coordinate — 6913a5e
+- [x] 5.7 All three render correctly under the hashed manifest after `collectstatic` — 6913a5e
 
 ### Phase 6: Backfill stage instants for existing rows
 

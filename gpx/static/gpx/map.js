@@ -145,16 +145,22 @@
         // message is the entire user-visible contract for a failed draw; there is no error
         // reporting in this project to forward to. The console line is for a developer.
         //
-        // All-or-nothing, and since the payload went multi-stage that is a whole *tour*
-        // rather than one route: a throw in any of the three loops above — a malformed
-        // `segment.points`, or an `icons[marker.kind]` miss handing Leaflet `undefined` —
-        // lands here before the fallback is removed, so every stage falls back together,
-        // not just the bad one. Deliberate: a partially drawn tour with no explanation is
-        // worse than one honest sentence, and `gpx/map_config.py` is where a bad stage is
-        // meant to be handled (it skips a point-less stage rather than aborting, emits
-        // only the three marker kinds it also builds icons for, and derives bounds from
-        // non-null columns). If a future payload can carry a stage this file cannot draw,
-        // fix it there — or wrap the loop bodies individually — rather than widening what
+        // What this is *not* is all-or-nothing. A throw in any of the three loops above
+        // — a malformed `segment.points`, or an `icons[marker.kind]` miss handing Leaflet
+        // `undefined` — does land here before the fallback is removed at the end of the
+        // try, so the message survives; but initialising a map *appends* panes to `#map`
+        // rather than emptying it (see the header comment), so `L.map()`, the tile layer
+        // and every stage already drawn before the throw are on screen too. The honest
+        // description of that state is a partially drawn tour with the fallback sentence
+        // sitting in the same container, not a clean fall-back to the message alone.
+        //
+        // Tolerated because it is unreachable in practice rather than because it is good:
+        // `gpx/map_config.py` is where a bad stage is meant to be handled, and it does
+        // (it skips a point-less stage rather than aborting, emits only the three marker
+        // kinds it also builds icons for, and derives bounds from non-null columns), so
+        // no payload the server can currently emit reaches these throws. If a future
+        // payload can carry a stage this file cannot draw, fix it there — or wrap the
+        // loop bodies individually, or tear the map down here — rather than widening what
         // this catch tolerates.
         if (window.console && window.console.error) {
             window.console.error("VeloLog: the route map could not be drawn.", error);

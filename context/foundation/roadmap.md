@@ -39,7 +39,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 
 | ID   | Change ID                        | Outcome (user can …)                                                                                       | Prerequisites | PRD refs                                    | Status   |
 | ---- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- | -------- |
-| S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | in-progress |
+| S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | done |
 | S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | done |
 | S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip aggregate statistics (distance, duration, elevation) on the trip detail view, with a partial-data presentation rule when not every stage is timed | S-01           | PRD Fast-follow (whole-trip statistics, nice-to-have) | proposed |
 
@@ -72,7 +72,7 @@ No foundations are needed. The data model already supports multiple stages per t
 - **Unknowns:**
   - The Constraints section flags that a future route removing a single stage would need its own entry in the ownership-scoping test inventory (`tests/test_ownership_matrix.py`) — not required by this milestone's scope (no stage-removal capability is being built), but worth naming so `/10x-plan` doesn't skip it if scope grows. Owner: user. Block: no.
 - **Risk:** `GpxUploadView.post` today resolves `.tracks.first()` and its upload flow *replaces* the trip's existing track — a `pre_save` signal reclaims the superseded file on that assumption. Changing "replace" to "add" touches that upload path and its file-lifecycle signal together; getting this wrong risks the "data never lost" guardrail (an accidentally-deleted earlier stage) rather than just a rendering bug. This is exactly why it's sequenced as the north star: it's the riskiest change in the milestone, and proving it first means a slip still leaves the core capability shipped.
-- **Status:** in-progress
+- **Status:** done
 
 ### S-02: User views the trip route on an interactive map
 
@@ -257,6 +257,7 @@ item is in `### Details`.
 - **S-04: User can edit a trip's name, date, and description, or delete the trip entirely.** — Archived 2026-08-27 → `context/archive/2026-08-26-edit-and-delete-trip/`. Lesson: —.
 - **S-05: User can see basic trip stats (distance and duration), calculated from the uploaded GPX file, on the trip detail view.** — Archived 2026-08-28 → `context/archive/2026-08-27-trip-distance-duration-stats/`. Lesson: —.
 - **S-02: User can pan and zoom the trip's map instead of viewing a static, non-interactive image. Applies to every trip, single-stage or multi-stage.** — Archived 2026-09-02 → `context/archive/2026-09-02-interactive-trip-map/`. Lesson: —.
+- **S-01: User can upload a second (and further) GPX file to an existing trip and, on the trip detail view, see all stages merged into one route, ordered chronologically by GPS timestamp, each stage rendered as a visually distinct segment (e.g. a different line color), with distinct markers for the trip's start, end, and each inter-stage boundary ("stage break"). A single-GPX v1 trip continues to render unchanged.** — Archived 2026-09-03 → `context/archive/2026-09-02-multi-stage-gpx-upload/`. Lesson: —.
 
 ## Milestone History
 

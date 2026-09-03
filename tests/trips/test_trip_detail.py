@@ -60,7 +60,7 @@ def test_trip_with_no_track_renders_the_empty_state_copy(auth_client: Client, ri
     response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
 
     assert response.status_code == 200
-    assert response.context["track"] is None
+    assert response.context["stages"] == ()
     assert "No route yet" in response.content.decode()
 
 
@@ -83,7 +83,7 @@ def test_trip_with_a_track_renders_only_its_own_track(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert response.context["track"] == track
+    assert [stage.track for stage in response.context["stages"]] == [track]
     assert "alps-loop.gpx" in body
     assert "pyrenees-loop.gpx" not in body
     assert "No route yet" not in body
@@ -106,7 +106,7 @@ def test_a_rider_sees_a_live_download_link_when_the_track_file_is_present(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert response.context["track_file_available"] is True
+    assert response.context["stages"][0].file_available is True
     assert f'href="{reverse("gpx:download", kwargs={"pk": track.pk})}"' in body
     assert "Track file unavailable" not in body
 
@@ -131,7 +131,7 @@ def test_a_rider_sees_a_deliberate_marker_when_the_track_file_is_missing(
     body = response.content.decode()
 
     assert response.status_code == 200
-    assert response.context["track_file_available"] is False
+    assert response.context["stages"][0].file_available is False
     assert "Track file unavailable" in body
     assert f'href="{reverse("gpx:download", kwargs={"pk": track.pk})}"' not in body
 
@@ -159,3 +159,31 @@ def test_a_missing_file_and_unbackfilled_stats_both_render_together(
     assert response.status_code == 200
     assert "Track file unavailable" in body
     assert "These stats have not been worked out for this route." in body
+
+
+@pytest.mark.django_db
+def test_a_missing_stage_file_renders_unavailable_while_siblings_keep_live_links(
+    auth_client: Client, rider: User, make_stored_track: StoredTrackFactory
+) -> None:
+    """One stage's missing file must not degrade its siblings' download links.
+
+    `build_stages` resolves `file_available` per stage — a bug that leaked one stage's
+    missing-file state onto the whole trip would pass every single-stage file-availability
+    test above and only show up once a trip actually has more than one stage.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
+    healthy = make_stored_track(trip, b"<gpx>1</gpx>", "day-1.gpx")
+    missing = make_stored_track(trip, b"<gpx>2</gpx>", "day-2.gpx")
+    name = missing.file.name
+    assert name is not None
+    default_storage.delete(name)
+
+    response = auth_client.get(reverse("trips:detail", kwargs={"pk": trip.pk}))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    stages = {stage.track.pk: stage for stage in response.context["stages"]}
+    assert stages[healthy.pk].file_available is True
+    assert stages[missing.pk].file_available is False
+    assert f'href="{reverse("gpx:download", kwargs={"pk": healthy.pk})}"' in body
+    assert "Track file unavailable" in body

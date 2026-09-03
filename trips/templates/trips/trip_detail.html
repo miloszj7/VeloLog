@@ -38,7 +38,7 @@
         </div>
     </div>
 
-    {% if track %}
+    {% if stages %}
         <div class="mb-4">
             <h2>Route</h2>
             {% if map_config %}
@@ -75,77 +75,108 @@
                 {% endcomment %}
                 <p>This route could not be displayed. The file is still attached and can be downloaded below.</p>
             {% endif %}
-            {% if track_file_available %}
-                <p class="mb-1">Track: {{ track.original_filename }}</p>
-                <p>
-                    <a href="{% url 'gpx:download' pk=track.pk %}" class="btn btn-outline-secondary btn-sm">&#8595; Download {{ track.original_filename }}</a>
-                </p>
-            {% else %}
-                {% comment %}
-                Worded to name its own cause, like the map-fallback and stats-not-computed
-                branches above and below: the row survived but the file behind it is gone, so
-                the link is replaced with plain text rather than one that would only 404.
-                {% endcomment %}
-                <p class="mb-1">Track file unavailable — the stored file could not be found.</p>
-                <p>{{ track.original_filename }} (download unavailable)</p>
-            {% endif %}
         </div>
 
         {% comment %}
-        Inside the `{% if track %}` branch on purpose: a trip with no route has no
+        Inside the `{% if stages %}` branch on purpose: a trip with no stages has no
         statistics to show either, so the section disappears with the map rather than
         needing a condition of its own that could drift out of step with it.
 
-        Now styled — Bootstrap's `dl.row`/`col` grid, relying on the stylesheet loading
-        rather than staying stylesheet-independent (a deliberate reversal, confirmed with
-        the user; every other page in the app already depends on Bootstrap loading).
+        One row per stage, in the order `stages` already carries — `gpx/stages.py`'s
+        `build_stages` is the single place that order is decided, so this loop never
+        re-derives it. Styled with Bootstrap's `dl.row`/`col` grid, relying on the
+        stylesheet loading rather than staying stylesheet-independent (a deliberate
+        reversal, confirmed with the user; every other page in the app already depends on
+        Bootstrap loading).
         {% endcomment %}
         <div class="mb-4">
-            <h2>Stats</h2>
-            {% comment %}
-            Each stat gates on `is not None`, never on truthiness. `TripStats` guarantees that
-            a `None` means one thing — the stored column was null — and every legitimate zero
-            formats to a non-empty string, so a falsy gate happens to agree today. It agrees by
-            accident: `duration_seconds = 0.0` is reachable from a real one-point timed file,
-            and one edit to a formatter would collapse that into "Not recorded", which is the
-            exact zero-versus-null confusion this whole slice was written to avoid.
-            {% endcomment %}
-            {% if stats %}
-                <dl class="row mb-0">
-                    {% comment %}
-                    This branch names no cause in the file, unlike the three below it. A file
-                    with no positions is refused at upload, and a row with every column null
-                    takes the `{% templatetag openblock %} else {% templatetag closeblock %}`
-                    at the bottom instead — so a null distance beside a non-null anything else
-                    is reachable only by hand-editing a row, and any sentence blaming the GPX
-                    would be false.
-                    {% endcomment %}
-                    <dt class="col-sm-4 col-md-3">Distance</dt>
-                    <dd class="col-sm-8 col-md-9">{% if stats.distance is not None %}{{ stats.distance }}{% else %}Not recorded — this route's distance has not been worked out.{% endif %}</dd>
-
-                    {% comment %}
-                    "Recorded time", not "Elapsed time". The stored figure is the sum of each
-                    GPX segment's own span, so the gaps between segments — every overnight on
-                    a multi-day tour — are not in it. See `GpxTrack.duration_seconds`.
-                    {% endcomment %}
-                    <dt class="col-sm-4 col-md-3">Recorded time</dt>
-                    <dd class="col-sm-8 col-md-9">{% if stats.recorded_time is not None %}{{ stats.recorded_time }}{% else %}Not recorded — the GPX file carried no usable timestamps.{% endif %}</dd>
-
-                    <dt class="col-sm-4 col-md-3">Elevation gained</dt>
-                    <dd class="col-sm-8 col-md-9">{% if stats.elevation_gain is not None %}{{ stats.elevation_gain }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
-
-                    <dt class="col-sm-4 col-md-3">Elevation lost</dt>
-                    <dd class="col-sm-8 col-md-9">{% if stats.elevation_loss is not None %}{{ stats.elevation_loss }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
-                </dl>
+            <h2>Stages</h2>
+            {% if chronology_established %}
+                <p class="text-muted small">Stages are shown in the order they were ridden.</p>
             {% else %}
                 {% comment %}
-                A row whose statistics were never computed — uploaded before the columns
-                existed, and missed by the backfill. Worded deliberately unlike the per-stat
-                notes above: those say the *file* lacked the data, this says *nobody has
-                worked it out yet*, and a bug report has to be able to tell the two apart.
+                `chronology_is_established` is false whenever any stage lacks a `started_at`
+                — the page may not call this order chronological in that case, since it is
+                only ever upload order for at least one stage.
                 {% endcomment %}
-                <p>These stats have not been worked out for this route. Uploading the GPX file again will calculate them.</p>
+                <p class="text-muted small">Stages are shown in upload order — these files carry no ride timestamps.</p>
             {% endif %}
+            {% for stage in stages %}
+                <div class="mb-3 pb-3{% if not forloop.last %} border-bottom{% endif %}">
+                    <h3 class="h5 d-flex align-items-center gap-2">
+                        {% comment %}
+                        The palette's only non-map use — `design-system.md`'s Stage Route
+                        Palette subsection names this swatch as the exception's second and
+                        last sanctioned spot.
+                        {% endcomment %}
+                        <span class="d-inline-block rounded-circle" style="width: 0.85em; height: 0.85em; background-color: {{ stage.color }};"></span>
+                        Stage {{ stage.number }}
+                    </h3>
+                    <p class="mb-1">{{ stage.track.original_filename }}</p>
+                    {% comment %}
+                    Each stat gates on `is not None`, never on truthiness. `TripStats`
+                    guarantees that a `None` means one thing — the stored column was null —
+                    and every legitimate zero formats to a non-empty string, so a falsy gate
+                    happens to agree today. It agrees by accident: `duration_seconds = 0.0`
+                    is reachable from a real one-point timed file, and one edit to a
+                    formatter would collapse that into "Not recorded", which is the exact
+                    zero-versus-null confusion this whole slice was written to avoid.
+                    {% endcomment %}
+                    {% if stage.stats %}
+                        <dl class="row mb-2">
+                            {% comment %}
+                            This branch names no cause in the file, unlike the three below
+                            it. A file with no positions is refused at upload, and a stage
+                            with every column null takes the
+                            {% templatetag openblock %} else {% templatetag closeblock %} at
+                            the bottom instead — so a null distance beside a non-null
+                            anything else is reachable only by hand-editing a row, and any
+                            sentence blaming the GPX would be false.
+                            {% endcomment %}
+                            <dt class="col-sm-4 col-md-3">Distance</dt>
+                            <dd class="col-sm-8 col-md-9">{% if stage.stats.distance is not None %}{{ stage.stats.distance }}{% else %}Not recorded — this route's distance has not been worked out.{% endif %}</dd>
+
+                            {% comment %}
+                            "Recorded time", not "Elapsed time". The stored figure is the sum
+                            of each GPX segment's own span, so the gaps between segments —
+                            every overnight on a multi-day tour — are not in it. See
+                            `GpxTrack.duration_seconds`.
+                            {% endcomment %}
+                            <dt class="col-sm-4 col-md-3">Recorded time</dt>
+                            <dd class="col-sm-8 col-md-9">{% if stage.stats.recorded_time is not None %}{{ stage.stats.recorded_time }}{% else %}Not recorded — the GPX file carried no usable timestamps.{% endif %}</dd>
+
+                            <dt class="col-sm-4 col-md-3">Elevation gained</dt>
+                            <dd class="col-sm-8 col-md-9">{% if stage.stats.elevation_gain is not None %}{{ stage.stats.elevation_gain }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
+
+                            <dt class="col-sm-4 col-md-3">Elevation lost</dt>
+                            <dd class="col-sm-8 col-md-9">{% if stage.stats.elevation_loss is not None %}{{ stage.stats.elevation_loss }}{% else %}Not recorded — the GPX file carried no usable elevation data.{% endif %}</dd>
+                        </dl>
+                    {% else %}
+                        {% comment %}
+                        A stage whose statistics were never computed — uploaded before the
+                        columns existed, and missed by the backfill. Worded deliberately
+                        unlike the per-stat notes above: those say the *file* lacked the
+                        data, this says *nobody has worked it out yet*, and a bug report has
+                        to be able to tell the two apart.
+                        {% endcomment %}
+                        <p>These stats have not been worked out for this route. Uploading the GPX file again will calculate them.</p>
+                    {% endif %}
+                    {% if stage.file_available %}
+                        <p>
+                            <a href="{% url 'gpx:download' pk=stage.track.pk %}" class="btn btn-outline-secondary btn-sm">&#8595; Download {{ stage.track.original_filename }}</a>
+                        </p>
+                    {% else %}
+                        {% comment %}
+                        Worded to name its own cause, like the map-fallback and
+                        stats-not-computed branches above: the row survived but the file
+                        behind it is gone, so the link is replaced with plain text rather
+                        than one that would only 404.
+                        {% endcomment %}
+                        <p class="mb-1">Track file unavailable — the stored file could not be found.</p>
+                        <p>{{ stage.track.original_filename }} (download unavailable)</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
         </div>
     {% else %}
         <div class="mb-4">

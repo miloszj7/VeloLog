@@ -41,7 +41,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ---- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- | -------- |
 | S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | in-progress |
 | S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | done |
-| S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view      | S-01           | PRD Fast-follow (whole-trip/per-stage statistics, nice-to-have) | proposed |
+| S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip aggregate statistics (distance, duration, elevation) on the trip detail view, with a partial-data presentation rule when not every stage is timed | S-01           | PRD Fast-follow (whole-trip statistics, nice-to-have) | proposed |
 
 ## Baseline
 
@@ -86,11 +86,11 @@ No foundations are needed. The data model already supports multiple stages per t
 - **Risk:** Low — per `## Baseline`, this is a config flip on already-vendored, already-rendering Leaflet code (flip `dragging`/`scrollWheelZoom`/`touchZoom`/`doubleClickZoom`/`keyboard`/`boxZoom`/`zoomControl` and re-enable the zoom control), not a new integration. Sequenced after S-01 in the milestone's priority (per the user's sequencing call) precisely because it's the safe, low-risk item — if time runs out, this is what's still acceptable to finish last or cut.
 - **Status:** done
 
-### S-03: User can view whole-trip and per-stage statistics (stretch)
+### S-03: User can view whole-trip aggregate statistics (stretch)
 
-- **Outcome:** User can see whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view, extending the single-file stats M-01 already ships (S-05).
+- **Outcome:** User can see whole-trip *aggregate* statistics (distance, duration, elevation) on the trip detail view, summed across every stage, with a rule for presenting the total when not every stage carries every figure. Per-stage display already shipped in S-01 (`multi-stage-gpx-upload`'s Phase 4 Stages section), so this narrows to the aggregation and its partial-data presentation only.
 - **Change ID:** `multi-stage-trip-stats`
-- **PRD refs:** PRD `### Fast-follow` — "user can view whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view" (nice-to-have, explicitly parked for this change but named "pick up only if the week's core scope finishes early")
+- **PRD refs:** PRD `### Fast-follow` — "user can view whole-trip and per-stage statistics (distance, duration, elevation) on the trip detail view" (nice-to-have, explicitly parked for this change but named "pick up only if the week's core scope finishes early"); per-stage display narrowed out per the Open Roadmap Questions #1 resolution below.
 - **Prerequisites:** S-01 (needs stages to actually exist and be ordered before per-stage/whole-trip aggregation means anything)
 - **Parallel with:** S-02
 - **Blockers:** —

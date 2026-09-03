@@ -86,11 +86,6 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         context["chronology_established"] = chronology_is_established(
             [stage.track for stage in stages]
         )
-        # Interim shim — see `TripDetailView.get_context_data`'s identical comment.
-        # Retired in Phase 4 §1.
-        context["track"] = stages[0].track if stages else None
-        context["stats"] = stages[0].stats if stages else None
-        context["track_file_available"] = stages[0].file_available if stages else False
         return context
 
     def get_success_url(self) -> str:

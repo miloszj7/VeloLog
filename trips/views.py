@@ -98,13 +98,6 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         context["chronology_established"] = chronology_is_established(
             [stage.track for stage in stages]
         )
-        # Interim shim, resolved to the chronologically first stage — retired in Phase 4
-        # §1 in the same edit that stops `trip_detail.html` reading them. Keeping them
-        # alive here is what lets this phase ship without touching the template, whose
-        # `{% if track %}` gate wraps both the Route and Stats blocks.
-        context["track"] = stages[0].track if stages else None
-        context["stats"] = stages[0].stats if stages else None
-        context["track_file_available"] = stages[0].file_available if stages else False
         context["form"] = GpxUploadForm()
         return context
 

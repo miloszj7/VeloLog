@@ -346,9 +346,9 @@ def test_a_rejected_uploads_rerender_still_shows_the_existing_tracks_live_downlo
     """A rejected upload must not render the surviving track as if its file were gone.
 
     `GpxUploadView` re-renders `trips/trip_detail.html` on a rejected upload, the same
-    template `TripDetailView` renders on a normal visit. Missing `track_file_available`
-    from this path's context would render the "file unavailable" branch over a track
-    whose file was never touched by the rejection — a false negative, not a true one.
+    template `TripDetailView` renders on a normal visit. A stage whose `file_available`
+    came back `False` on this path would render the "file unavailable" branch over a
+    track whose file was never touched by the rejection — a false negative, not a true one.
     """
     auth_client.post(
         upload_url(trip),
@@ -362,7 +362,7 @@ def test_a_rejected_uploads_rerender_still_shows_the_existing_tracks_live_downlo
     )
     body = response.content.decode()
 
-    assert response.context["track_file_available"] is True
+    assert response.context["stages"][0].file_available is True
     assert "Track file unavailable" not in body
     assert f'href="{reverse("gpx:download", kwargs={"pk": existing.pk})}"' in body
 

@@ -165,7 +165,7 @@ MUTATION_SHAPES: tuple[MutationShape, ...] = (
             "tests/trips/test_trip_detail.py::"
             "test_a_rider_sees_a_deliberate_marker_when_the_track_file_is_missing"
         ),
-        fragment='assert response.context["track_file_available"] is False',
+        fragment='assert response.context["stages"][0].file_available is False',
     ),
     MutationShape(
         name="no_upload_size_cap",

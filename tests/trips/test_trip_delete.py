@@ -20,6 +20,7 @@ from tests.conftest import StoredTrackFactory
 from trips.models import Trip
 
 GPX_WARNING = "Its GPX file will be deleted too."
+GPX_WARNING_PLURAL = "Its 2 GPX files will be deleted too."
 
 
 @pytest.mark.django_db
@@ -39,6 +40,28 @@ def test_owner_get_shows_the_confirmation_page_and_deletes_nothing(
     assert GPX_WARNING in body
     assert Trip.objects.count() == 1
     assert GpxTrack.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_confirmation_page_for_a_multi_stage_trip_names_more_than_one_file(
+    auth_client: Client, rider: User, make_stored_track: StoredTrackFactory
+) -> None:
+    """The under-counting gap this change opens: one sentence used to stand for one file.
+
+    `trip_confirm_delete.html`'s own comment gives the reason the warning exists at all —
+    "a name and a date can be retyped, an uploaded GPX file cannot" — so under-stating how
+    many files are about to be destroyed is the one place that reasoning fails outright.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
+    make_stored_track(trip, b"<gpx>1</gpx>", "day-1.gpx")
+    make_stored_track(trip, b"<gpx>2</gpx>", "day-2.gpx")
+
+    response = auth_client.get(reverse("trips:delete", kwargs={"pk": trip.pk}))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert GPX_WARNING_PLURAL in body
+    assert GPX_WARNING not in body
 
 
 @pytest.mark.django_db

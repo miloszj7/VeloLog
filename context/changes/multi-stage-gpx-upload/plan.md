@@ -1154,47 +1154,47 @@ by the ordering expression, and re-fillable later by the command.
 
 #### Automated
 
-- [x] 3.1 A single-stage trip's payload carries one segment matching its stored points
-- [x] 3.2 A three-stage trip carries three segments in ride order with distinct colours
-- [x] 3.3 Whole-trip bounds equal the min/max across all stages
-- [x] 3.4 Markers are exactly one `start`, one `finish`, one `break` per boundary
-- [x] 3.5 No `break` markers when any stage lacks `started_at`
-- [x] 3.6 A stage with no points is skipped without raising
-- [x] 3.7 The payload is still delivered by `json_script` only
-- [x] 3.8 Marker icon URLs still follow a moved `STATIC_URL`
-- [x] 3.9 `#map`'s markup is byte-identical to today
-- [x] 3.10 `collectstatic --noinput` then `pytest tests/test_static_references.py` passes
-- [x] 3.11 Quality gates pass
-- [x] 3.16 Bite-proof harness passes with the repointed risk-#3 shape: `pytest -m bite_proof`
+- [x] 3.1 A single-stage trip's payload carries one segment matching its stored points — ac6ff25
+- [x] 3.2 A three-stage trip carries three segments in ride order with distinct colours — ac6ff25
+- [x] 3.3 Whole-trip bounds equal the min/max across all stages — ac6ff25
+- [x] 3.4 Markers are exactly one `start`, one `finish`, one `break` per boundary — ac6ff25
+- [x] 3.5 No `break` markers when any stage lacks `started_at` — ac6ff25
+- [x] 3.6 A stage with no points is skipped without raising — ac6ff25
+- [x] 3.7 The payload is still delivered by `json_script` only — ac6ff25
+- [x] 3.8 Marker icon URLs still follow a moved `STATIC_URL` — ac6ff25
+- [x] 3.9 `#map`'s markup is byte-identical to today — ac6ff25
+- [x] 3.10 `collectstatic --noinput` then `pytest tests/test_static_references.py` passes — ac6ff25
+- [x] 3.11 Quality gates pass — ac6ff25
+- [x] 3.16 Bite-proof harness passes with the repointed risk-#3 shape: `pytest -m bite_proof` — ac6ff25
 
 #### Manual
 
-- [x] 3.12 Three visibly distinct coloured segments in ride order, markers at start, end and both breaks
-- [x] 3.13 Every hue is legible over the OSM basemap at tour extent and street zoom
-- [x] 3.14 A single-stage v1 trip looks unchanged
-- [x] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable
+- [x] 3.12 Three visibly distinct coloured segments in ride order, markers at start, end and both breaks — ac6ff25
+- [x] 3.13 Every hue is legible over the OSM basemap at tour extent and street zoom — ac6ff25
+- [x] 3.14 A single-stage v1 trip looks unchanged — ac6ff25
+- [x] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable — ac6ff25
 
 ### Phase 4: Stage list and per-stage statistics
 
 #### Automated
 
-- [ ] 4.1 A three-stage trip renders three stats blocks with each stage's own figures
-- [ ] 4.2 Each stage row links to its own `gpx:download` pk
-- [ ] 4.3 A stage with a missing file renders the unavailable text while siblings keep live links
-- [ ] 4.4 A stage with all-null statistics renders the "not worked out" sentence
-- [ ] 4.5 A single-stage trip renders one row with today's figures
-- [ ] 4.6 The list claims chronological order only when the predicate is true
-- [ ] 4.7 `#map`'s markup and the `json_script` element are unchanged
-- [ ] 4.8 Assertion-strength audit passes with no new waivers
-- [ ] 4.9 Quality gates pass
-- [ ] 4.13 Bite-proof harness passes with the requoted risk-#3 fragment: `pytest -m bite_proof`
-- [ ] 4.14 The delete confirmation counts files correctly for multi-stage, single-stage and trackless trips
+- [x] 4.1 A three-stage trip renders three stats blocks with each stage's own figures
+- [x] 4.2 Each stage row links to its own `gpx:download` pk
+- [x] 4.3 A stage with a missing file renders the unavailable text while siblings keep live links
+- [x] 4.4 A stage with all-null statistics renders the "not worked out" sentence
+- [x] 4.5 A single-stage trip renders one row with today's figures
+- [x] 4.6 The list claims chronological order only when the predicate is true
+- [x] 4.7 `#map`'s markup and the `json_script` element are unchanged
+- [x] 4.8 Assertion-strength audit passes with no new waivers
+- [x] 4.9 Quality gates pass
+- [x] 4.13 Bite-proof harness passes with the requoted risk-#3 fragment: `pytest -m bite_proof`
+- [x] 4.14 The delete confirmation counts files correctly for multi-stage, single-stage and trackless trips
 
 #### Manual
 
-- [ ] 4.10 Each swatch colour matches its map segment
-- [ ] 4.11 The page reads sensibly at phone width for a 5-stage trip
-- [ ] 4.12 Uploading to a trip with an existing stage returns "Stage added." and the row lands in the right position
+- [x] 4.10 Each swatch colour matches its map segment
+- [x] 4.11 The page reads sensibly at phone width for a 5-stage trip
+- [x] 4.12 Uploading to a trip with an existing stage returns "Stage added." and the row lands in the right position
 
 ### Phase 5: Distinct stage markers
 

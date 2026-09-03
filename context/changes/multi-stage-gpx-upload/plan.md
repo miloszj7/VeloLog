@@ -1178,38 +1178,38 @@ by the ordering expression, and re-fillable later by the command.
 
 #### Automated
 
-- [x] 4.1 A three-stage trip renders three stats blocks with each stage's own figures
-- [x] 4.2 Each stage row links to its own `gpx:download` pk
-- [x] 4.3 A stage with a missing file renders the unavailable text while siblings keep live links
-- [x] 4.4 A stage with all-null statistics renders the "not worked out" sentence
-- [x] 4.5 A single-stage trip renders one row with today's figures
-- [x] 4.6 The list claims chronological order only when the predicate is true
-- [x] 4.7 `#map`'s markup and the `json_script` element are unchanged
-- [x] 4.8 Assertion-strength audit passes with no new waivers
-- [x] 4.9 Quality gates pass
-- [x] 4.13 Bite-proof harness passes with the requoted risk-#3 fragment: `pytest -m bite_proof`
-- [x] 4.14 The delete confirmation counts files correctly for multi-stage, single-stage and trackless trips
+- [x] 4.1 A three-stage trip renders three stats blocks with each stage's own figures — f16973d
+- [x] 4.2 Each stage row links to its own `gpx:download` pk — f16973d
+- [x] 4.3 A stage with a missing file renders the unavailable text while siblings keep live links — f16973d
+- [x] 4.4 A stage with all-null statistics renders the "not worked out" sentence — f16973d
+- [x] 4.5 A single-stage trip renders one row with today's figures — f16973d
+- [x] 4.6 The list claims chronological order only when the predicate is true — f16973d
+- [x] 4.7 `#map`'s markup and the `json_script` element are unchanged — f16973d
+- [x] 4.8 Assertion-strength audit passes with no new waivers — f16973d
+- [x] 4.9 Quality gates pass — f16973d
+- [x] 4.13 Bite-proof harness passes with the requoted risk-#3 fragment: `pytest -m bite_proof` — f16973d
+- [x] 4.14 The delete confirmation counts files correctly for multi-stage, single-stage and trackless trips — f16973d
 
 #### Manual
 
-- [x] 4.10 Each swatch colour matches its map segment
-- [x] 4.11 The page reads sensibly at phone width for a 5-stage trip
-- [x] 4.12 Uploading to a trip with an existing stage returns "Stage added." and the row lands in the right position
+- [x] 4.10 Each swatch colour matches its map segment — f16973d
+- [x] 4.11 The page reads sensibly at phone width for a 5-stage trip — f16973d
+- [x] 4.12 Uploading to a trip with an existing stage returns "Stage added." and the row lands in the right position — f16973d
 
 ### Phase 5: Distinct stage markers
 
 #### Automated
 
-- [ ] 5.1 The payload's three `icons` keys resolve to three different URLs, each following `STATIC_URL`
-- [ ] 5.2 All three SVGs resolve through `finders.find()` and survive `collectstatic --noinput`
-- [ ] 5.3 `pytest tests/test_static_references.py` passes under the production manifest backend
-- [ ] 5.4 Quality gates pass
+- [x] 5.1 The payload's three `icons` keys resolve to three different URLs, each following `STATIC_URL`
+- [x] 5.2 All three SVGs resolve through `finders.find()` and survive `collectstatic --noinput`
+- [x] 5.3 `pytest tests/test_static_references.py` passes under the production manifest backend
+- [x] 5.4 Quality gates pass
 
 #### Manual
 
-- [ ] 5.5 Start, finish and break markers are distinguishable without hovering, on desktop and phone
-- [ ] 5.6 Each pin's tip sits exactly on its coordinate
-- [ ] 5.7 All three render correctly under the hashed manifest after `collectstatic`
+- [x] 5.5 Start, finish and break markers are distinguishable without hovering, on desktop and phone
+- [x] 5.6 Each pin's tip sits exactly on its coordinate
+- [x] 5.7 All three render correctly under the hashed manifest after `collectstatic`
 
 ### Phase 6: Backfill stage instants for existing rows
 

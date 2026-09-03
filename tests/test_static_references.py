@@ -32,7 +32,14 @@ from django.test import Client
 from django.urls import reverse
 from pytest_django.fixtures import Settings
 
-from gpx.constants import MARKER_ICON, MARKER_ICON_RETINA, MARKER_SHADOW
+from gpx.constants import (
+    MARKER_ICON,
+    MARKER_ICON_RETINA,
+    MARKER_SHADOW,
+    MARKER_STAGE_BREAK,
+    MARKER_STAGE_FINISH,
+    MARKER_STAGE_START,
+)
 from tests.conftest import TrackFactory
 from trips.models import Trip
 from velo_log.settings import STATIC_ROOT
@@ -46,6 +53,9 @@ STATIC_REFERENCES = (
     MARKER_ICON,
     MARKER_ICON_RETINA,
     MARKER_SHADOW,
+    MARKER_STAGE_START,
+    MARKER_STAGE_FINISH,
+    MARKER_STAGE_BREAK,
     "css/style.css",
     "css/theme.css",
     "gpx/map.js",

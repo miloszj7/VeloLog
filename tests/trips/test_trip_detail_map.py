@@ -358,22 +358,32 @@ def test_the_marker_icon_urls_come_from_the_staticfiles_storage(
     `_plain_staticfiles_storage` fixture builds these URLs by concatenation, so nothing
     here exercises the hashed names production actually serves. That is asserted under the
     real backend in `tests/test_static_references.py`.
+
+    Each kind resolves to its own project-authored SVG (`gpx/static/gpx/markers/`), not
+    the shared default Leaflet pin — the whole point of Phase 5 — so the three `iconUrl`s
+    must differ from each other as well as follow the moved prefix.
     """
     settings.STATIC_URL = "/assets-under-test/"
     make_gpx_track(trip)
 
     payload = map_config_payload(auth_client.get(detail_url(trip)).content.decode())
 
-    for kind in ("start", "finish", "break"):
+    expected_icon_by_kind = {
+        "start": "gpx/markers/stage-start.svg",
+        "finish": "gpx/markers/stage-finish.svg",
+        "break": "gpx/markers/stage-break.svg",
+    }
+    icon_urls = set()
+    for kind, source_path in expected_icon_by_kind.items():
         icons = payload["icons"][kind]
-        assert icons["iconUrl"] == "/assets-under-test/gpx/vendor/leaflet/images/marker-icon.png"
-        assert (
-            icons["iconRetinaUrl"]
-            == "/assets-under-test/gpx/vendor/leaflet/images/marker-icon-2x.png"
-        )
+        expected_url = f"/assets-under-test/{source_path}"
+        assert icons["iconUrl"] == expected_url
+        assert icons["iconRetinaUrl"] == expected_url
         assert (
             icons["shadowUrl"] == "/assets-under-test/gpx/vendor/leaflet/images/marker-shadow.png"
         )
+        icon_urls.add(icons["iconUrl"])
+    assert len(icon_urls) == 3, "the three marker kinds must resolve to three different URLs"
 
 
 @pytest.mark.django_db

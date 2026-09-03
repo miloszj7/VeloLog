@@ -66,6 +66,16 @@ MARKER_ICON = "gpx/vendor/leaflet/images/marker-icon.png"
 MARKER_ICON_RETINA = "gpx/vendor/leaflet/images/marker-icon-2x.png"
 MARKER_SHADOW = "gpx/vendor/leaflet/images/marker-shadow.png"
 
+# Project-authored pin SVGs, one per marker kind, replacing the shared default pin above
+# for the "start" / "finish" / "break" entries in `gpx/map_config.py`'s `icons` map — the
+# PRD's "distinct markers, without hovering" acceptance criterion (`prd.md:96-97,127`).
+# Text assets, not vendored: no third-party licence to clear and no `SHA256SUMS` entry.
+# One file serves both pixel densities (`iconRetinaUrl` points at the same path as
+# `iconUrl`), and the vendored PNG shadow above is still used for all three.
+MARKER_STAGE_START = "gpx/markers/stage-start.svg"
+MARKER_STAGE_FINISH = "gpx/markers/stage-finish.svg"
+MARKER_STAGE_BREAK = "gpx/markers/stage-break.svg"
+
 # Hues cycled across a trip's stages when drawing its route, keyed by stage index — stage 7
 # reuses stage 1's colour. The design system (`design-system.md` "Stage Route Palette")
 # forbids additional colours everywhere except this one bounded exception: map polylines and

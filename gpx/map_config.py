@@ -16,7 +16,12 @@ from typing import Any
 
 from django.templatetags.static import static
 
-from gpx.constants import MARKER_ICON, MARKER_ICON_RETINA, MARKER_SHADOW
+from gpx.constants import (
+    MARKER_SHADOW,
+    MARKER_STAGE_BREAK,
+    MARKER_STAGE_FINISH,
+    MARKER_STAGE_START,
+)
 from gpx.stages import Stage, chronology_is_established
 
 
@@ -87,18 +92,18 @@ def build_map_config(stages: Sequence[Stage]) -> dict[str, Any] | None:
         "markers": markers,
         "icons": {
             "start": {
-                "iconUrl": static(MARKER_ICON),
-                "iconRetinaUrl": static(MARKER_ICON_RETINA),
+                "iconUrl": static(MARKER_STAGE_START),
+                "iconRetinaUrl": static(MARKER_STAGE_START),
                 "shadowUrl": static(MARKER_SHADOW),
             },
             "finish": {
-                "iconUrl": static(MARKER_ICON),
-                "iconRetinaUrl": static(MARKER_ICON_RETINA),
+                "iconUrl": static(MARKER_STAGE_FINISH),
+                "iconRetinaUrl": static(MARKER_STAGE_FINISH),
                 "shadowUrl": static(MARKER_SHADOW),
             },
             "break": {
-                "iconUrl": static(MARKER_ICON),
-                "iconRetinaUrl": static(MARKER_ICON_RETINA),
+                "iconUrl": static(MARKER_STAGE_BREAK),
+                "iconRetinaUrl": static(MARKER_STAGE_BREAK),
                 "shadowUrl": static(MARKER_SHADOW),
             },
         },

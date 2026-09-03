@@ -1133,46 +1133,46 @@ by the ordering expression, and re-fillable later by the command.
 
 #### Automated
 
-- [x] 2.1 A second upload leaves the first row and its stored file intact, asserted after commit
-- [x] 2.2 A second upload to trip A leaves trip B's tracks untouched
-- [x] 2.3 Two timed stages uploaded in reverse ride order come back in ride order
-- [x] 2.4 Two untimed stages come back in upload order
-- [x] 2.5 A mixed pair returns the timed stage first, untimed appended
-- [x] 2.6 `chronology_is_established` answers correctly for all-timed, any-untimed, and no stages
-- [x] 2.7 The `pre_save` receiver removes nothing when a sibling stage is inserted
-- [x] 2.8 Deleting one stage removes exactly its own file
-- [x] 2.9 Bite-proof harness passes with the new shape: `pytest -m bite_proof`
-- [x] 2.10 Quality gates pass
-- [x] 2.13 The new shape's `fragment` discriminates: present under the mutation, absent when the guard fails for an unrelated reason
+- [x] 2.1 A second upload leaves the first row and its stored file intact, asserted after commit — 92940a0
+- [x] 2.2 A second upload to trip A leaves trip B's tracks untouched — 92940a0
+- [x] 2.3 Two timed stages uploaded in reverse ride order come back in ride order — 92940a0
+- [x] 2.4 Two untimed stages come back in upload order — 92940a0
+- [x] 2.5 A mixed pair returns the timed stage first, untimed appended — 92940a0
+- [x] 2.6 `chronology_is_established` answers correctly for all-timed, any-untimed, and no stages — 92940a0
+- [x] 2.7 The `pre_save` receiver removes nothing when a sibling stage is inserted — 92940a0
+- [x] 2.8 Deleting one stage removes exactly its own file — 92940a0
+- [x] 2.9 Bite-proof harness passes with the new shape: `pytest -m bite_proof` — 92940a0
+- [x] 2.10 Quality gates pass — 92940a0
+- [x] 2.13 The new shape's `fragment` discriminates: present under the mutation, absent when the guard fails for an unrelated reason — 92940a0
 
 #### Manual
 
-- [x] 2.11 Two files uploaded to one trip both appear in admin and both download links serve their own bytes
-- [x] 2.12 Deleting the trip leaves neither file; `reconcile_media` reports nothing orphaned
+- [x] 2.11 Two files uploaded to one trip both appear in admin and both download links serve their own bytes — 92940a0
+- [x] 2.12 Deleting the trip leaves neither file; `reconcile_media` reports nothing orphaned — 92940a0
 
 ### Phase 3: Multi-stage rendering
 
 #### Automated
 
-- [ ] 3.1 A single-stage trip's payload carries one segment matching its stored points
-- [ ] 3.2 A three-stage trip carries three segments in ride order with distinct colours
-- [ ] 3.3 Whole-trip bounds equal the min/max across all stages
-- [ ] 3.4 Markers are exactly one `start`, one `finish`, one `break` per boundary
-- [ ] 3.5 No `break` markers when any stage lacks `started_at`
-- [ ] 3.6 A stage with no points is skipped without raising
-- [ ] 3.7 The payload is still delivered by `json_script` only
-- [ ] 3.8 Marker icon URLs still follow a moved `STATIC_URL`
-- [ ] 3.9 `#map`'s markup is byte-identical to today
-- [ ] 3.10 `collectstatic --noinput` then `pytest tests/test_static_references.py` passes
-- [ ] 3.11 Quality gates pass
-- [ ] 3.16 Bite-proof harness passes with the repointed risk-#3 shape: `pytest -m bite_proof`
+- [x] 3.1 A single-stage trip's payload carries one segment matching its stored points
+- [x] 3.2 A three-stage trip carries three segments in ride order with distinct colours
+- [x] 3.3 Whole-trip bounds equal the min/max across all stages
+- [x] 3.4 Markers are exactly one `start`, one `finish`, one `break` per boundary
+- [x] 3.5 No `break` markers when any stage lacks `started_at`
+- [x] 3.6 A stage with no points is skipped without raising
+- [x] 3.7 The payload is still delivered by `json_script` only
+- [x] 3.8 Marker icon URLs still follow a moved `STATIC_URL`
+- [x] 3.9 `#map`'s markup is byte-identical to today
+- [x] 3.10 `collectstatic --noinput` then `pytest tests/test_static_references.py` passes
+- [x] 3.11 Quality gates pass
+- [x] 3.16 Bite-proof harness passes with the repointed risk-#3 shape: `pytest -m bite_proof`
 
 #### Manual
 
-- [ ] 3.12 Three visibly distinct coloured segments in ride order, markers at start, end and both breaks
-- [ ] 3.13 Every hue is legible over the OSM basemap at tour extent and street zoom
-- [ ] 3.14 A single-stage v1 trip looks unchanged
-- [ ] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable
+- [x] 3.12 Three visibly distinct coloured segments in ride order, markers at start, end and both breaks
+- [x] 3.13 Every hue is legible over the OSM basemap at tour extent and street zoom
+- [x] 3.14 A single-stage v1 trip looks unchanged
+- [x] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable
 
 ### Phase 4: Stage list and per-stage statistics
 

@@ -8,10 +8,14 @@ independently-drifting flags.
 """
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from django.db.models import F, QuerySet
 
+from gpx.availability import track_file_is_available
+from gpx.constants import STAGE_COLORS
 from gpx.models import GpxTrack
+from gpx.statistics import TripStats, build_trip_stats
 from trips.models import Trip
 
 
@@ -43,3 +47,41 @@ def chronology_is_established(tracks: Sequence[GpxTrack]) -> bool:
     presented as the whole).
     """
     return bool(tracks) and all(track.started_at is not None for track in tracks)
+
+
+@dataclass(frozen=True)
+class Stage:
+    """One trip stage as both render paths need it: its track, position and own figures.
+
+    A frozen dataclass rather than two separate lookups, so the map payload and the
+    stage-list template read one structure and cannot disagree about which colour belongs
+    to which track.
+    """
+
+    track: GpxTrack
+    number: int
+    """1-based position in ride order — `Stage {{ stage.number }}` reads directly off it."""
+    color: str
+    """One of `STAGE_COLORS`, cycled by `number - 1` so stage 7 reuses stage 1's colour."""
+    stats: TripStats | None
+    file_available: bool
+
+
+def build_stages(trip: Trip) -> tuple[Stage, ...]:
+    """Return `trip`'s stages in ride order, each carrying its own colour and figures.
+
+    `build_trip_stats` and `track_file_is_available` keep their single-track signatures —
+    they are called once per stage here rather than widened, so neither helper's own
+    tests need to know about stages at all.
+    """
+    tracks = list(ordered_stage_tracks(trip))
+    return tuple(
+        Stage(
+            track=track,
+            number=index + 1,
+            color=STAGE_COLORS[index % len(STAGE_COLORS)],
+            stats=build_trip_stats(track),
+            file_available=track_file_is_available(track),
+        )
+        for index, track in enumerate(tracks)
+    )

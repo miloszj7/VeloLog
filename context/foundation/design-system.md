@@ -456,6 +456,25 @@ outline: 2px solid white;
 
 The route must remain highly visible on the default OpenStreetMap basemap.
 
+### Stage Route Palette
+
+A multi-stage trip draws each stage in its own colour, cycled from `STAGE_COLORS` in
+`gpx/constants.py`:
+
+```
+#f97316  accent orange (stage 1 — the accent colour above, unchanged)
+#2563eb  blue
+#16a34a  green
+#dc2626  red
+#9333ea  purple
+#0891b2  teal
+```
+
+This is a bounded exception to "do not introduce additional colors" below: these hues are
+permitted **only** for map polylines and their matching stage-list colour swatches, never
+for interface chrome (buttons, badges, links, backgrounds). The `weight: 5` / white outline
+spec above is unchanged for every stage.
+
 ---
 
 # Responsive Rules
@@ -488,7 +507,8 @@ When generating HTML and CSS:
 - Render every form field through `{{ field|bootstrap_widget }}` /
   `{{ field.label_tag|bootstrap_label }}` (see Forms above) — never bare
   `{{ field }}` in a styled template
-- Do not introduce additional colors
+- Do not introduce additional colors, except the bounded Stage Route Palette exception
+  under Route Styling (map polylines and their stage-list swatches only)
 - Do not use gradients
 - Do not use glassmorphism
 - Do not implement dark mode unless explicitly requested

@@ -8,7 +8,7 @@ none of it.
 
 import json
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -18,6 +18,7 @@ from django.test import Client
 from django.urls import reverse
 from pytest_django.fixtures import Settings
 
+from gpx.constants import STAGE_COLORS
 from gpx.models import GpxTrack
 from tests.conftest import GPX_BOUNDS, GPX_POINTS, TrackFactory
 from trips.models import Trip
@@ -47,8 +48,33 @@ def trip(rider: User) -> Trip:
     return Trip.objects.create(name="Alps Loop", date=date(2026, 6, 1), owner=rider)
 
 
+def make_track(
+    trip: Trip,
+    filename: str,
+    points: list[list[float]],
+    bounds: dict[str, float],
+    started_at: datetime | None = None,
+    ended_at: datetime | None = None,
+) -> GpxTrack:
+    """Persist a stage with fully custom points/bounds/instants.
+
+    `make_gpx_track` (in `tests/conftest.py`) hardcodes one shared set of points and
+    bounds for every caller, which is right for single-stage tests but cannot build the
+    distinguishable, orderable stages a multi-stage payload test needs.
+    """
+    return GpxTrack.objects.create(
+        trip=trip,
+        file=f"gpx/1/1/{filename}",
+        points=points,
+        original_filename=filename,
+        started_at=started_at,
+        ended_at=ended_at,
+        **bounds,
+    )
+
+
 @pytest.mark.django_db
-def test_a_trip_with_a_track_renders_the_map_container_and_its_coordinates(
+def test_a_single_stage_trips_payload_carries_one_segment_matching_its_stored_points(
     auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
 ) -> None:
     make_gpx_track(trip)
@@ -59,11 +85,200 @@ def test_a_trip_with_a_track_renders_the_map_container_and_its_coordinates(
     assert response.status_code == 200
     assert '<div id="map">' in body
     payload = map_config_payload(body)
-    assert payload["points"] == GPX_POINTS
+    assert payload["segments"] == [{"number": 1, "color": STAGE_COLORS[0], "points": GPX_POINTS}]
     assert payload["bounds"] == [
         [GPX_BOUNDS["min_latitude"], GPX_BOUNDS["min_longitude"]],
         [GPX_BOUNDS["max_latitude"], GPX_BOUNDS["max_longitude"]],
     ]
+
+
+@pytest.mark.django_db
+def test_a_three_stage_trip_carries_three_segments_in_ride_order_with_distinct_colours(
+    auth_client: Client, trip: Trip
+) -> None:
+    """Uploaded out of ride order, so a passing test proves `started_at` drives the sort."""
+    make_track(
+        trip,
+        "day-3.gpx",
+        points=[[50.20, 19.20]],
+        bounds={
+            "min_latitude": 50.20,
+            "min_longitude": 19.20,
+            "max_latitude": 50.20,
+            "max_longitude": 19.20,
+        },
+        started_at=datetime(2026, 6, 3, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 3, 9, 0, tzinfo=UTC),
+    )
+    make_track(
+        trip,
+        "day-1.gpx",
+        points=[[50.00, 19.00]],
+        bounds={
+            "min_latitude": 50.00,
+            "min_longitude": 19.00,
+            "max_latitude": 50.00,
+            "max_longitude": 19.00,
+        },
+        started_at=datetime(2026, 6, 1, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 1, 9, 0, tzinfo=UTC),
+    )
+    make_track(
+        trip,
+        "day-2.gpx",
+        points=[[50.10, 19.10]],
+        bounds={
+            "min_latitude": 50.10,
+            "min_longitude": 19.10,
+            "max_latitude": 50.10,
+            "max_longitude": 19.10,
+        },
+        started_at=datetime(2026, 6, 2, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 2, 9, 0, tzinfo=UTC),
+    )
+
+    payload = map_config_payload(auth_client.get(detail_url(trip)).content.decode())
+
+    assert [segment["number"] for segment in payload["segments"]] == [1, 2, 3]
+    assert [segment["points"] for segment in payload["segments"]] == [
+        [[50.00, 19.00]],
+        [[50.10, 19.10]],
+        [[50.20, 19.20]],
+    ]
+    colours = [segment["color"] for segment in payload["segments"]]
+    assert colours == list(STAGE_COLORS[:3])
+    assert len(set(colours)) == 3
+
+
+@pytest.mark.django_db
+def test_whole_trip_bounds_equal_the_min_max_across_all_stages(
+    auth_client: Client, trip: Trip
+) -> None:
+    make_track(
+        trip,
+        "south.gpx",
+        points=[[50.00, 19.00]],
+        bounds={
+            "min_latitude": 50.00,
+            "min_longitude": 19.00,
+            "max_latitude": 50.05,
+            "max_longitude": 19.05,
+        },
+    )
+    make_track(
+        trip,
+        "north.gpx",
+        points=[[50.20, 19.20]],
+        bounds={
+            "min_latitude": 50.15,
+            "min_longitude": 19.15,
+            "max_latitude": 50.20,
+            "max_longitude": 19.20,
+        },
+    )
+
+    payload = map_config_payload(auth_client.get(detail_url(trip)).content.decode())
+
+    assert payload["bounds"] == [[50.00, 19.00], [50.20, 19.20]]
+
+
+@pytest.mark.django_db
+def test_markers_are_exactly_one_start_one_finish_and_one_break_per_boundary(
+    auth_client: Client, trip: Trip
+) -> None:
+    make_track(
+        trip,
+        "day-2.gpx",
+        points=[[50.10, 19.10], [50.11, 19.11]],
+        bounds={
+            "min_latitude": 50.10,
+            "min_longitude": 19.10,
+            "max_latitude": 50.11,
+            "max_longitude": 19.11,
+        },
+        started_at=datetime(2026, 6, 2, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 2, 9, 0, tzinfo=UTC),
+    )
+    make_track(
+        trip,
+        "day-1.gpx",
+        points=[[50.00, 19.00], [50.01, 19.01]],
+        bounds={
+            "min_latitude": 50.00,
+            "min_longitude": 19.00,
+            "max_latitude": 50.01,
+            "max_longitude": 19.01,
+        },
+        started_at=datetime(2026, 6, 1, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 1, 9, 0, tzinfo=UTC),
+    )
+
+    payload = map_config_payload(auth_client.get(detail_url(trip)).content.decode())
+
+    kinds = [marker["kind"] for marker in payload["markers"]]
+    assert kinds.count("start") == 1
+    assert kinds.count("finish") == 1
+    assert kinds.count("break") == 1
+    start = next(marker for marker in payload["markers"] if marker["kind"] == "start")
+    finish = next(marker for marker in payload["markers"] if marker["kind"] == "finish")
+    breakpoint_marker = next(marker for marker in payload["markers"] if marker["kind"] == "break")
+    assert start["point"] == [50.00, 19.00]
+    assert finish["point"] == [50.11, 19.11]
+    assert breakpoint_marker["point"] == [50.01, 19.01]
+
+
+@pytest.mark.django_db
+def test_no_break_markers_when_any_stage_lacks_started_at(auth_client: Client, trip: Trip) -> None:
+    make_track(
+        trip,
+        "timed.gpx",
+        points=[[50.00, 19.00]],
+        bounds={
+            "min_latitude": 50.00,
+            "min_longitude": 19.00,
+            "max_latitude": 50.00,
+            "max_longitude": 19.00,
+        },
+        started_at=datetime(2026, 6, 1, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 1, 9, 0, tzinfo=UTC),
+    )
+    make_track(
+        trip,
+        "untimed.gpx",
+        points=[[50.10, 19.10]],
+        bounds={
+            "min_latitude": 50.10,
+            "min_longitude": 19.10,
+            "max_latitude": 50.10,
+            "max_longitude": 19.10,
+        },
+    )
+
+    payload = map_config_payload(auth_client.get(detail_url(trip)).content.decode())
+
+    assert all(marker["kind"] != "break" for marker in payload["markers"])
+
+
+@pytest.mark.django_db
+def test_a_stage_with_no_points_is_skipped_without_raising_and_the_rest_still_draw(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    make_gpx_track(trip, original_filename="healthy.gpx")
+    GpxTrack.objects.create(
+        trip=trip,
+        file="gpx/1/1/deadbeef.gpx",
+        points=[],
+        original_filename="empty.gpx",
+        **GPX_BOUNDS,
+    )
+
+    response = auth_client.get(detail_url(trip))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    payload = map_config_payload(body)
+    assert len(payload["segments"]) == 1
+    assert payload["segments"][0]["points"] == GPX_POINTS
 
 
 @pytest.mark.django_db
@@ -149,16 +364,20 @@ def test_the_marker_icon_urls_come_from_the_staticfiles_storage(
 
     payload = map_config_payload(auth_client.get(detail_url(trip)).content.decode())
 
-    icons = payload["icons"]
-    assert icons["iconUrl"] == "/assets-under-test/gpx/vendor/leaflet/images/marker-icon.png"
-    assert (
-        icons["iconRetinaUrl"] == "/assets-under-test/gpx/vendor/leaflet/images/marker-icon-2x.png"
-    )
-    assert icons["shadowUrl"] == "/assets-under-test/gpx/vendor/leaflet/images/marker-shadow.png"
+    for kind in ("start", "finish", "break"):
+        icons = payload["icons"][kind]
+        assert icons["iconUrl"] == "/assets-under-test/gpx/vendor/leaflet/images/marker-icon.png"
+        assert (
+            icons["iconRetinaUrl"]
+            == "/assets-under-test/gpx/vendor/leaflet/images/marker-icon-2x.png"
+        )
+        assert (
+            icons["shadowUrl"] == "/assets-under-test/gpx/vendor/leaflet/images/marker-shadow.png"
+        )
 
 
 @pytest.mark.django_db
-def test_a_trip_with_no_track_renders_no_map_container(auth_client: Client, trip: Trip) -> None:
+def test_a_trip_with_no_stages_renders_no_map_container(auth_client: Client, trip: Trip) -> None:
     """No container, no payload, and no Leaflet — an empty map frame is not an empty state."""
     response = auth_client.get(detail_url(trip))
     body = response.content.decode()
@@ -221,5 +440,5 @@ def test_a_rejected_upload_re_renders_the_route_the_trip_already_had(
 
     assert response.status_code == 200
     assert '<div id="map">' in body
-    assert map_config_payload(body)["points"] == GPX_POINTS
+    assert map_config_payload(body)["segments"][0]["points"] == GPX_POINTS
     assert "This route could not be displayed" not in body

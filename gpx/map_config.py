@@ -1,54 +1,105 @@
-"""Assembles what `gpx/static/gpx/map.js` needs to draw a track.
+"""Assembles what `gpx/static/gpx/map.js` needs to draw a trip's stages.
 
 Built here rather than in either view because two views render the trip detail page:
 `TripDetailView` on a normal visit, and `GpxUploadView` when it re-renders that page with
 a form error. A helper reachable from only one of them would leave the other rendering the
-"route could not be displayed" branch over a perfectly healthy track.
+"route could not be displayed" branch over a perfectly healthy set of stages.
 
-It lives in `gpx` rather than `trips` for two reasons: the track and the vendored Leaflet
+It lives in `gpx` rather than `trips` for two reasons: the tracks and the vendored Leaflet
 assets whose URLs it resolves are both this app's, and `trips` already imports from `gpx`
 — building it in `trips` would mean `gpx.views` importing `trips.views` back, which is a
 second cross-app edge on top of the one the codebase already accepts.
 """
 
+from collections.abc import Sequence
 from typing import Any
 
 from django.templatetags.static import static
 
 from gpx.constants import MARKER_ICON, MARKER_ICON_RETINA, MARKER_SHADOW
-from gpx.models import GpxTrack
+from gpx.stages import Stage, chronology_is_established
 
 
-def build_map_config(track: GpxTrack | None) -> dict[str, Any] | None:
+def build_map_config(stages: Sequence[Stage]) -> dict[str, Any] | None:
     """Return the blob the detail template serialises, or `None` if there is no map to draw.
 
     Args:
-        track: The trip's current track, or `None` when nothing has been uploaded.
+        stages: `trip`'s stages in ride order, from `gpx.stages.build_stages`.
 
     Returns:
-        A JSON-serialisable dict of points, bounds and marker icon URLs, or `None` when
-        no route can be drawn — either because there is no track or because the one
-        stored carries no points.
+        A JSON-serialisable dict of segments, bounds, markers and marker icon URLs, or
+        `None` when no route can be drawn — either because there are no stages or because
+        none of them carries any points.
 
-    A track with no points cannot happen: `gpx.parsing.parse_gpx` rejects an empty track
-    at upload. The branch exists anyway because the PRD's only NFR forbids a blank page,
-    and a row that predates that rule — or arrives through the admin — must still land on
-    a deliberate message rather than on an empty map container.
+    A stage with no points cannot happen through upload: `gpx.parsing.parse_gpx` rejects an
+    empty track. The branch exists anyway because the PRD's only NFR forbids a blank page,
+    and a row that predates that rule — or arrives through the admin — must still land on a
+    deliberate message rather than on an empty map container. Such a stage is skipped for
+    segments and markers rather than aborting the whole build, so its healthy siblings still
+    draw.
     """
-    if track is None or not track.points:
+    drawable = [stage for stage in stages if stage.track.points]
+    if not drawable:
         return None
-    return {
-        "points": track.points,
-        # The nested-pair form `[[lat, lng], [lat, lng]]` is what `map.fitBounds` takes.
-        # Derived at upload from the points actually stored, so the box provably contains
-        # the line the map draws.
-        "bounds": [
-            [track.min_latitude, track.min_longitude],
-            [track.max_latitude, track.max_longitude],
+
+    established = chronology_is_established([stage.track for stage in stages])
+
+    segments = [
+        {"number": stage.number, "color": stage.color, "points": stage.track.points}
+        for stage in drawable
+    ]
+
+    # Aggregated from the stored scalar bounds columns, never from the points themselves —
+    # the same reason a single stage's bounds were server-derived: the box provably contains
+    # every line drawn, and it costs nothing per point.
+    bounds = [
+        [
+            min(stage.track.min_latitude for stage in drawable),
+            min(stage.track.min_longitude for stage in drawable),
         ],
+        [
+            max(stage.track.max_latitude for stage in drawable),
+            max(stage.track.max_longitude for stage in drawable),
+        ],
+    ]
+
+    markers = [
+        {"kind": "start", "point": drawable[0].track.points[0], "title": "Start"},
+        {"kind": "finish", "point": drawable[-1].track.points[-1], "title": "Finish"},
+    ]
+    # A break marker at the end of each stage but the last. Suppressed entirely unless
+    # ride order is established for *every* stage in the trip — an upload-ordered boundary
+    # asserts nothing about where the rider actually stopped and resumed.
+    if established:
+        for stage in drawable[:-1]:
+            markers.append(
+                {
+                    "kind": "break",
+                    "point": stage.track.points[-1],
+                    "title": f"End of stage {stage.number}",
+                }
+            )
+
+    return {
+        "segments": segments,
+        # The nested-pair form `[[lat, lng], [lat, lng]]` is what `map.fitBounds` takes.
+        "bounds": bounds,
+        "markers": markers,
         "icons": {
-            "iconUrl": static(MARKER_ICON),
-            "iconRetinaUrl": static(MARKER_ICON_RETINA),
-            "shadowUrl": static(MARKER_SHADOW),
+            "start": {
+                "iconUrl": static(MARKER_ICON),
+                "iconRetinaUrl": static(MARKER_ICON_RETINA),
+                "shadowUrl": static(MARKER_SHADOW),
+            },
+            "finish": {
+                "iconUrl": static(MARKER_ICON),
+                "iconRetinaUrl": static(MARKER_ICON_RETINA),
+                "shadowUrl": static(MARKER_SHADOW),
+            },
+            "break": {
+                "iconUrl": static(MARKER_ICON),
+                "iconRetinaUrl": static(MARKER_ICON_RETINA),
+                "shadowUrl": static(MARKER_SHADOW),
+            },
         },
     }

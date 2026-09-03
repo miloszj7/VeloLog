@@ -65,3 +65,20 @@ ORPHAN_MIN_AGE_MINUTES = 60
 MARKER_ICON = "gpx/vendor/leaflet/images/marker-icon.png"
 MARKER_ICON_RETINA = "gpx/vendor/leaflet/images/marker-icon-2x.png"
 MARKER_SHADOW = "gpx/vendor/leaflet/images/marker-shadow.png"
+
+# Hues cycled across a trip's stages when drawing its route, keyed by stage index — stage 7
+# reuses stage 1's colour. The design system (`design-system.md` "Stage Route Palette")
+# forbids additional colours everywhere except this one bounded exception: map polylines and
+# their stage-list swatches, never interface chrome. The first entry is deliberately the
+# system's own accent (`--color-accent: #f97316`), so a single-stage trip draws in the colour
+# the system already specifies — and this is also where the pre-existing `#ff7800` drift in
+# `gpx/static/gpx/map.js` gets reconciled to that accent. The rest are chosen to stay
+# distinguishable from each other and legible over the OpenStreetMap basemap.
+STAGE_COLORS: tuple[str, ...] = (
+    "#f97316",  # accent orange — stage 1, matches the design system exactly
+    "#2563eb",  # blue
+    "#16a34a",  # green
+    "#dc2626",  # red
+    "#9333ea",  # purple
+    "#0891b2",  # teal
+)

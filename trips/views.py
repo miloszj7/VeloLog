@@ -14,11 +14,9 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 # is uploaded and viewed, so the two apps describe one page between them. There is no
 # import cycle — `trips.models` imports nothing from `gpx`, and that is the line to keep
 # unbroken; a model-level import in either direction is what would turn this into one.
-from gpx.availability import track_file_is_available
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
-from gpx.stages import ordered_stage_tracks
-from gpx.statistics import build_trip_stats
+from gpx.stages import build_stages, chronology_is_established
 from trips.forms import TripForm
 from trips.models import Trip
 
@@ -84,21 +82,29 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         return Trip.objects.filter(owner=cast(User, self.request.user))
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        """Expose the trip's current track, or `None` when nothing has been uploaded.
+        """Expose the trip's stages, in ride order, or an empty tuple when none exist.
 
         The unbound upload form is supplied here too. The page hosts a form it does not
         own, so this GET path and `GpxUploadView`'s re-render path have to present the
         same template with the same context keys — one of them bound, one of them not.
-        The map blob is on that list, and so is the stats blob: either key supplied here
-        and missed there renders a failure branch over healthy data — "route could not be
-        displayed" for the first, the re-upload sentence for the second.
+        The map blob is on that list, and so is `chronology_established`: either key
+        supplied here and missed there renders a wrong branch over healthy data — "route
+        could not be displayed" for the first, a false chronology claim for the second.
         """
         context = super().get_context_data(**kwargs)
-        track = ordered_stage_tracks(self.object).first()
-        context["track"] = track
-        context["map_config"] = build_map_config(track)
-        context["stats"] = build_trip_stats(track)
-        context["track_file_available"] = track_file_is_available(track)
+        stages = build_stages(self.object)
+        context["stages"] = stages
+        context["map_config"] = build_map_config(stages)
+        context["chronology_established"] = chronology_is_established(
+            [stage.track for stage in stages]
+        )
+        # Interim shim, resolved to the chronologically first stage — retired in Phase 4
+        # §1 in the same edit that stops `trip_detail.html` reading them. Keeping them
+        # alive here is what lets this phase ship without touching the template, whose
+        # `{% if track %}` gate wraps both the Route and Stats blocks.
+        context["track"] = stages[0].track if stages else None
+        context["stats"] = stages[0].stats if stages else None
+        context["track_file_available"] = stages[0].file_available if stages else False
         context["form"] = GpxUploadForm()
         return context
 

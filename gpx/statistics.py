@@ -27,11 +27,13 @@ break.
 Displaying
 ----------
 
-`build_trip_stats` mirrors `gpx/map_config.py`'s `build_map_config` exactly — same
-`GpxTrack | None` in, same "or `None` when there is nothing to show" out — so the detail
-template is handed a finished blob and does no arithmetic of its own. That is the same
-reason the map blob is built outside the two views: two views render
-`trips/trip_detail.html`, and a value derived in a template would have to be derived twice.
+`build_trip_stats` shares `gpx/map_config.py`'s `build_map_config` "or `None` when there is
+nothing to show" discipline — the template is handed a finished blob or `None`, and does no
+arithmetic of its own — but not its input type: `build_map_config` takes `Sequence[Stage]`
+(one call, all stages) while `build_trip_stats` deliberately keeps its single-track
+signature, called once per stage by `gpx.stages.build_stages`. Both live outside the two
+views for the same reason: two views render `trips/trip_detail.html`, and a value derived
+in a template would have to be derived twice.
 """
 
 import logging

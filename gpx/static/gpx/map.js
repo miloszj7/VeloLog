@@ -73,22 +73,34 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        L.polyline(config.points, {color: "#ff7800", weight: 5, opacity: 0.85}).addTo(map);
-
-        var icon = L.icon({
-            iconUrl: config.icons.iconUrl,
-            iconRetinaUrl: config.icons.iconRetinaUrl,
-            shadowUrl: config.icons.shadowUrl,
-            // The upstream Leaflet defaults, restated because supplying `iconUrl` opts
-            // out of `L.Icon.Default` entirely — omit them and the marker is anchored by
-            // its top-left corner, so it points a few dozen metres off the route.
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            shadowSize: [41, 41],
-            popupAnchor: [1, -34]
+        // One polyline per stage segment, coloured server-side (`gpx/constants.py`'s
+        // `STAGE_COLORS`) — never hardcoded here, which is also where the old literal
+        // `#ff7800` (drifted from the design system's `#f97316` accent) is retired.
+        config.segments.forEach(function (segment) {
+            L.polyline(segment.points, {color: segment.color, weight: 5, opacity: 0.85}).addTo(map);
         });
-        L.marker(config.points[0], {icon: icon, title: "Start"}).addTo(map);
-        L.marker(config.points[config.points.length - 1], {icon: icon, title: "Finish"}).addTo(map);
+
+        // One `L.icon` per marker kind ("start" / "finish" / "break"), built from the
+        // server-resolved staticfiles URLs in `config.icons`. The upstream Leaflet
+        // defaults below are restated because supplying `iconUrl` opts out of
+        // `L.Icon.Default` entirely — omit them and the marker is anchored by its
+        // top-left corner, so it points a few dozen metres off the route.
+        var icons = {};
+        Object.keys(config.icons).forEach(function (kind) {
+            var iconConfig = config.icons[kind];
+            icons[kind] = L.icon({
+                iconUrl: iconConfig.iconUrl,
+                iconRetinaUrl: iconConfig.iconRetinaUrl,
+                shadowUrl: iconConfig.shadowUrl,
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                shadowSize: [41, 41],
+                popupAnchor: [1, -34]
+            });
+        });
+        config.markers.forEach(function (marker) {
+            L.marker(marker.point, {icon: icons[marker.kind], title: marker.title}).addTo(map);
+        });
 
         // Bounds come from the server rather than `polyline.getBounds()`. They are derived
         // from the same stored points at upload time, so the box provably contains the

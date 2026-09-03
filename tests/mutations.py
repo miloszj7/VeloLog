@@ -151,10 +151,14 @@ MUTATION_SHAPES: tuple[MutationShape, ...] = (
     MutationShape(
         name="file_always_available",
         risk="#3",
-        # `trips/views.py` does `from gpx.availability import track_file_is_available`, so
-        # the view's live reference is `trips.views.track_file_is_available` — patching
-        # `gpx.availability.track_file_is_available` would leave the view untouched.
-        module_path="trips.views",
+        # `gpx/stages.py` does `from gpx.availability import track_file_is_available`, and
+        # `build_stages` is the only caller left that reads it — `trips/views.py` and
+        # `gpx/views.py` both went through `gpx.stages.build_stages` once it started
+        # owning this call, so the view's own module no longer holds a reference at all.
+        # Patching `gpx.availability.track_file_is_available` would leave `build_stages`
+        # untouched, the same re-export trap this shape has always guarded against, just
+        # at its new location.
+        module_path="gpx.stages",
         attribute="track_file_is_available",
         replacement=_file_always_available,
         guard_node_id=(

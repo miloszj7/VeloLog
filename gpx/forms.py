@@ -91,4 +91,6 @@ class GpxUploadForm(_GpxUploadFormBase):
         self.instance.duration_seconds = parsed.duration_seconds
         self.instance.elevation_gain_meters = parsed.elevation_gain_meters
         self.instance.elevation_loss_meters = parsed.elevation_loss_meters
+        self.instance.started_at = parsed.started_at
+        self.instance.ended_at = parsed.ended_at
         return uploaded

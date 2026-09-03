@@ -55,6 +55,16 @@ class GpxTrack(models.Model):
     )
     elevation_gain_meters = models.FloatField(null=True, blank=True)
     elevation_loss_meters = models.FloatField(null=True, blank=True)
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="First recorded GPS instant, or null if none was usable.",
+    )
+    ended_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last recorded GPS instant, or null if none was usable.",
+    )
 
     class Meta:
         ordering = ["-uploaded_at", "-id"]

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -101,6 +102,27 @@ def test_a_valid_upload_stores_the_statistics_parsed_from_it(
     assert track.duration_seconds == 3600.0
     assert track.elevation_gain_meters is not None
     assert track.elevation_loss_meters is not None
+
+
+@pytest.mark.django_db
+def test_a_timed_upload_stores_its_first_and_last_gps_instants(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """The stage-instant columns have no form field either, so only `clean_file` fills them.
+
+    Re-read from the database, for the same round-trip reason as the statistics test
+    above: `DateTimeField` accepting a naive value silently would be a bug the in-memory
+    instance could never expose.
+    """
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("alps-day-1.gpx", gpx_bytes("timed-track.gpx"))},
+    )
+
+    track = GpxTrack.objects.get()
+
+    assert track.started_at == datetime(2026, 6, 1, 8, 0, 0, tzinfo=UTC)
+    assert track.ended_at == datetime(2026, 6, 1, 9, 0, 0, tzinfo=UTC)
 
 
 @pytest.mark.django_db

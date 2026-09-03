@@ -1116,18 +1116,18 @@ by the ordering expression, and re-fillable later by the command.
 
 #### Automated
 
-- [ ] 1.1 Migration guard clean: `makemigrations --check --dry-run`
-- [ ] 1.2 Migration applies: `manage.py migrate`
-- [ ] 1.3 A timed upload stores both instants as UTC-aware values matching the file's first and last `<time>`
-- [ ] 1.4 An untimed upload stores null for both, and still stores its distance
-- [ ] 1.5 A file with naive timestamps stores null for both rather than a naive instant
-- [ ] 1.6 A multi-segment timed file spans first segment start to last segment end
-- [ ] 1.7 No naive-datetime `RuntimeWarning` is emitted anywhere in the suite
-- [ ] 1.8 Quality gates pass
+- [x] 1.1 Migration guard clean: `makemigrations --check --dry-run`
+- [x] 1.2 Migration applies: `manage.py migrate`
+- [x] 1.3 A timed upload stores both instants as UTC-aware values matching the file's first and last `<time>`
+- [x] 1.4 An untimed upload stores null for both, and still stores its distance
+- [x] 1.5 A file with naive timestamps stores null for both rather than a naive instant
+- [x] 1.6 A multi-segment timed file spans first segment start to last segment end
+- [x] 1.7 No naive-datetime `RuntimeWarning` is emitted anywhere in the suite
+- [x] 1.8 Quality gates pass
 
 #### Manual
 
-- [ ] 1.9 A real timed export shows both instants on the admin change form, both editable
+- [x] 1.9 A real timed export shows both instants on the admin change form, both editable
 
 ### Phase 2: ADD semantics and chronological ordering
 

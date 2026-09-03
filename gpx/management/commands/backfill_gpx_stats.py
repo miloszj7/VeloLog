@@ -26,7 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Recompute the statistics columns on stored GPX tracks from their files."
+    help = (
+        "Recompute the statistics columns and stage instants on stored GPX tracks "
+        "from their files."
+    )
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
@@ -34,7 +37,9 @@ class Command(BaseCommand):
             action="store_true",
             help=(
                 "Reprocess every track, not only those whose statistics are null — for a "
-                "track whose file was replaced or whose stored figures are stale."
+                "track whose file was replaced or whose stored figures are stale, and the "
+                "only way to refill stage instants on a row whose statistics are already "
+                "present."
             ),
         )
 

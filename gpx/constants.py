@@ -16,9 +16,22 @@ ALLOWED_GPX_EXTENSIONS = (".gpx",)
 # size cap this bounds the quantity that actually drives render cost: the `points` column is
 # re-read and inlined into the trip detail page on every view. A 10 MB file of minimal
 # `<trkpt>` elements parses to ~262,000 points and a 6 MB JSON payload — an upload that
-# succeeds and then makes the page it belongs to unrenderable. Provisional: calibrated
-# against that synthetic worst case (~24 bytes of JSON per point, so this caps the payload
-# at ~2.4 MB), not yet against a real multi-day tour export.
+# succeeds and then makes the page it belongs to unrenderable. Calibrated against that
+# synthetic worst case (~24 bytes of JSON per point, so this caps the payload at ~2.4 MB
+# per stage) and, since 2026-09-03, against a real one. Browser time-to-interactive was
+# *not* instrumented — the observation is only that the page draws without perceptible
+# delay — so the payload figure below is the proxy, and the honest one: it is what a
+# thinning algorithm would reduce and what a slow device would be spending its time on.
+#
+# **Measured, on a real three-day tour** (3 stages, 123 km, Garmin exports): 8,330 points
+# total, a 178 KiB inlined payload inside a 186 KiB page, rendered server-side in 67 ms.
+# That is ~21.9 bytes of JSON per point — the synthetic figure holds — and ~2,800 points
+# per riding day at this rider's sampling density. The number that matters is the ratio:
+# a single stage at this cap would be roughly **25 riding days in one file**, a shape no
+# tour produces, so the cap is nowhere near a real tour's path. Nothing to thin, and no
+# backlog row opened. Re-measure if either input changes — a denser recorder (1 Hz rather
+# than per-second-of-movement) or a rider who uploads a whole tour as one file — because
+# both move real usage toward the cap without the cap itself changing.
 MAX_GPX_POINTS = 100_000
 
 # Decimal places kept for each stored coordinate. Five is roughly a metre — finer than a

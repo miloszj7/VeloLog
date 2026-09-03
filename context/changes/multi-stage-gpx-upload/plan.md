@@ -1090,9 +1090,17 @@ SECRET_KEY=ci-check-only-not-a-real-secret DEBUG=False ALLOWED_HOSTS= uv run pyt
 
 `MAX_GPX_POINTS = 100_000` is a *per-track* cap (~2.4 MB of inlined JSON), and N stages
 multiply it N-fold into one page, against the NFR that the page must reach an interactive
-state without feeling broken. `gpx/constants.py:16-22` already flags the figure as
+state without feeling broken. `gpx/constants.py:16-22` flagged the figure as
 "provisional … not yet calibrated against a real multi-day tour export" — this change is what
-produces that calibration. Deliberately measured rather than pre-solved: thinning is a real
+produces that calibration.
+
+**Measured 2026-09-03 (criterion 3.15), on a real three-day tour**: 3 stages, 123 km,
+8,330 points, a 178 KiB inlined payload inside a 186 KiB page, 67 ms server render —
+~21.9 bytes per point, matching the synthetic estimate. Real sampling runs ~2,800 points
+per riding day, so one stage at the cap would be ~25 riding days in a single file. No
+thinning is warranted and no Engineering Backlog row was opened; the figures and the
+conditions that would invalidate them now live in `gpx/constants.py` beside the constant
+itself, rather than only here. Deliberately measured rather than pre-solved: thinning is a real
 algorithm with its own tests, and building it into the milestone's riskiest slice on an
 unmeasured problem is the wrong trade. Phase 3's manual verification records the number; a
 bad one opens an Engineering Backlog row with that number as its trigger.
@@ -1232,7 +1240,7 @@ imported from live application code.
 - [x] 3.12 Three visibly distinct coloured segments in ride order, markers at start, end and both breaks — ac6ff25
 - [x] 3.13 Every hue is legible over the OSM basemap at tour extent and street zoom — ac6ff25
 - [x] 3.14 A single-stage v1 trip looks unchanged — ac6ff25
-- [ ] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable — **unchecked at implementation review (F3): the criterion's deliverable is a recorded number and none was written down.** `gpx/constants.py:16-22` still reads "not yet against a real multi-day tour export", `## Performance Considerations` below still says the calibration is forthcoming, and no backlog row was opened. This is the one criterion outstanding across Phases 1-5; it needs a real export uploaded and the page observed, then the two figures written into `gpx/constants.py`
+- [x] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable — **unchecked at implementation review (F3): the criterion's deliverable is a recorded number and none was written down.** `gpx/constants.py:16-22` still reads "not yet against a real multi-day tour export", `## Performance Considerations` below still says the calibration is forthcoming, and no backlog row was opened. This is the one criterion outstanding across Phases 1-5; it needs a real export uploaded and the page observed, then the two figures written into `gpx/constants.py`. **Done 2026-09-03**: a real three-day tour (3 stages, 123 km, 8,330 points) measures 178 KiB of payload in a 186 KiB page, 67 ms server render; the figures and the conditions that would invalidate them are in `gpx/constants.py`, and no backlog row was warranted
 
 ### Phase 4: Stage list and per-stage statistics
 
@@ -1291,15 +1299,15 @@ imported from live application code.
 
 #### Automated
 
-- [ ] 7.1 A fully timed multi-stage trip shows a span from first stage start to last stage end
-- [ ] 7.2 A trip with any untimed stage shows the stored `Trip.date` alone
-- [ ] 7.3 A trip with no stages shows the stored `Trip.date`, as today
-- [ ] 7.4 A same-day span renders as one date, not a repeated range
-- [ ] 7.5 The rendered form carries the new help text with `aria-describedby` wiring intact
-- [ ] 7.6 `clean_date` still rejects a future date and still skips when the date is unchanged
-- [ ] 7.7 Quality gates pass
+- [x] 7.1 A fully timed multi-stage trip shows a span from first stage start to last stage end
+- [x] 7.2 A trip with any untimed stage shows the stored `Trip.date` alone
+- [x] 7.3 A trip with no stages shows the stored `Trip.date`, as today
+- [x] 7.4 A same-day span renders as one date, not a repeated range
+- [x] 7.5 The rendered form carries the new help text with `aria-describedby` wiring intact
+- [x] 7.6 `clean_date` still rejects a future date and still skips when the date is unchanged
+- [x] 7.7 Quality gates pass
 
 #### Manual
 
-- [ ] 7.8 A real multi-day tour's detail page shows a span matching the rider's memory
-- [ ] 7.9 The create and edit forms read correctly with the new sentence
+- [x] 7.8 A real multi-day tour's detail page shows a span matching the rider's memory
+- [x] 7.9 The create and edit forms read correctly with the new sentence

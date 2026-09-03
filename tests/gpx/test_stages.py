@@ -10,7 +10,12 @@ import pytest
 
 from gpx.constants import STAGE_COLORS
 from gpx.models import GpxTrack
-from gpx.stages import build_stages, chronology_is_established, ordered_stage_tracks
+from gpx.stages import (
+    build_stages,
+    chronology_is_established,
+    ordered_stage_tracks,
+    trip_span,
+)
 from trips.models import Trip
 
 BOUNDS = {
@@ -159,3 +164,81 @@ def test_build_stages_numbers_from_one_and_cycles_the_palette(trip: Trip) -> Non
     # is the file-missing shape — which is the honest answer for these rows and pins that
     # `build_stages` reports availability per stage rather than defaulting it to True.
     assert [stage.file_available for stage in stages] == [False] * 7
+
+
+@pytest.mark.django_db
+def test_the_span_runs_from_the_first_stages_start_to_the_last_stages_end(trip: Trip) -> None:
+    """Created out of ride order, so the result is `min`/`max` rather than insertion order.
+
+    Three stages rather than two: with a pair, "first start to last end" and "the first
+    row's start to the second row's end" are the same answer, and only one of them is the
+    contract.
+    """
+    _track(
+        trip,
+        "day-2.gpx",
+        started_at=datetime(2026, 6, 2, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 2, 17, 0, tzinfo=UTC),
+    )
+    _track(
+        trip,
+        "day-3.gpx",
+        started_at=datetime(2026, 6, 3, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 3, 16, 30, tzinfo=UTC),
+    )
+    _track(
+        trip,
+        "day-1.gpx",
+        started_at=datetime(2026, 6, 1, 7, 45, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 1, 18, 0, tzinfo=UTC),
+    )
+
+    assert trip_span(list(ordered_stage_tracks(trip))) == (
+        datetime(2026, 6, 1, 7, 45, tzinfo=UTC),
+        datetime(2026, 6, 3, 16, 30, tzinfo=UTC),
+    )
+
+
+@pytest.mark.django_db
+def test_there_is_no_span_when_any_stage_is_untimed(trip: Trip) -> None:
+    """The gate, on the trip that makes the ungated answer look plausible.
+
+    A span over the timed subset here would read 1 June to 1 June — a real-looking answer,
+    and a lower bound presented as the whole tour. `None` is what sends the page back to
+    the stored `Trip.date`.
+    """
+    timed = _track(
+        trip,
+        "day-1.gpx",
+        started_at=datetime(2026, 6, 1, 8, 0, tzinfo=UTC),
+        ended_at=datetime(2026, 6, 1, 9, 0, tzinfo=UTC),
+    )
+    untimed = _track(trip, "day-2.gpx")
+
+    assert trip_span([timed, untimed]) is None
+
+
+@pytest.mark.django_db
+def test_there_is_no_span_for_a_trip_with_no_stages() -> None:
+    assert trip_span([]) is None
+
+
+@pytest.mark.django_db
+def test_a_stage_with_a_start_but_no_end_yields_no_span_rather_than_raising(
+    trip: Trip,
+) -> None:
+    """The half-timed row `gpx/parsing.py` cannot produce and the admin can.
+
+    Both instants are stored together or not at all at the parse boundary, so this shape
+    only exists after a hand edit through the admin change form — the documented repair
+    path, which exposes the two fields individually. `chronology_is_established` reads
+    `started_at` alone and would pass it straight through, so without the second check
+    `max()` is handed a `None` and the detail page raises `TypeError` for a row someone
+    was in the middle of repairing.
+    """
+    half_edited = _track(
+        trip, "day-1.gpx", started_at=datetime(2026, 6, 1, 8, 0, tzinfo=UTC), ended_at=None
+    )
+
+    assert chronology_is_established([half_edited]) is True
+    assert trip_span([half_edited]) is None

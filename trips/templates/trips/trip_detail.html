@@ -16,7 +16,28 @@
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-4">
         <div>
             <h1 class="mb-1">{{ trip.name }}</h1>
-            <p class="text-muted mb-1">{{ trip.date }}</p>
+            {% comment %}
+            The span is derived per render by `gpx/stages.py`'s `trip_span` and stored
+            nowhere — roadmap E-10's resolution. It is present only when every stage
+            carries both instants, so `{% templatetag openvariable %} trip.date
+            {% templatetag closevariable %}` below is not a degraded fallback: it is what
+            v1 rendered and what a partially-timed tour still renders, unchanged.
+
+            The same-day comparison is on the formatted dates rather than on the instants,
+            because that is the question being asked — a ride from 08:00 to 17:00 is one
+            day and must not print the same date twice with a dash between it. `|date`
+            carries `expects_localtime`, so both sides convert identically before they are
+            compared.
+            {% endcomment %}
+            {% if trip_span %}
+                {% if trip_span.0|date:"Y-m-d" == trip_span.1|date:"Y-m-d" %}
+                    <p class="text-muted mb-1">{{ trip_span.0|date }}</p>
+                {% else %}
+                    <p class="text-muted mb-1">{{ trip_span.0|date }} &ndash; {{ trip_span.1|date }}</p>
+                {% endif %}
+            {% else %}
+                <p class="text-muted mb-1">{{ trip.date }}</p>
+            {% endif %}
             {% if trip.description %}
                 <p class="mb-0">{{ trip.description }}</p>
             {% endif %}

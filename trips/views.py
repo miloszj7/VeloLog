@@ -16,7 +16,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 # unbroken; a model-level import in either direction is what would turn this into one.
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
-from gpx.stages import build_stages, chronology_is_established
+from gpx.stages import build_stages, chronology_is_established, trip_span
 from trips.forms import TripForm
 from trips.models import Trip
 
@@ -87,17 +87,19 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         The unbound upload form is supplied here too. The page hosts a form it does not
         own, so this GET path and `GpxUploadView`'s re-render path have to present the
         same template with the same context keys — one of them bound, one of them not.
-        The map blob is on that list, and so is `chronology_established`: either key
-        supplied here and missed there renders a wrong branch over healthy data — "route
-        could not be displayed" for the first, a false chronology claim for the second.
+        The map blob is on that list, and so are `chronology_established` and
+        `trip_span`: any key supplied here and missed there renders a wrong branch over
+        healthy data — "route could not be displayed" for the first, a false chronology
+        claim for the second, and for the third a multi-day tour whose header silently
+        collapses back to its start date the moment an upload is rejected.
         """
         context = super().get_context_data(**kwargs)
         stages = build_stages(self.object)
+        tracks = [stage.track for stage in stages]
         context["stages"] = stages
         context["map_config"] = build_map_config(stages)
-        context["chronology_established"] = chronology_is_established(
-            [stage.track for stage in stages]
-        )
+        context["chronology_established"] = chronology_is_established(tracks)
+        context["trip_span"] = trip_span(tracks)
         context["form"] = GpxUploadForm()
         return context
 

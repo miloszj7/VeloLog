@@ -11,7 +11,7 @@ from django.views.generic import CreateView, View
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
-from gpx.stages import build_stages, chronology_is_established
+from gpx.stages import build_stages, chronology_is_established, trip_span
 from trips.models import Trip
 
 logger = logging.getLogger(__name__)
@@ -73,19 +73,20 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Supply what `trips/trip_detail.html` needs when re-rendering with errors.
 
-        Including the map and chronology blobs: this path renders the same page as
+        Including the map, chronology and span blobs: this path renders the same page as
         `TripDetailView`, so a rider whose upload was rejected must still see every stage
-        they already had, not the template's no-route-to-draw branch and not a false
-        "file unavailable" marker over a track whose file is perfectly healthy.
+        they already had, not the template's no-route-to-draw branch, not a false "file
+        unavailable" marker over a track whose file is perfectly healthy, and not a tour
+        that appears to shrink to a single day because one key was missed here.
         """
         context = super().get_context_data(**kwargs)
         stages = build_stages(self.trip)
+        tracks = [stage.track for stage in stages]
         context["trip"] = self.trip
         context["stages"] = stages
         context["map_config"] = build_map_config(stages)
-        context["chronology_established"] = chronology_is_established(
-            [stage.track for stage in stages]
-        )
+        context["chronology_established"] = chronology_is_established(tracks)
+        context["trip_span"] = trip_span(tracks)
         return context
 
     def get_success_url(self) -> str:

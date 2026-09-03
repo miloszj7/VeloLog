@@ -11,6 +11,7 @@ from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 
 from gpx.constants import MAX_GPX_FILE_BYTES
 from gpx.models import GpxTrack
+from gpx.stages import chronology_is_established, ordered_stage_tracks
 from tests.gpx.conftest import GpxBytesReader
 from trips.models import Trip
 
@@ -123,6 +124,45 @@ def test_a_timed_upload_stores_its_first_and_last_gps_instants(
 
     assert track.started_at == datetime(2026, 6, 1, 8, 0, 0, tzinfo=UTC)
     assert track.ended_at == datetime(2026, 6, 1, 9, 0, 0, tzinfo=UTC)
+
+
+@pytest.mark.django_db
+def test_two_uploads_in_reverse_ride_order_come_back_in_ride_order(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """The whole ordering chain through the real path: upload -> `clean_file` -> ordering.
+
+    `tests/gpx/test_stages.py` already pins `ordered_stage_tracks` against hand-set
+    columns, and the test above pins `clean_file` filling `started_at` on one upload.
+    Neither joins the two, so nothing proved that a *rider* uploading two files gets ride
+    order — the join is where a regression would actually live (a `clean_file` that
+    stopped assigning, a view that ordered before the instants were set).
+
+    The later-ridden file is uploaded **first**, deliberately. That is what makes the
+    assertion discriminate: with the files uploaded in ride order, plain `uploaded_at`
+    ordering would satisfy it too and the test would prove nothing. Here upload order and
+    ride order disagree, so only ride order can produce this answer.
+    """
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("day-2.gpx", gpx_bytes("timed-track-day-2.gpx"))},
+    )
+    auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("day-1.gpx", gpx_bytes("timed-track.gpx"))},
+    )
+
+    stages = list(ordered_stage_tracks(trip))
+
+    assert [stage.original_filename for stage in stages] == [
+        "day-1.gpx",
+        "day-2.gpx",
+    ], "stages came back in upload order rather than ride order"
+    # The fixtures' instants are what the ordering claims to be reading, so pin them here
+    # too: identical filenames in the right order would also result from ordering by name.
+    assert stages[0].started_at == datetime(2026, 6, 1, 8, 0, tzinfo=UTC)
+    assert stages[1].started_at == datetime(2026, 6, 2, 8, 0, tzinfo=UTC)
+    assert chronology_is_established(stages) is True
 
 
 @pytest.mark.django_db

@@ -95,7 +95,7 @@ def test_a_rider_sees_a_live_download_link_when_the_track_file_is_present(
 ) -> None:
     """The healthy-state companion to the storage-miss test below.
 
-    Both branches of `track_file_available` need their own assertion — proving the
+    Both branches of a stage's `file_available` need their own assertion — proving the
     marker renders when the file is gone says nothing about whether it wrongly renders
     when the file is fine.
     """

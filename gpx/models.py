@@ -20,9 +20,10 @@ def gpx_upload_path(instance: "GpxTrack", filename: str) -> str:
 class GpxTrack(models.Model):
     """A GPX file uploaded against a trip, plus the coordinates parsed out of it.
 
-    The FK is deliberately many-tracks-per-trip so FR-011 needs no migration rewrite,
-    even though v1 behaviour keeps exactly one track per trip. Points and bounds are
-    derived once at upload, so rendering the detail page can never fail on a parse.
+    The FK is many-tracks-per-trip, and as of the multi-stage upload change that is what
+    the application actually does: every upload **adds** a stage. `gpx/stages.py` owns
+    their order. Points and bounds are derived once at upload, so rendering the detail
+    page can never fail on a parse.
     """
 
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="tracks")

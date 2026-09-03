@@ -144,6 +144,18 @@
         // Swallowed on purpose. The fallback paragraph is still in the container, and that
         // message is the entire user-visible contract for a failed draw; there is no error
         // reporting in this project to forward to. The console line is for a developer.
+        //
+        // All-or-nothing, and since the payload went multi-stage that is a whole *tour*
+        // rather than one route: a throw in any of the three loops above — a malformed
+        // `segment.points`, or an `icons[marker.kind]` miss handing Leaflet `undefined` —
+        // lands here before the fallback is removed, so every stage falls back together,
+        // not just the bad one. Deliberate: a partially drawn tour with no explanation is
+        // worse than one honest sentence, and `gpx/map_config.py` is where a bad stage is
+        // meant to be handled (it skips a point-less stage rather than aborting, emits
+        // only the three marker kinds it also builds icons for, and derives bounds from
+        // non-null columns). If a future payload can carry a stage this file cannot draw,
+        // fix it there — or wrap the loop bodies individually — rather than widening what
+        // this catch tolerates.
         if (window.console && window.console.error) {
             window.console.error("VeloLog: the route map could not be drawn.", error);
         }

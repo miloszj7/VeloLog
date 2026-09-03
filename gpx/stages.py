@@ -2,9 +2,12 @@
 
 One module owning all three questions is what keeps the two render paths
 (`trips/views.py` and `gpx/views.py`) from ordering a trip's stages two different ways,
-and what keeps the three consumers of the chronology claim — the page's wording, the
-stage-break markers, and the derived trip span — reading one predicate rather than three
-independently-drifting flags.
+and what keeps the two consumers of the chronology claim — the page's wording and the
+stage-break markers — reading one predicate rather than two independently-drifting flags.
+
+A derived trip span would be the third, and is deliberately *not* here: it is the plan's
+Phase 7, which was cut. When it arrives it reads this same predicate rather than growing
+its own gate — see `chronology_is_established` for why.
 """
 
 from collections.abc import Sequence
@@ -40,11 +43,14 @@ def chronology_is_established(tracks: Sequence[GpxTrack]) -> bool:
     is a chronology claim either way — and neither is an empty trip.
 
     This predicate gates every claim downstream that depends on the order meaning
-    something real: the page may not call the order "chronological", stage-break markers
-    must not be drawn (a break asserts the rider stopped here and resumed there, which
-    upload order cannot evidence), and the derived trip span must not be shown (`Min`/
-    `Max` skip NULLs, so a span over only the timed stages would be a lower bound
-    presented as the whole).
+    something real. Two exist today: the page may not call the order "chronological", and
+    stage-break markers must not be drawn (a break asserts the rider stopped here and
+    resumed there, which upload order cannot evidence).
+
+    A third is a standing constraint on work not yet done rather than a description of
+    this codebase: **if a trip span is ever derived from these instants, it must be gated
+    here too.** `Min`/`Max` skip NULLs, so a span computed over a partially timed trip is
+    a lower bound that would be presented as the whole. Nothing derives a span today.
     """
     return bool(tracks) and all(track.started_at is not None for track in tracks)
 

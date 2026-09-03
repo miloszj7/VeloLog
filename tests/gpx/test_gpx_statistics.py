@@ -54,6 +54,13 @@ TIMED_TRACK_ENDED_AT = datetime(2026, 6, 1, 9, 0, tzinfo=UTC)
 STATS_COLUMNS_AT_0002 = import_module(
     "gpx.migrations.0003_backfill_gpxtrack_stats"
 ).STATS_COLUMNS_AT_0002
+# `0005` pins its own list for the same reason and is asserted the same way. The two pins
+# are deliberately not folded into one parametrized test: what each asserts is that a
+# *different* migration's snapshot still matches the schema state that migration runs at,
+# and the state is the interesting half.
+STATS_COLUMNS_AT_0004 = import_module(
+    "gpx.migrations.0005_backfill_gpxtrack_stage_instants"
+).STATS_COLUMNS_AT_0004
 
 
 @pytest.mark.django_db
@@ -121,6 +128,33 @@ def test_a_track_whose_file_is_missing_is_left_null_and_does_not_raise(
     assert track.duration_seconds is None
     assert track.elevation_gain_meters is None
     assert track.elevation_loss_meters is None
+    assert "Could not recompute track statistics" in caplog.text
+
+
+@pytest.mark.django_db
+def test_a_track_whose_stored_bytes_no_longer_parse_is_left_null_and_does_not_raise(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    gpx_bytes: GpxBytesReader,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The other half of the best-effort contract: the file is there and is not a track.
+
+    A missing file and unreadable bytes reach the helper as unrelated exception types —
+    `FileNotFoundError` against `GpxParseError` — from different lines, which is why one
+    test cannot stand for both. Both run unattended inside `migrate` at container boot,
+    where either escaping fails the deploy over a row whose columns are allowed to stay
+    null.
+    """
+    track = make_stored_track(trip, content=gpx_bytes("malformed.gpx"))
+    GpxTrack.objects.filter(pk=track.pk).update(distance_meters=None)
+
+    with caplog.at_level(logging.ERROR, logger="gpx.statistics"):
+        assert backfill_track_statistics(track) is False
+
+    track.refresh_from_db()
+    assert track.distance_meters is None
+    assert track.started_at is None
     assert "Could not recompute track statistics" in caplog.text
 
 
@@ -247,6 +281,28 @@ def test_the_pinned_migration_columns_match_the_state_that_migration_runs_at() -
 
 
 @pytest.mark.django_db
+def test_the_instants_migrations_pinned_columns_match_the_state_it_runs_at() -> None:
+    """`0005`'s pin, held to the same standard as `0003`'s.
+
+    `0005` runs at `0004`'s state, where all six columns exist — so today its pin and the
+    live `STATS_FIELDS` happen to agree, and the pin looks like duplication. It is not:
+    the next column added to `STATS_FIELDS` is the one that would break `0005`'s `.only()`
+    the way `0004`'s two instants broke `0003`'s, out of `pending.iterator()` and outside
+    the per-row guard. Equality rather than a subset, because a name `0004`'s model does
+    not carry is exactly that failure.
+    """
+    executor = MigrationExecutor(connection)
+    at_0004 = executor.loader.project_state(("gpx", "0004_gpxtrack_stage_instants"))
+    historical_track = at_0004.apps.get_model("gpx", "GpxTrack")
+    historical_fields = {field.name for field in historical_track._meta.fields}
+
+    assert set(STATS_COLUMNS_AT_0004) <= historical_fields
+    # The helper writes what the row's own model carries, so at this state that is the
+    # whole pin — the migration fills every column in one parse rather than by halves.
+    assert _writable_stats_fields(historical_track()) == list(STATS_COLUMNS_AT_0004)
+
+
+@pytest.mark.django_db
 def test_the_command_fills_stage_instants_under_all(
     trip: Trip,
     make_stored_track: StoredTrackFactory,
@@ -297,6 +353,42 @@ def test_the_command_leaves_an_already_filled_track_alone(
 
     track.refresh_from_db()
     assert track.distance_meters == SENTINEL_DISTANCE_METERS
+
+
+@pytest.mark.django_db
+def test_a_second_default_run_finds_nothing_left_to_do_for_an_untimed_track(
+    trip: Trip,
+    make_stored_track: StoredTrackFactory,
+    gpx_bytes: GpxBytesReader,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The convergence property the default filter exists to keep, on the row that tests it.
+
+    An untimed file's instants are null for ever — that is the both-or-neither rule, not a
+    gap — so the tempting widening of the default filter to "missing statistics *or*
+    instants" would re-select this row on every invocation and the pending tally would
+    never reach zero. That destroys the command's only signal for *nothing left to do*, on
+    the one path documented for recovering a `0005` that ran against a misconfigured
+    `MEDIA_ROOT`. `--all` covers that need instead, and converges by being finite rather
+    than by being empty.
+
+    Two runs rather than one: "the tally reaches zero" is a claim about the *second* run,
+    and a single run cannot make it.
+    """
+    track = make_stored_track(trip, content=gpx_bytes("valid-track.gpx"))
+
+    call_command("backfill_gpx_stats")
+    assert "Filled 1, skipped 0." in capsys.readouterr().out
+
+    call_command("backfill_gpx_stats")
+
+    assert "Filled 0, skipped 0." in capsys.readouterr().out
+    track.refresh_from_db()
+    # Still filled by the first run, and still instant-less — the row converged with work
+    # genuinely left undone, which is the case that makes the tally honest rather than
+    # merely quiet.
+    assert track.distance_meters == pytest.approx(FIXTURE_DISTANCE_METERS, abs=0.01)
+    assert track.started_at is None
 
 
 @pytest.mark.django_db

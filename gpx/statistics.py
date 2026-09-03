@@ -26,12 +26,13 @@ This is application code rather than logic living inside the migration that need
 one reason: migrations run against an empty in-memory database under `pytest`, so a data
 migration proves nothing about itself. The helper below is unit-tested directly.
 
-**Pinned by `gpx/migrations/0003_backfill_gpxtrack_stats.py`**, which imports it inside
-its `RunPython` body, and by `manage.py backfill_gpx_stats`. It cannot be deleted while
-that migration exists: a replay on a fresh database would degrade to one logged skip and
-leave every pre-existing row's statistics null. Renaming it is survivable — the
-migration's import sits under a guard, deliberately — but silent, which is worse than a
-break.
+**Pinned by two migrations** — `gpx/migrations/0003_backfill_gpxtrack_stats.py` for the
+four statistics and `gpx/migrations/0005_backfill_gpxtrack_stage_instants.py` for the two
+instants — each importing it inside its own `RunPython` body, and by
+`manage.py backfill_gpx_stats`. It cannot be deleted while either exists: a replay on a
+fresh database would degrade to one logged skip per row and leave every pre-existing row's
+statistics null, and its instants with them. Renaming it is survivable — both imports sit
+under a guard, deliberately — but silent, which is worse than a break.
 
 Displaying
 ----------
@@ -74,8 +75,9 @@ backfill has no business rewriting them.
 the two instants joined it after `0004` added the columns. A data migration runs at the
 schema state its own dependencies left behind, so it must pin its own field list —
 `gpx/migrations/0003_backfill_gpxtrack_stats.py` explains what narrowing a historical
-queryset with a name from here costs. `_writable_stats_fields` is the other half of the
-same rule, for the `update_fields` the shared helper builds.
+queryset with a name from here costs, and `0005` carries its own pin for the same reason
+even though today the two agree. `_writable_stats_fields` is the other half of the same
+rule, for the `update_fields` the shared helper builds.
 """
 
 

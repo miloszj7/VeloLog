@@ -1275,17 +1275,17 @@ imported from live application code.
 
 #### Automated
 
-- [x] 6.1 The helper fills both instants from a stored timed file and leaves them null for an untimed one
-- [x] 6.2 The helper still writes nothing but `STATS_FIELDS`
-- [x] 6.3 The helper returns `False` and logs, without raising, on a missing or unparseable file
-- [x] 6.4 `backfill_gpx_stats --all` fills instants; the default run converges (an untimed row is not selected twice)
-- [x] 6.5 Migration guard clean; `migrate` runs forward and backward over a pre-`0004` row
-- [x] 6.6 Quality gates pass
+- [x] 6.1 The helper fills both instants from a stored timed file and leaves them null for an untimed one — 06368bb
+- [x] 6.2 The helper still writes nothing but `STATS_FIELDS` — 06368bb
+- [x] 6.3 The helper returns `False` and logs, without raising, on a missing or unparseable file — 06368bb
+- [x] 6.4 `backfill_gpx_stats --all` fills instants; the default run converges (an untimed row is not selected twice) — 06368bb
+- [x] 6.5 Migration guard clean; `migrate` runs forward and backward over a pre-`0004` row — 06368bb
+- [x] 6.6 Quality gates pass — 06368bb
 
 #### Manual
 
-- [x] 6.7 Against a copy of production data, `--all` fills instants and the tally matches the row count
-- [x] 6.8 An existing v1 trip correctly orders a newly uploaded earlier-ridden stage ahead of it
+- [x] 6.7 Against a copy of production data, `--all` fills instants and the tally matches the row count — 06368bb
+- [x] 6.8 An existing v1 trip correctly orders a newly uploaded earlier-ridden stage ahead of it — 06368bb
 
 ### Phase 7: Derived trip span and date wording
 

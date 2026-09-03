@@ -1240,7 +1240,7 @@ imported from live application code.
 - [x] 3.12 Three visibly distinct coloured segments in ride order, markers at start, end and both breaks — ac6ff25
 - [x] 3.13 Every hue is legible over the OSM basemap at tour extent and street zoom — ac6ff25
 - [x] 3.14 A single-stage v1 trip looks unchanged — ac6ff25
-- [x] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable — **unchecked at implementation review (F3): the criterion's deliverable is a recorded number and none was written down.** `gpx/constants.py:16-22` still reads "not yet against a real multi-day tour export", `## Performance Considerations` below still says the calibration is forthcoming, and no backlog row was opened. This is the one criterion outstanding across Phases 1-5; it needs a real export uploaded and the page observed, then the two figures written into `gpx/constants.py`. **Done 2026-09-03**: a real three-day tour (3 stages, 123 km, 8,330 points) measures 178 KiB of payload in a 186 KiB page, 67 ms server render; the figures and the conditions that would invalidate them are in `gpx/constants.py`, and no backlog row was warranted
+- [x] 3.15 Measurement: record a real multi-day tour's page weight and time-to-interactive; open a backlog row if unacceptable — **unchecked at implementation review (F3): the criterion's deliverable is a recorded number and none was written down.** `gpx/constants.py:16-22` still reads "not yet against a real multi-day tour export", `## Performance Considerations` below still says the calibration is forthcoming, and no backlog row was opened. This is the one criterion outstanding across Phases 1-5; it needs a real export uploaded and the page observed, then the two figures written into `gpx/constants.py`. **Done 2026-09-03**: a real three-day tour (3 stages, 123 km, 8,330 points) measures 178 KiB of payload in a 186 KiB page, 67 ms server render; the figures and the conditions that would invalidate them are in `gpx/constants.py`, and no backlog row was warranted — 25cf524
 
 ### Phase 4: Stage list and per-stage statistics
 
@@ -1299,15 +1299,15 @@ imported from live application code.
 
 #### Automated
 
-- [x] 7.1 A fully timed multi-stage trip shows a span from first stage start to last stage end
-- [x] 7.2 A trip with any untimed stage shows the stored `Trip.date` alone
-- [x] 7.3 A trip with no stages shows the stored `Trip.date`, as today
-- [x] 7.4 A same-day span renders as one date, not a repeated range
-- [x] 7.5 The rendered form carries the new help text with `aria-describedby` wiring intact
-- [x] 7.6 `clean_date` still rejects a future date and still skips when the date is unchanged
-- [x] 7.7 Quality gates pass
+- [x] 7.1 A fully timed multi-stage trip shows a span from first stage start to last stage end — 25cf524
+- [x] 7.2 A trip with any untimed stage shows the stored `Trip.date` alone — 25cf524
+- [x] 7.3 A trip with no stages shows the stored `Trip.date`, as today — 25cf524
+- [x] 7.4 A same-day span renders as one date, not a repeated range — 25cf524
+- [x] 7.5 The rendered form carries the new help text with `aria-describedby` wiring intact — 25cf524
+- [x] 7.6 `clean_date` still rejects a future date and still skips when the date is unchanged — 25cf524
+- [x] 7.7 Quality gates pass — 25cf524
 
 #### Manual
 
-- [x] 7.8 A real multi-day tour's detail page shows a span matching the rider's memory
-- [x] 7.9 The create and edit forms read correctly with the new sentence
+- [x] 7.8 A real multi-day tour's detail page shows a span matching the rider's memory — 25cf524
+- [x] 7.9 The create and edit forms read correctly with the new sentence — 25cf524

@@ -1,7 +1,7 @@
 ---
 change_id: multi-stage-gpx-upload
 title: Upload a second GPX file to a trip as an additional stage, merged chronologically
-status: impl_reviewed
+status: implemented
 created: 2026-09-02
 updated: 2026-09-03
 archived_at: null

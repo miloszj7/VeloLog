@@ -31,11 +31,12 @@ STAGES_HEADING = re.compile(r"<h2[^>]*>Stages</h2>")
 # made vacuously true by any class attribute, silently deleting the zero-vs-null guard.
 ZERO_MINUTES_DD = re.compile(r"<dd[^>]*>0 min</dd>")
 ZERO_METERS_DD = re.compile(r"<dd[^>]*>0 m</dd>")
-# Queries a detail render costs with one fully-populated track: the session, the user,
-# the trip, and the track. The four statistics are columns on that last row, so they add
-# nothing — which is the whole reason they are stored instead of re-parsed. Raise this
-# deliberately when the page really does gain a query; a jump of four means the track's
-# columns went deferred and are being refreshed one at a time.
+# Queries a detail render costs, at *any* stage count: the session, the user, the trip,
+# and one query for the trip's tracks. The four statistics are columns on those rows, so
+# they add nothing — which is the whole reason they are stored instead of re-parsed. Raise
+# this deliberately when the page really does gain a query; a count that scales with the
+# number of stages means the tracks' columns went deferred and are being refreshed one
+# row at a time.
 DETAIL_PAGE_QUERIES = 4
 
 RE_UPLOAD_SENTENCE = "These stats have not been worked out for this route."
@@ -247,8 +248,9 @@ def test_a_stored_zero_renders_as_a_value_and_not_as_the_missing_note(
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("stage_count", [1, 3])
 def test_rendering_the_stats_adds_no_query_beyond_fetching_the_track(
-    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory, stage_count: int
 ) -> None:
     """The claim that stats are stored rather than re-derived, pinned as a query count.
 
@@ -262,14 +264,23 @@ def test_rendering_the_stats_adds_no_query_beyond_fetching_the_track(
     be: a deferral costs the *null* render exactly as many refresh queries as the populated
     one, so a delta cannot see it. That is why this number is worth updating by hand when
     the page legitimately gains a query — the failure message says which queries ran.
+
+    Parametrized over one and three stages because the single-stage case cannot see the
+    regression this page's move to multi-stage makes possible: a per-stage deferral costs
+    one refresh query *per stage*, which is indistinguishable from the baseline where
+    there is only one stage. The count is identical for both because `build_stages`
+    materialises `ordered_stage_tracks` once with `list(...)` — that is the claim, and
+    asserting it at a single stage was asserting it where it cannot fail.
     """
-    make_gpx_track(
-        trip,
-        distance_meters=42195.0,
-        duration_seconds=8100.0,
-        elevation_gain_meters=1240.4,
-        elevation_loss_meters=1187.6,
-    )
+    for index in range(stage_count):
+        make_gpx_track(
+            trip,
+            original_filename=f"alps-day-{index + 1}.gpx",
+            distance_meters=42195.0,
+            duration_seconds=8100.0,
+            elevation_gain_meters=1240.4,
+            elevation_loss_meters=1187.6,
+        )
     url = detail_url(trip)
     auth_client.get(url)  # Warm the session so its lookups are not counted as a surprise.
 

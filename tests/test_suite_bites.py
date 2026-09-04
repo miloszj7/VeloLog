@@ -93,6 +93,14 @@ def _run_guard_under_mutation(shape: MutationShape) -> _GuardRun:
     can turn a short-circuit into a loop or a guard into a deadlock — so the child is bounded
     by `timeout=`. Without it, a hanging shape would block the parent (and, in CI, the
     runner's job) indefinitely with no diagnostic naming which shape hung.
+
+    `--color=no` is the third piece of child-environment curation alongside the `COV_CORE_*`
+    strip and `timeout=` above: an inherited `FORCE_COLOR` makes pytest prefix every failure
+    line with an ANSI escape, which `FAILURE_MARKED_LINE_RE`'s start-of-line anchor then
+    fails to match — `_failure_marked_lines` returns nothing and every shape's fragment
+    assertion misses, reporting six broken guards when nothing is broken. This is the pytest
+    option that forces `hasmarkup = False` authoritatively, rather than a `NO_COLOR=1` env
+    var the inherited environment could still contradict.
     """
     env = {k: v for k, v in os.environ.items() if not k.startswith("COV_CORE_")}
     env["VELOLOG_MUTATION"] = shape.name
@@ -107,6 +115,7 @@ def _run_guard_under_mutation(shape: MutationShape) -> _GuardRun:
         "no:cacheprovider",
         "--no-header",
         "-q",
+        "--color=no",
     ]
     try:
         # S603: argv is entirely literal — this interpreter, "-m pytest", and shape's own

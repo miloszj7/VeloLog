@@ -16,18 +16,20 @@
             Worth its own sentence because it is the part a rider cannot re-derive: a name and a
             date can be retyped, an uploaded GPX file cannot.
             {% endcomment %}
-            {% if trip.tracks.exists %}
-                {% comment %}
-                Pluralised against the stage count rather than a fixed sentence: a
-                multi-stage trip is about to lose every one of its files, and one file's
-                worth of warning under-counts what deletion actually destroys.
-                {% endcomment %}
-                {% if trip.tracks.count > 1 %}
-                    <p class="text-danger">Its {{ trip.tracks.count }} GPX files will be deleted too.</p>
-                {% else %}
-                    <p class="text-danger">Its GPX file will be deleted too.</p>
+            {% with stage_count=trip.tracks.count %}
+                {% if stage_count %}
+                    {% comment %}
+                    Pluralised against the stage count rather than a fixed sentence: a
+                    multi-stage trip is about to lose every one of its files, and one file's
+                    worth of warning under-counts what deletion actually destroys.
+                    {% endcomment %}
+                    {% if stage_count > 1 %}
+                        <p class="text-danger">Its {{ stage_count }} GPX files will be deleted too.</p>
+                    {% else %}
+                        <p class="text-danger">Its GPX file will be deleted too.</p>
+                    {% endif %}
                 {% endif %}
-            {% endif %}
+            {% endwith %}
             <p class="fw-bold">This cannot be undone.</p>
             <div class="d-flex gap-2">
                 <form method="post">

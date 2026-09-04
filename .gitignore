@@ -378,6 +378,10 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# ------ Node (Railway Infrastructure as Code SDK only — see .railway/railway.ts) ------
+
+node_modules/
+
 # ------ RNPQ ------
 
 # logs and temp files, but with dirs

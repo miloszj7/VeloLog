@@ -17,7 +17,6 @@ as a foundation doc, split out so the roadmap holds only milestones and slices.
 
 | ID   | Item                                                    | Trigger                                                        | Status      |
 | ---- | -------------------------------------------------------- | ----------------------------------------------------------------- | ----------- |
-| E-04 | `railway.json` must migrate to `.railway/railway.ts`       | By 2026-11-01, after the 2026-09-10 product deadline               | open        |
 | E-07 | `$5` Railway spend alert un-reverified                     | After free trial expires (23 days from 2026-08-28)                 | **blocked** (on free trial) |
 
 ## At a glance — Done
@@ -33,6 +32,7 @@ as a foundation doc, split out so the roadmap holds only milestones and slices.
 | E-09 | CI actions pinned to deprecated Node 20 runtime                         | done (2026-08-28)      | [#20](https://github.com/miloszj7/VeloLog/issues/20) |
 | E-11 | GPX upload orphans its file in storage on transaction rollback          | done (2026-08-28)      | [#23](https://github.com/miloszj7/VeloLog/issues/23) |
 | E-10 | `Trip.date` is a single field on a multi-day product                    | done (2026-09-02) — closed as unnecessary | — |
+| E-04 | `railway.json` must migrate to `.railway/railway.ts`                    | done (2026-09-04)      | [#22](https://github.com/miloszj7/VeloLog/issues/22) |
 
 ## Details
 
@@ -66,7 +66,7 @@ as a foundation doc, split out so the roadmap holds only milestones and slices.
 - **Item:** `railway.json` must migrate to `.railway/railway.ts` before 2026-12-01.
 - **Proposed fix:** Convert the start command to the TypeScript config format.
 - **Trigger:** By 2026-11-01, after the 2026-09-10 product deadline.
-- **Status:** open
+- **Status:** done (2026-09-04) — `railway config migrate --apply` (the CLI's own converter, not hand-written) produced `.railway/railway.ts`, which `railway.json` is replaced by. Requires the `railway` npm package (the TypeScript IaC SDK, distinct from the `@railway/cli` binary) as a devDependency to evaluate the file locally — added via a new root `package.json`/`package-lock.json`, the project's first Node footprint, scoped in its description to IaC only. `node_modules/` is gitignored. **Known gap, not closed here:** `railway config plan`/`apply` cannot run on this Windows machine — the SDK's version check shells out via `execFileSync('railway', ['--version'])` without `shell: true`, which cannot resolve npm's `railway.cmd` shim on Windows (`ENOENT`/`EINVAL` confirmed by direct repro); no WSL is installed on this machine either. `railway config migrate --apply` itself ran fine (it only writes the local file and clears the service's legacy Config File pointer — no TS evaluation involved) but also left the live service with no start command until it was set manually in the Railway dashboard's Custom Start Command field as a stopgap (confirmed saved, 2026-09-04). **Follow-up needed:** run `railway config apply` from a Linux/Mac environment (or after installing WSL) to bring the live service under actual IaC management and clear the manual dashboard override; until then, the dashboard-set command is authoritative and `.railway/railway.ts` is unverified against production.
 - **GitHub Issue:** [#22](https://github.com/miloszj7/VeloLog/issues/22)
 
 #### E-05 — DB/media restore path had never been exercised

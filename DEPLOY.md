@@ -22,7 +22,7 @@ This was caught in production on 2026-08-26, by the Phase 1 `/healthz/` probe ra
 a lost file: the variable had never been set, so the deploy that first shipped the upload
 feature booted with `{"media": "error", "media_error": "inside_base_dir"}` and a 500 on
 `/healthz/`. No files were lost, because uploads had been reachable for only a few minutes.
-`railway.json` sets no `healthcheckPath`, so the deploy itself still reported success — the
+`.railway/railway.ts` sets no `healthcheck`, so the deploy itself still reported success — the
 probe is the only thing that reports this, and only if someone looks.
 
 **The Git Bash trap.** Setting it from Git Bash on Windows silently produces a broken value:
@@ -264,7 +264,7 @@ production database download:
 | Local | 3 | 3 | 0 files; 4 empty `gpx/<owner>/<trip>/` directories |
 
 Production held **1.38 MiB on a 500 MB Volume**. That 500 MB is the only capacity figure
-recorded anywhere for this deployment — it is not in `railway.json`, the PRD, or any other
+recorded anywhere for this deployment — it is not in `.railway/railway.ts`, the PRD, or any other
 document in this repo, so it lives here. At the measured rate, capacity is not what makes
 orphans worth reclaiming; knowing the number is.
 
@@ -272,7 +272,7 @@ orphans worth reclaiming; knowing the number is.
 
 **Status: created (2026-08-23).** Django admin is reachable in production.
 
-No `createsuperuser` step exists in `railway.json`, `DEPLOY.md`, or `deployment-plan.md`,
+No `createsuperuser` step exists in `.railway/railway.ts`, `DEPLOY.md`, or `deployment-plan.md`,
 so this must be re-run manually if it's ever needed again:
 
 ```bash
@@ -292,7 +292,7 @@ A $5 Hobby-plan usage alert was set in Railway account billing settings during P
 
 ## Static assets — a manifest failure is a site-wide outage
 
-`railway.json` `&&`-chains `collectstatic` ahead of `migrate` and gunicorn, so the app only
+`.railway/railway.ts` `&&`-chains `collectstatic` ahead of `migrate` and gunicorn, so the app only
 ever boots after the manifest exists. Keep it that way: since the map slice,
 `templates/base.html` links the stylesheet unconditionally, so **every** page resolves
 through staticfiles storage — before it, none did.

@@ -134,14 +134,17 @@ holds deliberately deferred PRD scope.
 
 ## Done
 
-- **S-01: User can register with an email and password, then log in and log out.** — Archived 2026-08-22 → `context/archive/2026-08-22-user-registration-login/`. Lesson: —.
-- **S-02: User can create a trip with a name, date, and description, and see it appear in a list of their own trips.** — Archived 2026-08-23 → `context/archive/2026-08-23-create-and-list-trips/`. Lesson: —.
-- **S-03: User can upload a GPX file to a trip and open the trip detail view to see the route drawn on a non-interactive map, with a clear empty state if no file is uploaded yet.** — Archived 2026-08-26 → `context/archive/2026-08-23-upload-gpx-and-view-map/`. Lesson: —.
-- **S-04: User can edit a trip's name, date, and description, or delete the trip entirely.** — Archived 2026-08-27 → `context/archive/2026-08-26-edit-and-delete-trip/`. Lesson: —.
-- **S-05: User can see basic trip stats (distance and duration), calculated from the uploaded GPX file, on the trip detail view.** — Archived 2026-08-28 → `context/archive/2026-08-27-trip-distance-duration-stats/`. Lesson: —.
-- **S-02: User can pan and zoom the trip's map instead of viewing a static, non-interactive image. Applies to every trip, single-stage or multi-stage.** — Archived 2026-09-02 → `context/archive/2026-09-02-interactive-trip-map/`. Lesson: —.
-- **S-01: User can upload a second (and further) GPX file to an existing trip and, on the trip detail view, see all stages merged into one route, ordered chronologically by GPS timestamp, each stage rendered as a visually distinct segment (e.g. a different line color), with distinct markers for the trip's start, end, and each inter-stage boundary ("stage break"). A single-GPX v1 trip continues to render unchanged.** — Archived 2026-09-03 → `context/archive/2026-09-02-multi-stage-gpx-upload/`. Lesson: —.
-- **S-03: User can see whole-trip *aggregate* statistics (distance, duration, elevation) on the trip detail view, summed across every stage, with a rule for presenting the total when not every stage carries every figure. Per-stage display already shipped in S-01 (`multi-stage-gpx-upload`'s Phase 4 Stages section), so this narrows to the aggregation and its partial-data presentation only.** — Archived 2026-09-04 → `context/archive/2026-09-04-multi-stage-trip-stats/`. Lesson: —.
+Slice IDs (`S-xx`) restart at 1 within each milestone, so the same ID appears more
+than once below — each entry is tagged with its milestone to disambiguate.
+
+- **[M-01] S-01: User can register with an email and password, then log in and log out.** — Archived 2026-08-22 → `context/archive/2026-08-22-user-registration-login/`. Lesson: —.
+- **[M-01] S-02: User can create a trip with a name, date, and description, and see it appear in a list of their own trips.** — Archived 2026-08-23 → `context/archive/2026-08-23-create-and-list-trips/`. Lesson: —.
+- **[M-01] S-03: User can upload a GPX file to a trip and open the trip detail view to see the route drawn on a non-interactive map, with a clear empty state if no file is uploaded yet.** — Archived 2026-08-26 → `context/archive/2026-08-23-upload-gpx-and-view-map/`. Lesson: —.
+- **[M-01] S-04: User can edit a trip's name, date, and description, or delete the trip entirely.** — Archived 2026-08-27 → `context/archive/2026-08-26-edit-and-delete-trip/`. Lesson: —.
+- **[M-01] S-05: User can see basic trip stats (distance and duration), calculated from the uploaded GPX file, on the trip detail view.** — Archived 2026-08-28 → `context/archive/2026-08-27-trip-distance-duration-stats/`. Lesson: —.
+- **[M-02] S-02: User can pan and zoom the trip's map instead of viewing a static, non-interactive image. Applies to every trip, single-stage or multi-stage.** — Archived 2026-09-02 → `context/archive/2026-09-02-interactive-trip-map/`. Lesson: —.
+- **[M-02] S-01: User can upload a second (and further) GPX file to an existing trip and, on the trip detail view, see all stages merged into one route, ordered chronologically by GPS timestamp, each stage rendered as a visually distinct segment (e.g. a different line color), with distinct markers for the trip's start, end, and each inter-stage boundary ("stage break"). A single-GPX v1 trip continues to render unchanged.** — Archived 2026-09-03 → `context/archive/2026-09-02-multi-stage-gpx-upload/`. Lesson: —.
+- **[M-02] S-03: User can see whole-trip *aggregate* statistics (distance, duration, elevation) on the trip detail view, summed across every stage, with a rule for presenting the total when not every stage carries every figure. Per-stage display already shipped in S-01 (`multi-stage-gpx-upload`'s Phase 4 Stages section), so this narrows to the aggregation and its partial-data presentation only.** — Archived 2026-09-04 → `context/archive/2026-09-04-multi-stage-trip-stats/`. Lesson: —.
 
 ## Milestone History
 

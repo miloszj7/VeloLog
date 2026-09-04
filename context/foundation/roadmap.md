@@ -3,7 +3,7 @@ project: VeloLog
 version: 2
 status: draft
 created: 2026-08-22
-updated: 2026-09-03
+updated: 2026-09-04
 prd_version: 4
 main_goal: speed
 top_blocker: time
@@ -41,7 +41,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ---- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- | -------- |
 | S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | done |
 | S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | done |
-| S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip aggregate statistics (distance, duration, elevation) on the trip detail view, with a partial-data presentation rule when not every stage is timed | S-01           | PRD Fast-follow (whole-trip statistics, nice-to-have) | proposed |
+| S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip aggregate statistics (distance, duration, elevation) on the trip detail view, with a partial-data presentation rule when not every stage is timed | S-01           | PRD Fast-follow (whole-trip statistics, nice-to-have) | planning |
 
 ## Baseline
 
@@ -96,7 +96,7 @@ No foundations are needed. The data model already supports multiple stages per t
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Explicitly optional — the PRD frames this as fast-follow and the user confirmed it's a "worth doing if there is time" stretch goal, not required for the Primary Success Criterion. Under the 1-week/after-hours/hard-deadline constraint (`top_blocker: time`), this is the first item to drop if S-01 or S-02 run long.
-- **Status:** proposed
+- **Status:** planning
 
 ## Backlog Handoff
 

@@ -34,3 +34,20 @@
     font-size: 0.875em;
     color: var(--bs-form-invalid-color, #dc3545);
 }
+
+/* The per-stage "Stages" section's collapse toggle. Bootstrap's collapse JS adds/removes
+ * `.collapsed` on the trigger element itself as the target opens/closes, so a text swap
+ * needs only these two rules keyed off that class — no new JavaScript. */
+a.collapsed .when-expanded {
+    display: none;
+}
+a:not(.collapsed) .when-collapsed {
+    display: none;
+}
+
+/* No-JS fallback: with Bootstrap's collapse script absent, clicking the toggle anchor is
+ * a plain same-page navigation to `#stage-details`. This is what makes that navigation
+ * actually reveal the section, overriding `.collapse`'s `display: none`. */
+#stage-details:target {
+    display: block !important;
+}

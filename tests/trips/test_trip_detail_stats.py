@@ -42,6 +42,8 @@ DETAIL_PAGE_QUERIES = 4
 RE_UPLOAD_SENTENCE = "These stats have not been worked out for this route."
 NO_TIMESTAMPS_NOTE = "Not recorded — the GPX file carried no usable timestamps."
 NO_ELEVATION_NOTE = "Not recorded — the GPX file carried no usable elevation data."
+NOT_EVERY_STAGE_NOTE = "Not recorded — not every stage has this figure."
+TRIP_TOTALS_HEADING = re.compile(r"<h2[^>]*>Trip totals</h2>")
 
 
 def detail_url(trip: Trip) -> str:
@@ -396,3 +398,138 @@ def test_the_stage_list_falls_back_to_upload_order_wording_when_any_stage_is_unt
     assert response.context["chronology_established"] is False
     assert "Stages are shown in upload order — these files carry no ride timestamps." in body
     assert "Stages are shown in the order they were ridden." not in body
+
+
+@pytest.mark.django_db
+def test_a_multi_stage_trip_shows_trip_totals_summed_above_a_collapsed_stages_section(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    make_gpx_track(
+        trip,
+        "day-1.gpx",
+        distance_meters=10000.0,
+        duration_seconds=3600.0,
+        elevation_gain_meters=100.0,
+        elevation_loss_meters=50.0,
+    )
+    make_gpx_track(
+        trip,
+        "day-2.gpx",
+        distance_meters=20000.0,
+        duration_seconds=3600.0,
+        elevation_gain_meters=200.0,
+        elevation_loss_meters=150.0,
+    )
+
+    response = auth_client.get(detail_url(trip))
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert TRIP_TOTALS_HEADING.search(body)
+    assert STAGES_HEADING.search(body)
+    assert body.index("Trip totals") < body.index(">Stages<")
+    assert "30.0 km" in body
+    assert "2 h 00 min" in body
+    assert "300 m" in body
+    assert "200 m" in body
+
+
+@pytest.mark.django_db
+def test_a_stage_missing_one_figure_blanks_only_that_whole_trip_total(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    make_gpx_track(
+        trip,
+        "day-1.gpx",
+        distance_meters=10000.0,
+        duration_seconds=3600.0,
+        elevation_gain_meters=100.0,
+        elevation_loss_meters=50.0,
+    )
+    make_gpx_track(
+        trip,
+        "day-2.gpx",
+        distance_meters=20000.0,
+        duration_seconds=3600.0,
+        elevation_loss_meters=150.0,
+    )
+
+    body = auth_client.get(detail_url(trip)).content.decode()
+
+    assert "30.0 km" in body
+    assert "2 h 00 min" in body
+    assert NOT_EVERY_STAGE_NOTE in body
+    assert "200 m" in body
+
+
+@pytest.mark.django_db
+def test_the_stages_section_starts_collapsed_with_a_no_js_fallback_toggle(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    make_gpx_track(trip, distance_meters=10000.0)
+
+    body = auth_client.get(detail_url(trip)).content.decode()
+
+    assert '<div class="collapse" id="stage-details">' in body
+    assert 'class="collapse show"' not in body
+    assert 'href="#stage-details"' in body
+    assert 'aria-expanded="false"' in body
+    assert 'class="btn btn-outline-secondary btn-sm mb-2 collapsed"' in body
+
+
+@pytest.mark.django_db
+def test_a_single_stage_trip_still_renders_the_trip_totals_block(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    make_gpx_track(
+        trip,
+        distance_meters=42195.0,
+        duration_seconds=8100.0,
+        elevation_gain_meters=1240.4,
+        elevation_loss_meters=1187.6,
+    )
+
+    body = auth_client.get(detail_url(trip)).content.decode()
+
+    assert TRIP_TOTALS_HEADING.search(body)
+    assert "42.2 km" in body
+    assert "2 h 15 min" in body
+    assert "1240 m" in body
+    assert "1188 m" in body
+
+
+@pytest.mark.django_db
+def test_a_zero_stage_trip_renders_neither_totals_nor_stages_section(
+    auth_client: Client, trip: Trip
+) -> None:
+    body = auth_client.get(detail_url(trip)).content.decode()
+
+    assert TRIP_TOTALS_HEADING.search(body) is None
+    assert STAGES_HEADING.search(body) is None
+
+
+@pytest.mark.django_db
+def test_a_rejected_upload_re_render_still_shows_the_whole_trip_totals(
+    auth_client: Client, trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """Context parity between `TripDetailView` and `GpxUploadView`'s error re-render."""
+    make_gpx_track(
+        trip,
+        distance_meters=42195.0,
+        duration_seconds=8100.0,
+        elevation_gain_meters=1240.4,
+        elevation_loss_meters=1187.6,
+    )
+
+    response = auth_client.post(
+        reverse("gpx:upload", kwargs={"pk": trip.pk}),
+        {"file": SimpleUploadedFile("notes.txt", b"not a gpx file", content_type="text/plain")},
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert TRIP_TOTALS_HEADING.search(body)
+    assert "42.2 km" in body
+    assert "2 h 15 min" in body
+    assert "1240 m" in body
+    assert "1188 m" in body

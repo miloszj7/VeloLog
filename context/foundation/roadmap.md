@@ -9,7 +9,7 @@ main_goal: speed
 top_blocker: time
 milestone_id: multi-stage-trips-interactive-map
 milestone_seq: 2
-milestone_status: open
+milestone_status: done
 ---
 
 # Roadmap: VeloLog
@@ -20,7 +20,7 @@ milestone_status: open
 
 ## Milestone
 
-**M-02: Multi-stage trips and interactive map** — Status: open
+**M-02: Multi-stage trips and interactive map** — Status: done
 
 - **Intent:** Close the two gaps left over from the MVP: a trip can now represent a real multi-day tour as chronologically-ordered stages, and the route renders on a pan/zoom interactive map — while every existing v1 single-stage trip keeps working unchanged.
 - **Source materials:** `context/foundation/prd.md` (v4)
@@ -149,3 +149,4 @@ than once below — each entry is tagged with its milestone to disambiguate.
 ## Milestone History
 
 - **M-01: Core trip log MVP** (`core-trip-log-mvp`) — closed 2026-09-02 (adopted retroactively; all slices had been done since 2026-08-28). Register/login, create/list/edit/delete a trip, upload one GPX file per trip and view its route on a non-interactive map with distance/duration stats.
+- **M-02: Multi-stage trips and interactive map** (`multi-stage-trips-interactive-map`) — closed 2026-09-04. A trip can now hold multiple chronologically-ordered stages merged into one route with distinct segments and stage-break markers, the map is pan/zoom interactive, and whole-trip aggregate statistics are shown on the trip detail view — every v1 single-stage trip keeps working unchanged.

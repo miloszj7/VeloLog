@@ -357,12 +357,12 @@ None — no schema change.
 
 #### Automated
 
-- [ ] 1.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_statistics.py -v`
-- [ ] 1.2 Full suite still green: `uv run pytest --cov`
-- [ ] 1.3 Type checking passes: `uv run mypy`
-- [ ] 1.4 Linting passes: `uv run ruff check .`
-- [ ] 1.5 Formatting passes: `uv run black --check .`
-- [ ] 1.6 Import order passes: `uv run isort --check-only .`
+- [x] 1.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_statistics.py -v`
+- [x] 1.2 Full suite still green: `uv run pytest --cov`
+- [x] 1.3 Type checking passes: `uv run mypy`
+- [x] 1.4 Linting passes: `uv run ruff check .`
+- [x] 1.5 Formatting passes: `uv run black --check .`
+- [x] 1.6 Import order passes: `uv run isort --check-only .`
 
 ### Phase 2: View context wiring
 

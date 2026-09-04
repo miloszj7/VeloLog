@@ -26,6 +26,7 @@ from gpx.statistics import (
     _writable_stats_fields,
     backfill_track_statistics,
     build_trip_stats,
+    build_whole_trip_stats,
     format_distance,
     format_duration,
     format_elevation,
@@ -579,3 +580,115 @@ def test_an_untimed_track_builds_the_other_three_and_leaves_recorded_time_none(
     assert stats.recorded_time is None
     assert stats.elevation_gain == "120 m"
     assert stats.elevation_loss == "80 m"
+
+
+@pytest.mark.django_db
+def test_no_tracks_has_no_whole_trip_stats_to_build() -> None:
+    assert build_whole_trip_stats([]) is None
+
+
+@pytest.mark.django_db
+def test_every_stage_fully_populated_sums_all_four_figures(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    tracks = [
+        make_gpx_track(
+            trip,
+            original_filename="day-1.gpx",
+            distance_meters=10000.0,
+            duration_seconds=3600.0,
+            elevation_gain_meters=100.0,
+            elevation_loss_meters=50.0,
+        ),
+        make_gpx_track(
+            trip,
+            original_filename="day-2.gpx",
+            distance_meters=20000.0,
+            duration_seconds=7200.0,
+            elevation_gain_meters=200.0,
+            elevation_loss_meters=150.0,
+        ),
+    ]
+
+    stats = build_whole_trip_stats(tracks)
+
+    assert stats is not None
+    assert stats.distance == "30.0 km"
+    assert stats.recorded_time == "3 h 00 min"
+    assert stats.elevation_gain == "300 m"
+    assert stats.elevation_loss == "200 m"
+
+
+@pytest.mark.django_db
+def test_one_stage_missing_one_figure_blanks_only_that_total(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """The independent-per-figure rule this slice exists for.
+
+    Every stage has distance, so that total still sums. Only one stage lacks
+    `elevation_gain_meters`, so only the whole-trip elevation-gain figure goes `None` —
+    duration and elevation loss, which every stage carries, still sum.
+    """
+    tracks = [
+        make_gpx_track(
+            trip,
+            original_filename="day-1.gpx",
+            distance_meters=10000.0,
+            duration_seconds=3600.0,
+            elevation_gain_meters=100.0,
+            elevation_loss_meters=50.0,
+        ),
+        make_gpx_track(
+            trip,
+            original_filename="day-2.gpx",
+            distance_meters=20000.0,
+            duration_seconds=3600.0,
+            elevation_loss_meters=150.0,
+        ),
+    ]
+
+    stats = build_whole_trip_stats(tracks)
+
+    assert stats is not None
+    assert stats.distance == "30.0 km"
+    assert stats.recorded_time == "2 h 00 min"
+    assert stats.elevation_gain is None
+    assert stats.elevation_loss == "200 m"
+
+
+@pytest.mark.django_db
+def test_a_stage_with_a_legitimate_zero_still_counts_toward_the_sum(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    """The zero-versus-null trap, at the aggregate level.
+
+    A track legitimately stored at `distance_meters = 0.0` must count as present, not
+    as missing — mirroring `build_trip_stats`'s own all-null guard for the single-track
+    case, but here it must not poison the sum either.
+    """
+    tracks = [
+        make_gpx_track(trip, original_filename="day-1.gpx", distance_meters=0.0),
+        make_gpx_track(trip, original_filename="day-2.gpx", distance_meters=10000.0),
+    ]
+
+    stats = build_whole_trip_stats(tracks)
+
+    assert stats is not None
+    assert stats.distance == "10.0 km"
+
+
+@pytest.mark.django_db
+def test_a_single_stage_trips_whole_trip_stats_equal_that_stages_own(
+    trip: Trip, make_gpx_track: TrackFactory
+) -> None:
+    track = make_gpx_track(
+        trip,
+        distance_meters=42195.0,
+        duration_seconds=8100.0,
+        elevation_gain_meters=1240.4,
+        elevation_loss_meters=1187.6,
+    )
+
+    stats = build_whole_trip_stats([track])
+
+    assert stats == build_trip_stats(track)

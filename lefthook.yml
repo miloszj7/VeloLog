@@ -1,0 +1,42 @@
+# Local git-hook quality gates. See context/foundation/quality-gates.md for the full
+# layer table (post-edit hook, pre-commit, pre-push, pre-PR, pre-merge, CI) and why
+# each check lives where it does.
+#
+# Complements, never duplicates:
+# - the PostToolUse black hook in .claude/settings.json (agent-loop only, single file)
+# - .github/workflows/deploy.yml (the source of truth; runs regardless of local hooks)
+
+pre-commit:
+  parallel: true
+  commands:
+    ruff:
+      glob: "*.py"
+      run: uv run ruff check --fix {staged_files}
+      stage_fixed: true
+    black:
+      glob: "*.py"
+      run: uv run black {staged_files}
+      stage_fixed: true
+    isort:
+      glob: "*.py"
+      run: uv run isort {staged_files}
+      stage_fixed: true
+    mypy:
+      glob: "*.py"
+      run: uv run mypy {staged_files}
+
+pre-push:
+  parallel: false
+  commands:
+    check:
+      priority: 1
+      run: uv run python manage.py check
+    migrations:
+      priority: 2
+      run: uv run python manage.py makemigrations --check --dry-run
+    mypy:
+      priority: 3
+      run: uv run mypy .
+    tests:
+      priority: 4
+      run: uv run pytest --cov

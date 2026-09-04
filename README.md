@@ -4,6 +4,13 @@ A trip-centric personal diary for multi-day cycling tours, aggregating GPX track
 
 **Production:** https://velolog-production.up.railway.app
 
+## About
+
+VeloLog is a course project built for [10xDevs](https://www.10xdevs.pl/) (3rd edition), an
+intensive course teaching AI-native software engineering — building and maintaining real
+projects with AI coding agents across the full development lifecycle, from a greenfield
+build through quality gates, testing, and deployment.
+
 ## Development
 
 See `AGENTS.md` for repository conventions and development commands.

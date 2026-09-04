@@ -99,10 +99,56 @@
         </div>
 
         {% comment %}
-        Inside the `{% if stages %}` branch on purpose: a trip with no stages has no
-        statistics to show either, so the section disappears with the map rather than
-        needing a condition of its own that could drift out of step with it.
+        Inside the `{% if stages %}` branch, same reason the per-stage section below is:
+        a trip with no stages has no totals to show either.
 
+        Whole-trip sums, not per-stage figures — `gpx/statistics.py`'s
+        `build_whole_trip_stats` gates each of the four fields independently, so one
+        stage missing one figure blanks only that one total, never the other three.
+        Worded to name the trip rather than a single file, unlike the per-stage notes
+        below.
+        {% endcomment %}
+        <div class="mb-4">
+            <h2>Trip totals</h2>
+            {% comment %}
+            Deliberately a `<p class="text-muted small">`, not a `<dt>`/`<dd>` pair like
+            the four figures below — this is context for the totals, not a fifth one, and
+            styling it as small/muted keeps it from being misread as a statistic.
+            {% endcomment %}
+            <p class="text-muted small mb-2">Totals across {{ stages|length }} stage{{ stages|length|pluralize }}</p>
+            {% if whole_trip_stats %}
+                <dl class="row mb-2">
+                    <dt class="col-sm-4 col-md-3">Distance</dt>
+                    <dd class="col-sm-8 col-md-9">{% if whole_trip_stats.distance is not None %}{{ whole_trip_stats.distance }}{% else %}Not recorded — not every stage has this figure.{% endif %}</dd>
+
+                    <dt class="col-sm-4 col-md-3">Recorded time</dt>
+                    <dd class="col-sm-8 col-md-9">{% if whole_trip_stats.recorded_time is not None %}{{ whole_trip_stats.recorded_time }}{% else %}Not recorded — not every stage has this figure.{% endif %}</dd>
+
+                    <dt class="col-sm-4 col-md-3">Elevation gained</dt>
+                    <dd class="col-sm-8 col-md-9">{% if whole_trip_stats.elevation_gain is not None %}{{ whole_trip_stats.elevation_gain }}{% else %}Not recorded — not every stage has this figure.{% endif %}</dd>
+
+                    <dt class="col-sm-4 col-md-3">Elevation lost</dt>
+                    <dd class="col-sm-8 col-md-9">{% if whole_trip_stats.elevation_loss is not None %}{{ whole_trip_stats.elevation_loss }}{% else %}Not recorded — not every stage has this figure.{% endif %}</dd>
+                </dl>
+            {% endif %}
+        </div>
+
+        {% comment %}
+        The per-stage detail, collapsed by default: `data-bs-toggle="collapse"` drives the
+        toggle via Bootstrap's JS, which also manages the trigger's `.collapsed` class the
+        CSS text-swap above keys off. The trigger is an `<a href="#stage-details">` rather
+        than a `<button>` so it still works with Bootstrap's script absent — a plain
+        same-page navigation to the fragment, which `#stage-details:target` in
+        `static/css/style.css` forces visible.
+        {% endcomment %}
+        <a href="#stage-details" role="button" class="btn btn-outline-secondary btn-sm mb-2 collapsed"
+           data-bs-toggle="collapse" data-bs-target="#stage-details"
+           aria-expanded="false" aria-controls="stage-details">
+            <span class="when-collapsed">Show per-stage details</span>
+            <span class="when-expanded">Hide per-stage details</span>
+        </a>
+
+        {% comment %}
         One row per stage, in the order `stages` already carries — `gpx/stages.py`'s
         `build_stages` is the single place that order is decided, so this loop never
         re-derives it. Styled with Bootstrap's `dl.row`/`col` grid, relying on the
@@ -110,7 +156,7 @@
         reversal, confirmed with the user; every other page in the app already depends on
         Bootstrap loading).
         {% endcomment %}
-        <div class="mb-4">
+        <div class="collapse" id="stage-details">
             <h2>Stages</h2>
             {% if chronology_established %}
                 <p class="text-muted small">Stages are shown in the order they were ridden.</p>

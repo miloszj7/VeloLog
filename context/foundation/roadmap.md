@@ -3,7 +3,7 @@ project: VeloLog
 version: 2
 status: draft
 created: 2026-08-22
-updated: 2026-09-03
+updated: 2026-09-04
 prd_version: 4
 main_goal: speed
 top_blocker: time
@@ -41,7 +41,7 @@ GPX tracks from multi-day cycling tours are scattered across devices and third-p
 | ---- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- | -------- |
 | S-01 | `multi-stage-gpx-upload`          | Upload a second (and further) GPX file to a trip and see all stages merged chronologically as distinct colored segments, with start/end/stage-break markers | —              | US-02; Scope of Change (multi-stage upload, chronological merge, stage-break markers) | done |
 | S-02 | `interactive-trip-map`            | Pan and zoom the trip map instead of viewing a static image                                                    | —              | US-02; Scope of Change (interactive map)        | done |
-| S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip aggregate statistics (distance, duration, elevation) on the trip detail view, with a partial-data presentation rule when not every stage is timed | S-01           | PRD Fast-follow (whole-trip statistics, nice-to-have) | proposed |
+| S-03 | `multi-stage-trip-stats`          | (stretch) See whole-trip aggregate statistics (distance, duration, elevation) on the trip detail view, with a partial-data presentation rule when not every stage is timed | S-01           | PRD Fast-follow (whole-trip statistics, nice-to-have) | done |
 
 ## Baseline
 
@@ -96,7 +96,7 @@ No foundations are needed. The data model already supports multiple stages per t
 - **Blockers:** —
 - **Unknowns:** —
 - **Risk:** Explicitly optional — the PRD frames this as fast-follow and the user confirmed it's a "worth doing if there is time" stretch goal, not required for the Primary Success Criterion. Under the 1-week/after-hours/hard-deadline constraint (`top_blocker: time`), this is the first item to drop if S-01 or S-02 run long.
-- **Status:** proposed
+- **Status:** done (2026-09-04) — `context/changes/multi-stage-trip-stats/reviews/impl-review.md`: APPROVED, all three phases match plan, no critical/warning findings beyond a documented post-close addendum (stage-count line).
 
 ## Backlog Handoff
 
@@ -258,6 +258,7 @@ item is in `### Details`.
 - **S-05: User can see basic trip stats (distance and duration), calculated from the uploaded GPX file, on the trip detail view.** — Archived 2026-08-28 → `context/archive/2026-08-27-trip-distance-duration-stats/`. Lesson: —.
 - **S-02: User can pan and zoom the trip's map instead of viewing a static, non-interactive image. Applies to every trip, single-stage or multi-stage.** — Archived 2026-09-02 → `context/archive/2026-09-02-interactive-trip-map/`. Lesson: —.
 - **S-01: User can upload a second (and further) GPX file to an existing trip and, on the trip detail view, see all stages merged into one route, ordered chronologically by GPS timestamp, each stage rendered as a visually distinct segment (e.g. a different line color), with distinct markers for the trip's start, end, and each inter-stage boundary ("stage break"). A single-GPX v1 trip continues to render unchanged.** — Archived 2026-09-03 → `context/archive/2026-09-02-multi-stage-gpx-upload/`. Lesson: —.
+- **S-03: User can see whole-trip *aggregate* statistics (distance, duration, elevation) on the trip detail view, summed across every stage, with a rule for presenting the total when not every stage carries every figure. Per-stage display already shipped in S-01 (`multi-stage-gpx-upload`'s Phase 4 Stages section), so this narrows to the aggregation and its partial-data presentation only.** — Archived 2026-09-04 → `context/archive/2026-09-04-multi-stage-trip-stats/`. Lesson: —.
 
 ## Milestone History
 

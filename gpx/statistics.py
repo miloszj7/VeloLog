@@ -48,7 +48,9 @@ in a template would have to be derived twice.
 
 import logging
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Callable
 
 from gpx.constants import METERS_PER_KILOMETER, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 from gpx.models import GpxTrack
@@ -293,4 +295,56 @@ def build_trip_stats(track: GpxTrack | None) -> TripStats | None:
         recorded_time=format_duration(track.duration_seconds),
         elevation_gain=format_elevation(track.elevation_gain_meters),
         elevation_loss=format_elevation(track.elevation_loss_meters),
+    )
+
+
+def _summed_or_none(
+    tracks: Sequence[GpxTrack],
+    getter: Callable[[GpxTrack], float | None],
+    formatter: Callable[[float | None], str | None],
+) -> str | None:
+    """Sum one field across `tracks`, or `None` if any track lacks it.
+
+    Args:
+        tracks: The stages to sum over. Never empty here — `build_whole_trip_stats`
+            guards that case before calling this.
+        getter: Reads the one field this call sums, e.g. `lambda t: t.distance_meters`.
+            Spelled out at each call site rather than taken as a field name, for the
+            same `mypy --strict` reason `build_trip_stats` spells out its four reads
+            instead of looping over `STATS_FIELDS` with `getattr`.
+        formatter: The matching `format_*` function, applied to the sum.
+
+    Returns:
+        The formatted sum, or `None` when at least one track's value for this field is
+        `None`. The check is `is None`, never falsy — a track legitimately stored at
+        `0.0` counts as present, exactly as `build_trip_stats`'s own all-null guard
+        does for the single-track case.
+    """
+    values = [getter(track) for track in tracks]
+    if any(value is None for value in values):
+        return None
+    return formatter(sum(value for value in values if value is not None))
+
+
+def build_whole_trip_stats(tracks: Sequence[GpxTrack]) -> TripStats | None:
+    """Return the whole-trip sums the detail template renders above the per-stage list.
+
+    Args:
+        tracks: The trip's stages, in any order — summing does not care about order,
+            unlike `gpx.stages.trip_span`, which needs it to pick first/last.
+
+    Returns:
+        `None` only when `tracks` is empty (no track at all). Otherwise a `TripStats`
+        where each of the four fields is independently `None` when at least one stage
+        lacks that one figure — deliberately not one shared all-or-nothing gate like
+        `build_trip_stats`'s: an aggregate should show whichever figures every stage
+        actually has, not go dark because a single stage is missing a single figure.
+    """
+    if not tracks:
+        return None
+    return TripStats(
+        distance=_summed_or_none(tracks, lambda t: t.distance_meters, format_distance),
+        recorded_time=_summed_or_none(tracks, lambda t: t.duration_seconds, format_duration),
+        elevation_gain=_summed_or_none(tracks, lambda t: t.elevation_gain_meters, format_elevation),
+        elevation_loss=_summed_or_none(tracks, lambda t: t.elevation_loss_meters, format_elevation),
     )

@@ -395,3 +395,21 @@ None — no schema change.
 - [x] 3.13 Single-stage trip still renders the totals block — e33d019
 - [x] 3.14 Zero-stage trip renders neither block — e33d019
 - [x] 3.15 With JS disabled, toggle still reveals Stages section via `:target` fallback — e33d019
+
+### Addendum: stage-count line
+
+- [x] A.1 Add a "Totals across N stage(s)" line under the "Trip totals" heading, sourced
+  from the same `stages` list already in context — 6fd6834
+
+## Addendum — post-close: stage-count line in Trip totals
+
+Added after Phase 3 and the epilogue closed out the plan, in response to a follow-up
+request (not foreseen during planning): a small muted `<p class="text-muted small">Totals
+across {{ stages|length }} stage{{ stages|length|pluralize }}</p>` line under the "Trip
+totals" heading, so the block reads as a count of stages summed rather than a bare set of
+four figures with no stated denominator. Sourced from the same `stages` list already in
+the template context (the one `build_stages` produces), so it can never drift from the
+count implied by `whole_trip_stats` itself. Covered by two new assertions in
+`tests/trips/test_trip_detail_stats.py` (multi-stage and single-stage cases, including the
+"1 stage" vs "1 stages" pluralization boundary). No new context key, no query, no schema
+change — additive template/test-only change. Commit: `6fd6834`.

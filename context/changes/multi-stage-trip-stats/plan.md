@@ -57,8 +57,13 @@ sum of the visible per-stage figures.
   and its `Sequence[GpxTrack]` input shape are the pattern to follow for the new
   aggregation function.
 - Bootstrap's `data-bs-toggle="collapse"` trigger element automatically gains/loses a
-  `.collapsed` CSS class as the target opens/closes — a text-swapping toggle button needs
-  no new JavaScript, only two `<span>`s and a CSS rule keyed off that class.
+  `.collapsed` CSS class as the target opens/closes — a text-swapping toggle needs no new
+  JavaScript, only two `<span>`s and a CSS rule keyed off that class. Using an `<a
+  href="#stage-details">` rather than a `<button>` as the trigger is what gives the
+  collapse a no-JS fallback: Bootstrap's own JS ignores the `href` and drives the toggle
+  via the class, but if that script never loads, the anchor still performs a plain
+  same-page navigation, and `#stage-details:target { display: block !important; }` is what
+  makes that navigation actually reveal the section instead of landing on hidden content.
 
 ## What We're NOT Doing
 
@@ -103,10 +108,14 @@ already carries). Add `from collections.abc import Sequence` to the module's imp
 
 **Contract**: Signature `build_whole_trip_stats(tracks: Sequence[GpxTrack]) -> TripStats | None`.
 Reuses `TripStats`, `format_distance`, `format_duration`, `format_elevation` unchanged. A
-small private helper (e.g. `_summed_or_none(tracks, field_name, formatter)`) avoids
-repeating the four near-identical field computations; it must check `is None`, never
-falsy, exactly like `build_trip_stats`'s existing all-null guard — a track legitimately
-stored at `distance_meters = 0.0` must count as present, not as missing.
+small private helper takes an explicit per-field getter callable, not a string field name
+— e.g. `_summed_or_none(tracks, lambda t: t.distance_meters, format_distance)`, called
+once per field — mirroring `build_trip_stats`'s own choice (`gpx/statistics.py:278-282`)
+to spell out field access rather than loop over names with `getattr`, which would type as
+`list[Any]` under `mypy --strict` and let a typo in a field name surface only as a runtime
+`AttributeError`. The helper must check `is None`, never falsy, exactly like
+`build_trip_stats`'s existing all-null guard — a track legitimately stored at
+`distance_meters = 0.0` must count as present, not as missing.
 
 ### Success Criteria:
 
@@ -155,7 +164,10 @@ built at line 98, and add it to `context`. Update the method's docstring's parit
 `whole_trip_stats` key using the same `tracks` list already built at line 84, so a
 rejected upload's re-render carries the same whole-trip totals as a normal page load
 rather than silently dropping them (the exact failure mode the method's own docstring,
-lines 74-81, already warns about for the other three keys).
+lines 74-81, already warns about for the other three keys). Update that docstring's
+parity warning (lines 74-81) to name `whole_trip_stats` alongside `map_config`,
+`chronology_established`, and `trip_span`, matching Phase 2 Item 1's equivalent update to
+`TripDetailView`'s docstring.
 
 **Contract**: Same context key and same import as Phase 2 item 1.
 
@@ -195,27 +207,35 @@ gating and "Not recorded — ..." sentence style as the per-stage block (lines 1
 worded to name the trip rather than a single file (e.g. "Not recorded — not every stage
 has this figure."). Then wrap the existing "Stages" `<div class="mb-4">...</div>` block
 (lines 113-201) in a Bootstrap collapse: the outer div's id becomes the collapse target
-(e.g. `id="stage-details"`, classes `collapse` and no `show`), and a toggle `<button>`
-(`type="button"`, `data-bs-toggle="collapse"`, `data-bs-target="#stage-details"`,
-`aria-expanded="false"`, `aria-controls="stage-details"`, starting with class `collapsed`)
-sits above it carrying two `<span>`s — "Show per-stage details" and "Hide per-stage
-details" — toggled by CSS keyed off Bootstrap's own `.collapsed` class on the button, no
-new JavaScript.
+(`id="stage-details"`, classes `collapse` and no `show`). The trigger is an `<a>`, not a
+`<button>`, with `href="#stage-details"` alongside `data-bs-toggle="collapse"` — Bootstrap
+treats an anchor trigger identically to a button for the JS-driven toggle, but the `href`
+also gives it a working no-JS path: with Bootstrap's JS absent, clicking it is a plain
+same-page navigation to the `#stage-details` fragment, which the CSS below forces visible
+via the `:target` pseudo-class. This is what keeps every per-stage figure reachable even
+if Bootstrap's script fails to load — the one gap the existing JS-dependent map fallback
+(lines 66-82) does not have an analogue for, since that block degrades to a text message
+instead of needing to reveal hidden content. The trigger carries two `<span>`s — "Show
+per-stage details" and "Hide per-stage details" — toggled by CSS keyed off Bootstrap's own
+`.collapsed` class, no new JavaScript.
 
 **Contract**:
 ```css
 /* static/css/style.css */
-button.collapsed .when-expanded { display: none; }
-button:not(.collapsed) .when-collapsed { display: none; }
+a.collapsed .when-expanded { display: none; }
+a:not(.collapsed) .when-collapsed { display: none; }
+/* No-JS fallback: browser-native fragment navigation reveals the section even
+   without Bootstrap's collapse JS, overriding `.collapse`'s `display: none`. */
+#stage-details:target { display: block !important; }
 ```
 Template markup for the toggle:
 ```html
-<button type="button" class="btn btn-outline-secondary btn-sm mb-2 collapsed"
-        data-bs-toggle="collapse" data-bs-target="#stage-details"
-        aria-expanded="false" aria-controls="stage-details">
+<a href="#stage-details" role="button" class="btn btn-outline-secondary btn-sm mb-2 collapsed"
+   data-bs-toggle="collapse" data-bs-target="#stage-details"
+   aria-expanded="false" aria-controls="stage-details">
     <span class="when-collapsed">Show per-stage details</span>
     <span class="when-expanded">Hide per-stage details</span>
-</button>
+</a>
 <div class="collapse" id="stage-details">
   ... existing Stages heading + per-stage loop, unchanged ...
 </div>
@@ -225,11 +245,11 @@ Template markup for the toggle:
 
 **File**: `static/css/style.css`
 
-**Intent**: Add the two-rule CSS block above, keyed off Bootstrap's automatic
-`.collapsed` class management on the toggle trigger — no other markup in this file is
-affected.
+**Intent**: Add the three-rule CSS block above, keyed off Bootstrap's automatic
+`.collapsed` class management on the toggle trigger, plus the `:target` no-JS fallback —
+no other markup in this file is affected.
 
-**Contract**: Two new CSS rules, additive only.
+**Contract**: Three new CSS rules, additive only.
 
 #### 3. Page-rendering tests
 
@@ -240,13 +260,13 @@ the "Stages" heading with the correct summed distance/duration/elevation figures
 several `make_gpx_track` stages with full stats; (b) a stage missing one figure (e.g. no
 `elevation_gain_meters`) blanks only that one whole-trip total, leaving the other three
 totals showing real sums (independent-per-figure rule); (c) the "Stages" section's outer
-div carries `collapse` but not `show` by default, and the toggle button starts with class
-`collapsed` and `aria-expanded="false"`; (d) a single-stage trip still renders the "Trip
-totals" block, with figures equal to that one stage's own; (e) a trip with zero stages
-renders neither the totals block nor the Stages section, consistent with today's `{% if
-stages %}` empty-state; (f) `GpxUploadView`'s rejected-upload re-render path (POST an
-invalid file) renders the same whole-trip totals as a normal GET, proving context parity
-between the two views. Update `DETAIL_PAGE_QUERIES` only if a real query count changes —
+div carries `collapse` but not `show` by default, and the toggle anchor starts with class
+`collapsed`, `aria-expanded="false"`, and `href="#stage-details"` (the no-JS fallback
+path); (d) a single-stage trip still renders the "Trip totals" block, with figures equal
+to that one stage's own; (e) a trip with zero stages renders neither the totals block nor
+the Stages section, consistent with today's `{% if stages %}` empty-state; (f)
+`GpxUploadView`'s rejected-upload re-render path (POST an invalid file) renders the same
+whole-trip totals as a normal GET, proving context parity between the two views. Update `DETAIL_PAGE_QUERIES` only if a real query count changes —
 expected to stay at 4, since aggregation reads the same in-memory track list `build_stages`
 already produced.
 
@@ -270,9 +290,11 @@ its established fixture style (`trip`, `make_gpx_track`, `auth_client`).
 #### Manual Verification:
 
 - Open a multi-stage trip's detail page: "Trip totals" renders above a collapsed "Stages"
-  section; the toggle button reads "Show per-stage details".
-- Click the toggle: the Stages section expands, the button now reads "Hide per-stage
+  section; the toggle reads "Show per-stage details".
+- Click the toggle: the Stages section expands, it now reads "Hide per-stage
   details", and the per-stage figures visibly sum to the totals shown above.
+- With browser JavaScript disabled, click the toggle: the page navigates to
+  `#stage-details` and the Stages section is visible (the `:target` CSS fallback).
 - Upload a rejected (invalid) GPX file to a trip that already has stages: the re-rendered
   page still shows the same whole-trip totals as before the failed upload.
 - View a single-stage trip: the totals block still renders, matching that one stage's
@@ -372,3 +394,4 @@ None — no schema change.
 - [ ] 3.12 Rejected upload re-render still shows whole-trip totals
 - [ ] 3.13 Single-stage trip still renders the totals block
 - [ ] 3.14 Zero-stage trip renders neither block
+- [ ] 3.15 With JS disabled, toggle still reveals Stages section via `:target` fallback

@@ -73,6 +73,9 @@ time runs short before the 2026-09-10 deadline.
   never be implemented this milestone.
 - Bootstrap's `.collapsed` class behavior on the toggle trigger is standard Bootstrap 5
   behavior but unverified in this specific codebase until Phase 3's manual testing.
+- Mitigated: the toggle is an `<a href="#stage-details">` (not a `<button>`), with a
+  `#stage-details:target` CSS rule as a no-JS fallback, so per-stage details stay reachable
+  even if Bootstrap's JS bundle fails to load — verified manually in Phase 3 (step 3.15).
 
 ## Success Criteria (Summary)
 

@@ -2,7 +2,7 @@
 starter_id: django
 package_manager: uv
 project_name: velo-log
-version: 3
+version: 4
 created: 2026-05-29
 updated: 2026-09-04
 hints:
@@ -35,8 +35,13 @@ Not part of the original starter selection above — both were vendored later, d
 
 Full detail (versions, vendoring/integrity-check pattern, CSS override mechanics) lives in `context/foundation/design-system.md` — not duplicated here.
 
+## Node dependency — Railway IaC only
+
+The root `package.json`/`package-lock.json` exist solely to install the `railway` npm package (the TypeScript SDK for `.railway/railway.ts`, distinct from the `@railway/cli` binary) — no application code runs on Node, and the frontend libraries above still ship with no Node build step. `node_modules/` is gitignored. See `context/foundation/engineering-backlog.md` E-04.
+
 ## Changelog
 
 - **v1 (2026-05-29)** — Initial stack choice: Django on `uv`, `deployment_target: fly`.
 - **v2 (2026-08-22)** — `deployment_target` changed `fly` → `railway`. The later platform research in `infrastructure.md` (2026-08-20) scored Railway ahead of Fly.io (5/5 Pass vs. 3 Pass/2 Partial on the agent-friendliness criteria) and it was the platform actually provisioned and deployed to — see `context/changes/deployment/deployment-plan.md` and `DEPLOY.md`. This doc had not been updated to match that decision; it's now consistent with the other foundation docs.
 - **v3 (2026-09-04)** — Added `## Frontend libraries`, naming Leaflet and Bootstrap as vendored dependencies this doc had never recorded. Both predate this update (Leaflet since the MVP's static-map slice, Bootstrap since the design-system pass); full documentation stays in `design-system.md` to avoid duplication.
+- **v4 (2026-09-04)** — Added `## Node dependency`: E-04 (`railway.json` → `.railway/railway.ts`) introduced the project's first Node footprint, a root `package.json` holding only the Railway IaC SDK as a devDependency.

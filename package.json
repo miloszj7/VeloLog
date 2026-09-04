@@ -1,0 +1,8 @@
+{
+  "name": "velolog",
+  "private": true,
+  "description": "Node dependencies for Railway Infrastructure as Code (.railway/railway.ts) — no application code here.",
+  "devDependencies": {
+    "railway": "^3.11.0"
+  }
+}

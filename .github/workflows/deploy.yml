@@ -71,7 +71,7 @@ jobs:
       - name: Migration guard
         run: uv run python manage.py makemigrations --check --dry-run
 
-      # railway.json &&-chains this same command ahead of gunicorn, so an unresolvable
+      # .railway/railway.ts &&-chains this same command ahead of gunicorn, so an unresolvable
       # static reference is a boot outage recovered by a manual redeploy — not a
       # degraded deploy. Running it here fails the pull request instead.
       - name: Static files

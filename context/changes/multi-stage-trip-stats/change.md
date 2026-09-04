@@ -1,7 +1,7 @@
 ---
 change_id: multi-stage-trip-stats
 title: Whole-trip aggregate statistics on the trip detail view (stretch)
-status: implementing
+status: implemented
 created: 2026-09-04
 updated: 2026-09-04
 archived_at: null

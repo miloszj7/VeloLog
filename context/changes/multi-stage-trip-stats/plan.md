@@ -377,21 +377,21 @@ None — no schema change.
 
 #### Automated
 
-- [x] 3.1 New and existing tests pass: `uv run pytest tests/trips/test_trip_detail_stats.py -v`
-- [x] 3.2 Full suite still green: `uv run pytest --cov`
-- [x] 3.3 Bite-proof harness still green: `uv run pytest -m bite_proof -v`
-- [x] 3.4 Type checking passes: `uv run mypy`
-- [x] 3.5 Linting passes: `uv run ruff check .`
-- [x] 3.6 Formatting passes: `uv run black --check .`
-- [x] 3.7 Import order passes: `uv run isort --check-only .`
-- [x] 3.8 `manage.py check` passes: `uv run python manage.py check`
-- [x] 3.9 No missing migration: `uv run python manage.py makemigrations --check --dry-run`
+- [x] 3.1 New and existing tests pass: `uv run pytest tests/trips/test_trip_detail_stats.py -v` — e33d019
+- [x] 3.2 Full suite still green: `uv run pytest --cov` — e33d019
+- [x] 3.3 Bite-proof harness still green: `uv run pytest -m bite_proof -v` — e33d019
+- [x] 3.4 Type checking passes: `uv run mypy` — e33d019
+- [x] 3.5 Linting passes: `uv run ruff check .` — e33d019
+- [x] 3.6 Formatting passes: `uv run black --check .` — e33d019
+- [x] 3.7 Import order passes: `uv run isort --check-only .` — e33d019
+- [x] 3.8 `manage.py check` passes: `uv run python manage.py check` — e33d019
+- [x] 3.9 No missing migration: `uv run python manage.py makemigrations --check --dry-run` — e33d019
 
 #### Manual
 
-- [x] 3.10 Multi-stage trip: Trip totals above collapsed Stages, toggle reads "Show per-stage details"
-- [x] 3.11 Toggle expands Stages, label swaps, figures sum to totals
-- [x] 3.12 Rejected upload re-render still shows whole-trip totals
-- [x] 3.13 Single-stage trip still renders the totals block
-- [x] 3.14 Zero-stage trip renders neither block
-- [x] 3.15 With JS disabled, toggle still reveals Stages section via `:target` fallback
+- [x] 3.10 Multi-stage trip: Trip totals above collapsed Stages, toggle reads "Show per-stage details" — e33d019
+- [x] 3.11 Toggle expands Stages, label swaps, figures sum to totals — e33d019
+- [x] 3.12 Rejected upload re-render still shows whole-trip totals — e33d019
+- [x] 3.13 Single-stage trip still renders the totals block — e33d019
+- [x] 3.14 Zero-stage trip renders neither block — e33d019
+- [x] 3.15 With JS disabled, toggle still reveals Stages section via `:target` fallback — e33d019

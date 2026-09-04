@@ -110,6 +110,12 @@
         {% endcomment %}
         <div class="mb-4">
             <h2>Trip totals</h2>
+            {% comment %}
+            Deliberately a `<p class="text-muted small">`, not a `<dt>`/`<dd>` pair like
+            the four figures below — this is context for the totals, not a fifth one, and
+            styling it as small/muted keeps it from being misread as a statistic.
+            {% endcomment %}
+            <p class="text-muted small mb-2">Totals across {{ stages|length }} stage{{ stages|length|pluralize }}</p>
             {% if whole_trip_stats %}
                 <dl class="row mb-2">
                     <dt class="col-sm-4 col-md-3">Distance</dt>

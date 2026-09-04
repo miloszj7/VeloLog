@@ -428,6 +428,7 @@ def test_a_multi_stage_trip_shows_trip_totals_summed_above_a_collapsed_stages_se
     assert TRIP_TOTALS_HEADING.search(body)
     assert STAGES_HEADING.search(body)
     assert body.index("Trip totals") < body.index(">Stages<")
+    assert "Totals across 2 stages" in body
     assert "30.0 km" in body
     assert "2 h 00 min" in body
     assert "300 m" in body
@@ -492,6 +493,8 @@ def test_a_single_stage_trip_still_renders_the_trip_totals_block(
     body = auth_client.get(detail_url(trip)).content.decode()
 
     assert TRIP_TOTALS_HEADING.search(body)
+    assert "Totals across 1 stage" in body
+    assert "Totals across 1 stages" not in body
     assert "42.2 km" in body
     assert "2 h 15 min" in body
     assert "1240 m" in body

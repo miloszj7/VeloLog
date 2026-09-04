@@ -357,21 +357,21 @@ None — no schema change.
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_statistics.py -v`
-- [x] 1.2 Full suite still green: `uv run pytest --cov`
-- [x] 1.3 Type checking passes: `uv run mypy`
-- [x] 1.4 Linting passes: `uv run ruff check .`
-- [x] 1.5 Formatting passes: `uv run black --check .`
-- [x] 1.6 Import order passes: `uv run isort --check-only .`
+- [x] 1.1 Unit tests pass: `uv run pytest tests/gpx/test_gpx_statistics.py -v` — 26acbd0
+- [x] 1.2 Full suite still green: `uv run pytest --cov` — 26acbd0
+- [x] 1.3 Type checking passes: `uv run mypy` — 26acbd0
+- [x] 1.4 Linting passes: `uv run ruff check .` — 26acbd0
+- [x] 1.5 Formatting passes: `uv run black --check .` — 26acbd0
+- [x] 1.6 Import order passes: `uv run isort --check-only .` — 26acbd0
 
 ### Phase 2: View context wiring
 
 #### Automated
 
-- [ ] 2.1 Full suite still green: `uv run pytest --cov`
-- [ ] 2.2 Type checking passes: `uv run mypy`
-- [ ] 2.3 Linting passes: `uv run ruff check .`
-- [ ] 2.4 Formatting passes: `uv run black --check .`
+- [x] 2.1 Full suite still green: `uv run pytest --cov`
+- [x] 2.2 Type checking passes: `uv run mypy`
+- [x] 2.3 Linting passes: `uv run ruff check .`
+- [x] 2.4 Formatting passes: `uv run black --check .`
 
 ### Phase 3: Template, collapse UI, and page tests
 

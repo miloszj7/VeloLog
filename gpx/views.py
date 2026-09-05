@@ -13,6 +13,7 @@ from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
 from gpx.stages import build_stages, chronology_is_established, trip_span
 from gpx.statistics import build_whole_trip_stats
+from trips.dates import trip_date_diverges
 from trips.models import Trip
 
 logger = logging.getLogger(__name__)
@@ -74,23 +75,26 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Supply what `trips/trip_detail.html` needs when re-rendering with errors.
 
-        Including the map, chronology, span and whole-trip-stats blobs: this path
-        renders the same page as `TripDetailView`, so a rider whose upload was rejected
-        must still see every stage they already had, not the template's
-        no-route-to-draw branch, not a false "file unavailable" marker over a track
-        whose file is perfectly healthy, not a tour that appears to shrink to a single
-        day because one key was missed here, and not whole-trip totals that silently
-        vanish or go stale on a rejected upload.
+        Including the map, chronology, span, whole-trip-stats and date-divergence
+        blobs: this path renders the same page as `TripDetailView`, so a rider whose
+        upload was rejected must still see every stage they already had, not the
+        template's no-route-to-draw branch, not a false "file unavailable" marker over
+        a track whose file is perfectly healthy, not a tour that appears to shrink to a
+        single day because one key was missed here, not whole-trip totals that
+        silently vanish or go stale on a rejected upload, and not a divergence note
+        that disappears the moment the upload is rejected.
         """
         context = super().get_context_data(**kwargs)
         stages = build_stages(self.trip)
         tracks = [stage.track for stage in stages]
+        span = trip_span(tracks)
         context["trip"] = self.trip
         context["stages"] = stages
         context["map_config"] = build_map_config(stages)
         context["chronology_established"] = chronology_is_established(tracks)
-        context["trip_span"] = trip_span(tracks)
+        context["trip_span"] = span
         context["whole_trip_stats"] = build_whole_trip_stats(tracks)
+        context["date_diverges"] = span is not None and trip_date_diverges(self.trip.date, span[0])
         return context
 
     def get_success_url(self) -> str:

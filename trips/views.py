@@ -18,6 +18,7 @@ from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
 from gpx.stages import build_stages, chronology_is_established, trip_span
 from gpx.statistics import build_whole_trip_stats
+from trips.dates import trip_date_diverges
 from trips.forms import TripForm
 from trips.models import Trip
 
@@ -89,20 +90,26 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         own, so this GET path and `GpxUploadView`'s re-render path have to present the
         same template with the same context keys — one of them bound, one of them not.
         The map blob is on that list, and so are `chronology_established`,
-        `trip_span`, and `whole_trip_stats`: any key supplied here and missed there
-        renders a wrong branch over healthy data — "route could not be displayed" for
-        the first, a false chronology claim for the second, a multi-day tour whose
-        header silently collapses back to its start date the moment an upload is
-        rejected for the third, and stale or missing whole-trip totals for the fourth.
+        `trip_span`, `whole_trip_stats`, and `date_diverges`: any key supplied here and
+        missed there renders a wrong branch over healthy data — "route could not be
+        displayed" for the first, a false chronology claim for the second, a multi-day
+        tour whose header silently collapses back to its start date the moment an
+        upload is rejected for the third, stale or missing whole-trip totals for the
+        fourth, and a divergence note that silently disappears on a rejected upload for
+        the fifth.
         """
         context = super().get_context_data(**kwargs)
         stages = build_stages(self.object)
         tracks = [stage.track for stage in stages]
+        span = trip_span(tracks)
         context["stages"] = stages
         context["map_config"] = build_map_config(stages)
         context["chronology_established"] = chronology_is_established(tracks)
-        context["trip_span"] = trip_span(tracks)
+        context["trip_span"] = span
         context["whole_trip_stats"] = build_whole_trip_stats(tracks)
+        context["date_diverges"] = span is not None and trip_date_diverges(
+            self.object.date, span[0]
+        )
         context["form"] = GpxUploadForm()
         return context
 

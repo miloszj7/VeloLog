@@ -413,23 +413,23 @@ None. No model or schema changes — every value used already exists (`Trip.date
 
 #### Automated
 
-- [x] 1.1 Unit tests pass: `uv run pytest tests/trips/test_dates.py -v`
-- [x] 1.2 Type checking passes: `uv run mypy .`
-- [x] 1.3 Linting passes: `uv run ruff check .`
+- [x] 1.1 Unit tests pass: `uv run pytest tests/trips/test_dates.py -v` — f3df8b8
+- [x] 1.2 Type checking passes: `uv run mypy .` — f3df8b8
+- [x] 1.3 Linting passes: `uv run ruff check .` — f3df8b8
 
 ### Phase 2: Trip detail page divergence note
 
 #### Automated
 
-- [ ] 2.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail_span.py -v`
-- [ ] 2.2 Full suite still passes: `uv run pytest --cov`
-- [ ] 2.3 Type checking passes: `uv run mypy .`
-- [ ] 2.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
+- [x] 2.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail_span.py -v`
+- [x] 2.2 Full suite still passes: `uv run pytest --cov`
+- [x] 2.3 Type checking passes: `uv run mypy .`
+- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
 
 #### Manual
 
-- [ ] 2.5 Trips 21, 22, and 23 show the "Logged as ..." note under the span
-- [ ] 2.6 A trip whose Trip.date matches its stages shows no note
+- [x] 2.5 Trips 21, 22, and 23 show the "Logged as ..." note under the span
+- [x] 2.6 A trip whose Trip.date matches its stages shows no note
 
 ### Phase 3: GPX upload-time warning
 

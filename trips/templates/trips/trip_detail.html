@@ -28,12 +28,21 @@
             day and must not print the same date twice with a dash between it. `|date`
             carries `expects_localtime`, so both sides convert identically before they are
             compared.
+
+            The span and the stored `trip.date` are no longer strictly mutually exclusive:
+            when `date_diverges` is true, the "Logged as ..." note below reintroduces the
+            stored date deliberately, alongside the span rather than instead of it —
+            `trips/dates.py`'s `trip_date_diverges` is the single source of truth for when
+            that note appears.
             {% endcomment %}
             {% if trip_span %}
                 {% if trip_span.0|date:"Y-m-d" == trip_span.1|date:"Y-m-d" %}
                     <p class="text-muted mb-1">{{ trip_span.0|date }}</p>
                 {% else %}
                     <p class="text-muted mb-1">{{ trip_span.0|date }} &ndash; {{ trip_span.1|date }}</p>
+                {% endif %}
+                {% if date_diverges %}
+                    <p class="text-muted small mb-1">Logged as {{ trip.date }}</p>
                 {% endif %}
             {% else %}
                 <p class="text-muted mb-1">{{ trip.date }}</p>

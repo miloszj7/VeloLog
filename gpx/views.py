@@ -1,11 +1,14 @@
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.utils.formats import date_format
 from django.views.generic import CreateView, View
 
 from gpx.forms import GpxUploadForm
@@ -13,6 +16,7 @@ from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
 from gpx.stages import build_stages, chronology_is_established, trip_span
 from gpx.statistics import build_whole_trip_stats
+from trips.dates import span_date_diverges, trip_date_diverges
 from trips.models import Trip
 
 logger = logging.getLogger(__name__)
@@ -74,23 +78,26 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Supply what `trips/trip_detail.html` needs when re-rendering with errors.
 
-        Including the map, chronology, span and whole-trip-stats blobs: this path
-        renders the same page as `TripDetailView`, so a rider whose upload was rejected
-        must still see every stage they already had, not the template's
-        no-route-to-draw branch, not a false "file unavailable" marker over a track
-        whose file is perfectly healthy, not a tour that appears to shrink to a single
-        day because one key was missed here, and not whole-trip totals that silently
-        vanish or go stale on a rejected upload.
+        Including the map, chronology, span, whole-trip-stats and date-divergence
+        blobs: this path renders the same page as `TripDetailView`, so a rider whose
+        upload was rejected must still see every stage they already had, not the
+        template's no-route-to-draw branch, not a false "file unavailable" marker over
+        a track whose file is perfectly healthy, not a tour that appears to shrink to a
+        single day because one key was missed here, not whole-trip totals that
+        silently vanish or go stale on a rejected upload, and not a divergence note
+        that disappears the moment the upload is rejected.
         """
         context = super().get_context_data(**kwargs)
         stages = build_stages(self.trip)
         tracks = [stage.track for stage in stages]
+        span = trip_span(tracks)
         context["trip"] = self.trip
         context["stages"] = stages
         context["map_config"] = build_map_config(stages)
         context["chronology_established"] = chronology_is_established(tracks)
-        context["trip_span"] = trip_span(tracks)
+        context["trip_span"] = span
         context["whole_trip_stats"] = build_whole_trip_stats(tracks)
+        context["date_diverges"] = span_date_diverges(self.trip.date, span)
         return context
 
     def get_success_url(self) -> str:
@@ -112,10 +119,26 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         delete actually removes — reintroducing a delete in this method would put a
         second, competing path back in, and against a trip that already has a stage that
         path destroys it.
+
+        The divergence warning is checked here, against this one stage's own
+        `started_at`, independent of `chronology_is_established` — that predicate asks
+        whether the *whole trip* is fully timed, which has nothing to do with whether
+        *this* upload's own timestamp matches `Trip.date`. `started_at is None` (an
+        untimed file) has nothing to compare, so no warning fires for it.
         """
         # The parsed route is already on the instance — `GpxUploadForm.clean_file` puts
         # it there. Ownership is the one thing the form cannot know.
         form.instance.trip = self.trip
+        if form.instance.started_at is not None and trip_date_diverges(
+            self.trip.date, form.instance.started_at
+        ):
+            messages.warning(
+                self.request,
+                f"This stage was recorded on "
+                f"{date_format(timezone.localtime(form.instance.started_at))}, "
+                f"which differs from the trip's logged date of "
+                f"{date_format(self.trip.date)}.",
+            )
         return super().form_valid(form)
 
 

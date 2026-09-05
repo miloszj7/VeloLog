@@ -517,6 +517,62 @@ def test_an_unauthenticated_post_redirects_to_login_and_creates_nothing(
 
 
 @pytest.mark.django_db
+def test_an_upload_whose_date_diverges_shows_a_warning_and_still_saves(
+    auth_client: Client, rider: User, gpx_bytes: GpxBytesReader
+) -> None:
+    """A wildly diverging upload warns but is not blocked — the stage still saves."""
+    trip = Trip.objects.create(name="Alps Loop", date="2026-01-01", owner=rider)
+
+    response = auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("alps-day-1.gpx", gpx_bytes("timed-track.gpx"))},
+        follow=True,
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "differs from the trip" in body
+    assert "Stage added." in body
+    assert GpxTrack.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_an_upload_at_the_tolerance_boundary_shows_no_warning(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """`timed-track-day-2.gpx` starts exactly one day after the `trip` fixture's date —
+    at the tolerance boundary, not beyond it — so no warning should fire.
+    """
+    response = auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("day-2.gpx", gpx_bytes("timed-track-day-2.gpx"))},
+        follow=True,
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "differs from the trip" not in body
+    assert GpxTrack.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_an_untimed_upload_shows_no_warning(
+    auth_client: Client, trip: Trip, gpx_bytes: GpxBytesReader
+) -> None:
+    """No `started_at` means nothing to compare — the warning never fires."""
+    response = auth_client.post(
+        upload_url(trip),
+        {"file": SimpleUploadedFile("alps-day-1.gpx", gpx_bytes("valid-track.gpx"))},
+        follow=True,
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert "differs from the trip" not in body
+    assert GpxTrack.objects.count() == 1
+
+
+@pytest.mark.django_db
 def test_the_upload_url_does_not_serve_a_page_of_its_own(auth_client: Client, trip: Trip) -> None:
     """The form lives on the trip detail page; this URL is only its target.
 

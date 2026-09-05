@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, cast
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import QuerySet
+from django.db.models import Count, Min, QuerySet
 from django.forms import Form
 from django.http import HttpResponse
 from django.urls import reverse_lazy
@@ -16,8 +16,10 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 # unbroken; a model-level import in either direction is what would turn this into one.
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
+from gpx.models import GpxTrack
 from gpx.stages import build_stages, chronology_is_established, trip_span
 from gpx.statistics import build_whole_trip_stats
+from trips.dates import span_date_diverges, trip_date_diverges
 from trips.forms import TripForm
 from trips.models import Trip
 
@@ -49,6 +51,42 @@ class TripListView(LoginRequiredMixin, _TripListViewBase):
     def get_queryset(self) -> QuerySet[Trip]:
         """Restrict the list to trips owned by the requesting user."""
         return Trip.objects.filter(owner=cast(User, self.request.user))
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Flag which listed trips diverge, in one extra aggregate query.
+
+        Not an `.annotate()` on the `Trip` queryset itself: `get_queryset`'s declared
+        `-> QuerySet[Trip]:` return type would erase any annotation's django-stubs
+        typing the moment it's returned, and `Trip` has no `date_diverges` field for an
+        ad hoc instance attribute to satisfy under `mypy --strict`. A separate small
+        aggregate query, reduced to a plain `set[int]` of pks, sidesteps both problems
+        and costs one query for the whole list, not one per row.
+
+        Requires the same full-chronology gate as `trip_span`/`chronology_is_established`
+        (`gpx/stages.py`) — every stage timed, not merely the earliest one — so this
+        indicator and the detail page's "Logged as ..." note agree on which trips
+        diverge. `total == timed` (both from `Count`, which ignores NULLs) is that gate
+        expressed as an aggregate rather than a Python loop over materialized tracks.
+        """
+        context = super().get_context_data(**kwargs)
+        trips = context["object_list"]
+        aggregates = (
+            GpxTrack.objects.filter(trip__in=trips)
+            .values("trip_id")
+            .annotate(total=Count("id"), timed=Count("started_at"), earliest=Min("started_at"))
+        )
+        earliest_by_trip_id = {
+            row["trip_id"]: row["earliest"]
+            for row in aggregates
+            if row["total"] > 0 and row["total"] == row["timed"]
+        }
+        context["diverging_trip_ids"] = {
+            trip.pk
+            for trip in trips
+            if (earliest := earliest_by_trip_id.get(trip.pk)) is not None
+            and trip_date_diverges(trip.date, earliest)
+        }
+        return context
 
 
 class TripCreateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripCreateViewBase):
@@ -89,20 +127,24 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         own, so this GET path and `GpxUploadView`'s re-render path have to present the
         same template with the same context keys — one of them bound, one of them not.
         The map blob is on that list, and so are `chronology_established`,
-        `trip_span`, and `whole_trip_stats`: any key supplied here and missed there
-        renders a wrong branch over healthy data — "route could not be displayed" for
-        the first, a false chronology claim for the second, a multi-day tour whose
-        header silently collapses back to its start date the moment an upload is
-        rejected for the third, and stale or missing whole-trip totals for the fourth.
+        `trip_span`, `whole_trip_stats`, and `date_diverges`: any key supplied here and
+        missed there renders a wrong branch over healthy data — "route could not be
+        displayed" for the first, a false chronology claim for the second, a multi-day
+        tour whose header silently collapses back to its start date the moment an
+        upload is rejected for the third, stale or missing whole-trip totals for the
+        fourth, and a divergence note that silently disappears on a rejected upload for
+        the fifth.
         """
         context = super().get_context_data(**kwargs)
         stages = build_stages(self.object)
         tracks = [stage.track for stage in stages]
+        span = trip_span(tracks)
         context["stages"] = stages
         context["map_config"] = build_map_config(stages)
         context["chronology_established"] = chronology_is_established(tracks)
-        context["trip_span"] = trip_span(tracks)
+        context["trip_span"] = span
         context["whole_trip_stats"] = build_whole_trip_stats(tracks)
+        context["date_diverges"] = span_date_diverges(self.object.date, span)
         context["form"] = GpxUploadForm()
         return context
 

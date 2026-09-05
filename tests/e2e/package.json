@@ -1,0 +1,12 @@
+{
+  "name": "velolog-e2e",
+  "private": true,
+  "description": "Playwright E2E tests for VeloLog — isolated from the root package.json, which is Railway IaC only (see .railway/railway.ts).",
+  "type": "commonjs",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1"
+  }
+}

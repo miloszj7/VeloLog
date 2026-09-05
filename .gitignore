@@ -382,6 +382,17 @@ $RECYCLE.BIN/
 
 node_modules/
 
+# Playwright CLI local run artifacts (console logs, DOM snapshots) — timestamped,
+# not reproducible, regenerated on every run.
+.playwright-cli/
+
+
+# Playwright test-runner output (tests/e2e/) — reports, traces, and the
+# auth.setup.ts storage state — not source.
+/tests/e2e/test-results/
+/tests/e2e/playwright-report/
+/tests/e2e/playwright/.auth/
+
 # ------ RNPQ ------
 
 # logs and temp files, but with dirs

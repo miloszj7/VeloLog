@@ -6,7 +6,7 @@
 >
 > Refresh: re-run `/10x-test-plan --refresh` when stale (see §8).
 >
-> Last updated: 2026-08-31
+> Last updated: 2026-09-05
 
 ## 1. Strategy
 
@@ -68,6 +68,16 @@ consequence at deploy scale.
 | #6 | A trip with no track, and one with absent statistics, both render a deliberate empty state | That a 200 means the page is usable — the requirement forbids a blank page, not merely a server error | Which template branches exist for an absent map and absent statistics | integration asserting the empty-state marker | Status-code-only assertions — `lessons.md` #1 verbatim |
 | #7 | A misconfigured media root is refused rather than silently accepted | That the check works because it exists — the restore drill found three documented steps that reported success and did nothing | The guard's actual trigger conditions, and what the suite must prove with no environment file present | unit on settings resolution, integration on the probe | Testing the hosting platform instead of testing the guard |
 
+A narrow-slice Playwright e2e layer now exists (`tests/e2e/`, committed
+`1a2b5ff`, verified red-then-green on a deliberate break — see the
+`seed.spec.ts` pattern in §4) and adds a supplementary protection layer to
+Risk #1 and Risk #6: it is the one thing neither the Django test client nor
+an integration test reaches, a real browser multipart file-upload widget
+round-tripping through `GpxUploadForm.clean_file` into rendered stage/stats
+DOM, surviving a hard reload. This does not change either risk's "Likely
+cheapest layer" verdict above — `integration` stays the primary, cheapest
+layer for both; e2e is an additional layer, not a replacement.
+
 ## 3. Phased Rollout
 
 Each row is a discrete rollout phase that will open its own change folder
@@ -101,13 +111,13 @@ The classic test base for this project. AI-native tools (if any) carry a
 | framework under test | Django | 6.0.5 | SQLite; suite runs in-memory, and must pass with no environment file present |
 | domain parsing | gpxpy | 1.6.2 | Two of its calls answer `0` where a caller would read "not recorded" — presence needs its own probe |
 | post-commit side effects | `django_capture_on_commit_callbacks` | pytest-django 4.14.0 | The fixture that makes Phase 2 possible; without `execute=True` a deletion assertion passes while proving nothing. checked: 2026-08-29 |
-| e2e | none yet | — | Not proposed by any rollout phase. The primary flow is a small number of server-rendered pages; Phases 1–3 reach every step of it at the integration layer for a fraction of the cost |
+| e2e | Playwright | ^1.55.1 — checked: 2026-09-05 | Narrow slice, not a rollout phase. `testDir: tests/e2e/`, isolated `package.json` (separate from the root Railway-IaC one), `storageState`-based auth via `auth.setup.ts`, `webServer` boots the Django dev server against `/healthz/`. Requires a real, pre-existing Django user + DB — no fixture provisions the account |
 | (optional) AI-native | assertion-audit reviewer — checked: 2026-08-29 | n/a | Candidate for Phase 5 only, weighed against classic mutation testing. **When NOT to use**: anywhere a deterministic check already answers the question. It is a judgement layer over test *quality*, never a substitute for an assertion |
 
 **Stack grounding tools (current session):**
 - Docs: Context7 — verified the `django_capture_on_commit_callbacks` contract (`using`, `execute`, and its incompatibility with `transaction=True`) against pytest-django's own `docs/helpers.md` before relying on it in §2 and §3; checked: 2026-08-29
 - Search: Exa.ai — available, not used. Every stack fact needed came from the lockfile or primary docs; checked: 2026-08-29
-- Runtime/browser: Playwright MCP — **not available in current session**. Browser automation exists only as a local `claude-in-chrome` skill, which is interactive and not a CI gate. This is one reason no rollout phase proposes e2e; checked: 2026-08-29
+- Runtime/browser: Playwright MCP — not used to build the e2e layer; a working Playwright suite (`tests/e2e/`) was authored and verified directly, not through the MCP browser-automation tool. This refresh is not itself a new rollout phase — it only brings §4/§5/§2 in line with the already-landed suite; checked: 2026-09-05
 - Provider/platform: Linear MCP available (issue tracking only, no quality-gate relevance). No GitHub MCP in session — CI gate facts were read from the workflow file and `AGENTS.md`; checked: 2026-08-29
 
 ## 5. Quality Gates
@@ -128,7 +138,7 @@ phase lands; before that, the gate is planned.
 | post-commit side-effect assertions | CI | required after §3 Phase 2 | file-lifecycle regressions that a pre-commit assertion cannot see |
 | environment-guard check | CI | required after §3 Phase 4 | a media-root misconfiguration reaching a deploy |
 | suite credibility gate | CI on PR | required after §3 Phase 5 | tests that stay green when the behavior they name is broken. Two parts: the assertion-strength audit (`tests/test_assertion_strength.py`, inside `pytest --cov`) fails a request-cycle test that asserts only a status code; the bite-proof harness (`tests/mutations.py` + `tests/test_suite_bites.py`, the `Suite credibility` step running `pytest -m bite_proof`) proves five named mutation shapes each flip a named guard test red for a named reason. See §6.7 Phase 5 and §6.8 |
-| e2e on critical flows | — | not planned | see §4: no phase proposes it; the primary flow is covered at the integration layer |
+| e2e on critical flows | local (`tests/e2e/`) | narrow slice only | see §4: `.github/workflows/deploy.yml`'s `gates` job has no e2e/Playwright step — cost × signal still favors integration for ownership/lifecycle/rejection (§3 Phases 1–3), consistent with §1 principle #1 |
 | pre-prod smoke | between merge and production | optional | environment-specific failures the health probe would report |
 
 ## 6. Cookbook Patterns
@@ -326,9 +336,10 @@ contributors should respect these unless the underlying assumption changes.
 
 ## 8. Freshness Ledger
 
-- Strategy (§1–§5) last reviewed: 2026-08-29
+- Strategy (§1–§5) last reviewed: 2026-09-05
 - Stack versions last verified: 2026-08-29
 - AI-native tool references last verified: 2026-08-29
+- e2e stack facts (Playwright layer existence, version, CI-gate status) verified against `tests/e2e/playwright.config.ts`, `tests/e2e/auth.setup.ts`, and `.github/workflows/deploy.yml`: 2026-09-05
 
 Refresh (`/10x-test-plan --refresh`) when:
 

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, cast
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import Min, QuerySet
+from django.db.models import Count, Min, QuerySet
 from django.forms import Form
 from django.http import HttpResponse
 from django.urls import reverse_lazy
@@ -61,15 +61,25 @@ class TripListView(LoginRequiredMixin, _TripListViewBase):
         ad hoc instance attribute to satisfy under `mypy --strict`. A separate small
         aggregate query, reduced to a plain `set[int]` of pks, sidesteps both problems
         and costs one query for the whole list, not one per row.
+
+        Requires the same full-chronology gate as `trip_span`/`chronology_is_established`
+        (`gpx/stages.py`) — every stage timed, not merely the earliest one — so this
+        indicator and the detail page's "Logged as ..." note agree on which trips
+        diverge. `total == timed` (both from `Count`, which ignores NULLs) is that gate
+        expressed as an aggregate rather than a Python loop over materialized tracks.
         """
         context = super().get_context_data(**kwargs)
         trips = context["object_list"]
-        earliest_by_trip_id = dict(
+        aggregates = (
             GpxTrack.objects.filter(trip__in=trips)
             .values("trip_id")
-            .annotate(earliest=Min("started_at"))
-            .values_list("trip_id", "earliest")
+            .annotate(total=Count("id"), timed=Count("started_at"), earliest=Min("started_at"))
         )
+        earliest_by_trip_id = {
+            row["trip_id"]: row["earliest"]
+            for row in aggregates
+            if row["total"] > 0 and row["total"] == row["timed"]
+        }
         context["diverging_trip_ids"] = {
             trip.pk
             for trip in trips

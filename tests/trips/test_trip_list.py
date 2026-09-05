@@ -25,6 +25,17 @@ def timed_track(trip: Trip, filename: str, started_at: datetime) -> GpxTrack:
     )
 
 
+def untimed_track(trip: Trip, filename: str) -> GpxTrack:
+    """Persist a stage with no `started_at` — an unestablished-chronology stage."""
+    return GpxTrack.objects.create(
+        trip=trip,
+        file=f"gpx/1/1/{filename}",
+        points=GPX_POINTS,
+        original_filename=filename,
+        **GPX_BOUNDS,
+    )
+
+
 @pytest.mark.django_db
 def test_list_shows_own_trips(auth_client: Client, rider: User) -> None:
     trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
@@ -122,6 +133,26 @@ def test_a_trip_whose_stage_matches_its_date_shows_no_indicator(
 ) -> None:
     trip = Trip.objects.create(name="Alps Loop", date="2026-06-01", owner=rider)
     timed_track(trip, "day-1.gpx", datetime(2026, 6, 1, 8, tzinfo=UTC))
+
+    response = auth_client.get(reverse("trips:list"))
+
+    assert response.status_code == 200
+    assert response.context["diverging_trip_ids"] == set()
+
+
+@pytest.mark.django_db
+def test_a_trip_with_an_untimed_stage_shows_no_indicator_even_when_the_timed_stage_diverges(
+    auth_client: Client, rider: User
+) -> None:
+    """Matches `trip_span`'s own gate (`gpx/stages.py`'s `chronology_is_established`):
+    a trip is flagged here only when every stage is timed. One untimed stage keeps this
+    indicator silent even though the other, timed stage diverges wildly from `Trip.date`
+    — the same trip's detail page shows no "Logged as ..." note for the same reason, so
+    the two surfaces agree instead of contradicting each other.
+    """
+    trip = Trip.objects.create(name="Alps Loop", date=datetime(2026, 1, 1).date(), owner=rider)
+    timed_track(trip, "day-1.gpx", datetime(2026, 6, 1, 8, tzinfo=UTC))
+    untimed_track(trip, "day-2.gpx")
 
     response = auth_client.get(reverse("trips:list"))
 

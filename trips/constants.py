@@ -11,3 +11,11 @@ from datetime import timedelta
 # date can never exceed the UTC date by more than one — one day closes that window exactly,
 # and nothing wider is needed to close it.
 FUTURE_TRIP_DATE_TOLERANCE = timedelta(days=1)
+
+# Slack allowed between the rider-entered `Trip.date` and a GPX-observed timestamp
+# (`gpx.stages.trip_span`'s start, an uploaded stage's `started_at`, or the trip list's
+# per-trip earliest stage) before the two count as diverging. One day for the same reason
+# as above — it absorbs the UTC-storage-vs-local-input slack — and must not flag
+# `tests/gpx/fixtures/timed-track-day-2.gpx` (exactly one day after the `trip` fixture's
+# date) as diverging from it.
+TRIP_DATE_DIVERGENCE_TOLERANCE = timedelta(days=1)

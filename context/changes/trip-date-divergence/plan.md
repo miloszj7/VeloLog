@@ -413,9 +413,9 @@ None. No model or schema changes — every value used already exists (`Trip.date
 
 #### Automated
 
-- [ ] 1.1 Unit tests pass: `uv run pytest tests/trips/test_dates.py -v`
-- [ ] 1.2 Type checking passes: `uv run mypy .`
-- [ ] 1.3 Linting passes: `uv run ruff check .`
+- [x] 1.1 Unit tests pass: `uv run pytest tests/trips/test_dates.py -v`
+- [x] 1.2 Type checking passes: `uv run mypy .`
+- [x] 1.3 Linting passes: `uv run ruff check .`
 
 ### Phase 2: Trip detail page divergence note
 

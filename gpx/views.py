@@ -1,11 +1,14 @@
 import logging
 from typing import TYPE_CHECKING, Any, cast
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.utils.formats import date_format
 from django.views.generic import CreateView, View
 
 from gpx.forms import GpxUploadForm
@@ -116,10 +119,26 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         delete actually removes — reintroducing a delete in this method would put a
         second, competing path back in, and against a trip that already has a stage that
         path destroys it.
+
+        The divergence warning is checked here, against this one stage's own
+        `started_at`, independent of `chronology_is_established` — that predicate asks
+        whether the *whole trip* is fully timed, which has nothing to do with whether
+        *this* upload's own timestamp matches `Trip.date`. `started_at is None` (an
+        untimed file) has nothing to compare, so no warning fires for it.
         """
         # The parsed route is already on the instance — `GpxUploadForm.clean_file` puts
         # it there. Ownership is the one thing the form cannot know.
         form.instance.trip = self.trip
+        if form.instance.started_at is not None and trip_date_diverges(
+            self.trip.date, form.instance.started_at
+        ):
+            messages.warning(
+                self.request,
+                f"This stage was recorded on "
+                f"{date_format(timezone.localtime(form.instance.started_at))}, "
+                f"which differs from the trip's logged date of "
+                f"{date_format(self.trip.date)}.",
+            )
         return super().form_valid(form)
 
 

@@ -421,29 +421,29 @@ None. No model or schema changes — every value used already exists (`Trip.date
 
 #### Automated
 
-- [x] 2.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail_span.py -v`
-- [x] 2.2 Full suite still passes: `uv run pytest --cov`
-- [x] 2.3 Type checking passes: `uv run mypy .`
-- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
+- [x] 2.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_detail_span.py -v` — 496b4ae
+- [x] 2.2 Full suite still passes: `uv run pytest --cov` — 496b4ae
+- [x] 2.3 Type checking passes: `uv run mypy .` — 496b4ae
+- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .` — 496b4ae
 
 #### Manual
 
-- [x] 2.5 Trips 21, 22, and 23 show the "Logged as ..." note under the span
-- [x] 2.6 A trip whose Trip.date matches its stages shows no note
+- [x] 2.5 Trips 21, 22, and 23 show the "Logged as ..." note under the span — 496b4ae
+- [x] 2.6 A trip whose Trip.date matches its stages shows no note — 496b4ae
 
 ### Phase 3: GPX upload-time warning
 
 #### Automated
 
-- [ ] 3.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v`
-- [ ] 3.2 Full suite still passes: `uv run pytest --cov`
-- [ ] 3.3 Type checking passes: `uv run mypy .`
-- [ ] 3.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
+- [x] 3.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v`
+- [x] 3.2 Full suite still passes: `uv run pytest --cov`
+- [x] 3.3 Type checking passes: `uv run mypy .`
+- [x] 3.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
 
 #### Manual
 
-- [ ] 3.5 A wildly-diverging upload shows the warning banner after redirect and the stage still saves
-- [ ] 3.6 A normal same-week upload shows no warning
+- [x] 3.5 A wildly-diverging upload shows the warning banner after redirect and the stage still saves
+- [x] 3.6 A normal same-week upload shows no warning
 
 ### Phase 4: Trip list divergence indicator
 

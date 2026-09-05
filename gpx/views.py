@@ -16,7 +16,7 @@ from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
 from gpx.stages import build_stages, chronology_is_established, trip_span
 from gpx.statistics import build_whole_trip_stats
-from trips.dates import trip_date_diverges
+from trips.dates import span_date_diverges, trip_date_diverges
 from trips.models import Trip
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class GpxUploadView(LoginRequiredMixin, _SuccessMessageMixinBase, _GpxUploadView
         context["chronology_established"] = chronology_is_established(tracks)
         context["trip_span"] = span
         context["whole_trip_stats"] = build_whole_trip_stats(tracks)
-        context["date_diverges"] = span is not None and trip_date_diverges(self.trip.date, span[0])
+        context["date_diverges"] = span_date_diverges(self.trip.date, span)
         return context
 
     def get_success_url(self) -> str:

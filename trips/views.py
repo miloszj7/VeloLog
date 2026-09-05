@@ -19,7 +19,7 @@ from gpx.map_config import build_map_config
 from gpx.models import GpxTrack
 from gpx.stages import build_stages, chronology_is_established, trip_span
 from gpx.statistics import build_whole_trip_stats
-from trips.dates import trip_date_diverges
+from trips.dates import span_date_diverges, trip_date_diverges
 from trips.forms import TripForm
 from trips.models import Trip
 
@@ -144,9 +144,7 @@ class TripDetailView(LoginRequiredMixin, _TripDetailViewBase):
         context["chronology_established"] = chronology_is_established(tracks)
         context["trip_span"] = span
         context["whole_trip_stats"] = build_whole_trip_stats(tracks)
-        context["date_diverges"] = span is not None and trip_date_diverges(
-            self.object.date, span[0]
-        )
+        context["date_diverges"] = span_date_diverges(self.object.date, span)
         context["form"] = GpxUploadForm()
         return context
 

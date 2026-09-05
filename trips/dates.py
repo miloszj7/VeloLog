@@ -22,3 +22,13 @@ def trip_date_diverges(
     """
     observed_date = timezone.localtime(observed).date()
     return abs(observed_date - trip_date) > tolerance
+
+
+def span_date_diverges(trip_date: date, span: tuple[datetime, datetime] | None) -> bool:
+    """Whether a rendered `trip_span` diverges from `trip_date`, or `False` when absent.
+
+    Shared by `TripDetailView` and `GpxUploadView` (`trips/views.py`, `gpx/views.py`),
+    which both render `trip_detail.html` and must agree on this flag — computing it twice
+    inline risked the two call sites drifting apart.
+    """
+    return span is not None and trip_date_diverges(trip_date, span[0])

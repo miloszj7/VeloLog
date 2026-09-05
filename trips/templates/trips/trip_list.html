@@ -12,7 +12,12 @@
             <a href="{{ trip.get_absolute_url }}" class="list-group-item list-group-item-action">
                 <div class="d-flex w-100 justify-content-between">
                     <strong>{{ trip.name }}</strong>
-                    <small class="text-muted">{{ trip.date }}</small>
+                    <small class="text-muted">
+                        {{ trip.date }}
+                        {% if trip.pk in diverging_trip_ids %}
+                            <span class="text-warning" title="Logged date differs from the GPX-recorded ride date">&#9888;</span>
+                        {% endif %}
+                    </small>
                 </div>
                 <p class="mb-0 text-muted">{{ trip.description }}</p>
             </a>

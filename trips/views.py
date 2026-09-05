@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, cast
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import QuerySet
+from django.db.models import Min, QuerySet
 from django.forms import Form
 from django.http import HttpResponse
 from django.urls import reverse_lazy
@@ -16,6 +16,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 # unbroken; a model-level import in either direction is what would turn this into one.
 from gpx.forms import GpxUploadForm
 from gpx.map_config import build_map_config
+from gpx.models import GpxTrack
 from gpx.stages import build_stages, chronology_is_established, trip_span
 from gpx.statistics import build_whole_trip_stats
 from trips.dates import trip_date_diverges
@@ -50,6 +51,32 @@ class TripListView(LoginRequiredMixin, _TripListViewBase):
     def get_queryset(self) -> QuerySet[Trip]:
         """Restrict the list to trips owned by the requesting user."""
         return Trip.objects.filter(owner=cast(User, self.request.user))
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Flag which listed trips diverge, in one extra aggregate query.
+
+        Not an `.annotate()` on the `Trip` queryset itself: `get_queryset`'s declared
+        `-> QuerySet[Trip]:` return type would erase any annotation's django-stubs
+        typing the moment it's returned, and `Trip` has no `date_diverges` field for an
+        ad hoc instance attribute to satisfy under `mypy --strict`. A separate small
+        aggregate query, reduced to a plain `set[int]` of pks, sidesteps both problems
+        and costs one query for the whole list, not one per row.
+        """
+        context = super().get_context_data(**kwargs)
+        trips = context["object_list"]
+        earliest_by_trip_id = dict(
+            GpxTrack.objects.filter(trip__in=trips)
+            .values("trip_id")
+            .annotate(earliest=Min("started_at"))
+            .values_list("trip_id", "earliest")
+        )
+        context["diverging_trip_ids"] = {
+            trip.pk
+            for trip in trips
+            if (earliest := earliest_by_trip_id.get(trip.pk)) is not None
+            and trip_date_diverges(trip.date, earliest)
+        }
+        return context
 
 
 class TripCreateView(LoginRequiredMixin, _SuccessMessageMixinBase, _TripCreateViewBase):

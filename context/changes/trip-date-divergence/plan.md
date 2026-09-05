@@ -435,27 +435,27 @@ None. No model or schema changes — every value used already exists (`Trip.date
 
 #### Automated
 
-- [x] 3.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v`
-- [x] 3.2 Full suite still passes: `uv run pytest --cov`
-- [x] 3.3 Type checking passes: `uv run mypy .`
-- [x] 3.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
+- [x] 3.1 Unit/integration tests pass: `uv run pytest tests/gpx/test_gpx_upload.py -v` — 34b531e
+- [x] 3.2 Full suite still passes: `uv run pytest --cov` — 34b531e
+- [x] 3.3 Type checking passes: `uv run mypy .` — 34b531e
+- [x] 3.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .` — 34b531e
 
 #### Manual
 
-- [x] 3.5 A wildly-diverging upload shows the warning banner after redirect and the stage still saves
-- [x] 3.6 A normal same-week upload shows no warning
+- [x] 3.5 A wildly-diverging upload shows the warning banner after redirect and the stage still saves — 34b531e
+- [x] 3.6 A normal same-week upload shows no warning — 34b531e
 
 ### Phase 4: Trip list divergence indicator
 
 #### Automated
 
-- [ ] 4.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_list.py -v`
-- [ ] 4.2 Full suite still passes: `uv run pytest --cov`
-- [ ] 4.3 Type checking passes: `uv run mypy .`
-- [ ] 4.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
-- [ ] 4.5 Suite credibility gate passes: `uv run pytest -m bite_proof`
+- [x] 4.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_list.py -v`
+- [x] 4.2 Full suite still passes: `uv run pytest --cov`
+- [x] 4.3 Type checking passes: `uv run mypy .`
+- [x] 4.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
+- [x] 4.5 Suite credibility gate passes: `uv run pytest -m bite_proof`
 
 #### Manual
 
-- [ ] 4.6 The trips list shows the indicator next to trips 21, 22, and 23
-- [ ] 4.7 List page query count does not regress with several multi-stage trips
+- [x] 4.6 The trips list shows the indicator next to trips 21, 22, and 23
+- [x] 4.7 List page query count does not regress with several multi-stage trips

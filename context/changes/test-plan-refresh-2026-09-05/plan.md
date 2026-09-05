@@ -281,15 +281,15 @@ None — no schema, data, or code changes.
 
 #### Automated
 
-- [x] 1.1 `! grep -q "none yet" context/foundation/test-plan.md`
-- [x] 1.2 `grep -q "narrow slice" context/foundation/test-plan.md`
-- [x] 1.3 New Freshness Ledger e2e line present, scoped to §8
-- [x] 1.4 Header date bumped to 2026-09-05
+- [x] 1.1 `! grep -q "none yet" context/foundation/test-plan.md` — 7ee12a6
+- [x] 1.2 `grep -q "narrow slice" context/foundation/test-plan.md` — 7ee12a6
+- [x] 1.3 New Freshness Ledger e2e line present, scoped to §8 — 7ee12a6
+- [x] 1.4 Header date bumped to 2026-09-05 — 7ee12a6
 
 #### Manual
 
 - [x] 1.5 Every new/changed claim traces to `tests/e2e/*` or
-      `.github/workflows/deploy.yml`
-- [x] 1.6 No new top-N risk row added; Risk #1/#6 table cells unaltered
-- [x] 1.7 §7 untouched; document reads coherently end to end
-- [x] 1.8 No broken Markdown tables in §2, §4, §5
+      `.github/workflows/deploy.yml` — 7ee12a6
+- [x] 1.6 No new top-N risk row added; Risk #1/#6 table cells unaltered — 7ee12a6
+- [x] 1.7 §7 untouched; document reads coherently end to end — 7ee12a6
+- [x] 1.8 No broken Markdown tables in §2, §4, §5 — 7ee12a6

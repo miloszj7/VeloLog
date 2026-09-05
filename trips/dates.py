@@ -17,8 +17,19 @@ def trip_date_diverges(
     `observed` is converted via `timezone.localtime(observed).date()` before comparing —
     the same conversion `trip_detail.html`'s `|date` filter already performs on datetimes —
     so this agrees with what the template would show if it rendered both dates directly.
-    Strictly greater than `tolerance`, matching `TripForm.clean_date`'s boundary convention:
-    a difference exactly equal to the tolerance does not diverge.
+
+    Args:
+        trip_date: The rider-entered `Trip.date`.
+        observed: A GPX-derived instant to compare against it. Must be timezone-aware —
+            every current caller passes a DB-sourced datetime, which is aware under
+            `USE_TZ=True`; a naive value raises `ValueError` inside `timezone.localtime`.
+        tolerance: How far apart the two dates may be before counting as diverging.
+            Defaults to `TRIP_DATE_DIVERGENCE_TOLERANCE`.
+
+    Returns:
+        `True` when `abs(observed_date - trip_date) > tolerance`, strictly greater —
+        matching `TripForm.clean_date`'s boundary convention: a difference exactly equal
+        to the tolerance does not diverge.
     """
     observed_date = timezone.localtime(observed).date()
     return abs(observed_date - trip_date) > tolerance

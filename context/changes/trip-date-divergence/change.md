@@ -1,7 +1,7 @@
 ---
 change_id: trip-date-divergence
 title: Surface Trip.date vs GPX-derived span divergence instead of hiding it
-status: implementing
+status: implemented
 created: 2026-09-05
 updated: 2026-09-05
 archived_at: null

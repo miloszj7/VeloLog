@@ -449,13 +449,13 @@ None. No model or schema changes — every value used already exists (`Trip.date
 
 #### Automated
 
-- [x] 4.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_list.py -v`
-- [x] 4.2 Full suite still passes: `uv run pytest --cov`
-- [x] 4.3 Type checking passes: `uv run mypy .`
-- [x] 4.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .`
-- [x] 4.5 Suite credibility gate passes: `uv run pytest -m bite_proof`
+- [x] 4.1 Unit/integration tests pass: `uv run pytest tests/trips/test_trip_list.py -v` — 5644249
+- [x] 4.2 Full suite still passes: `uv run pytest --cov` — 5644249
+- [x] 4.3 Type checking passes: `uv run mypy .` — 5644249
+- [x] 4.4 Linting and formatting pass: `uv run ruff check . && uv run black --check .` — 5644249
+- [x] 4.5 Suite credibility gate passes: `uv run pytest -m bite_proof` — 5644249
 
 #### Manual
 
-- [x] 4.6 The trips list shows the indicator next to trips 21, 22, and 23
-- [x] 4.7 List page query count does not regress with several multi-stage trips
+- [x] 4.6 The trips list shows the indicator next to trips 21, 22, and 23 — 5644249
+- [x] 4.7 List page query count does not regress with several multi-stage trips — 5644249

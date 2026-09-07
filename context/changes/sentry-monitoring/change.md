@@ -1,7 +1,7 @@
 ---
 change_id: sentry-monitoring
 title: Add Sentry error/performance monitoring to the Railway deploy
-status: implemented
+status: impl_reviewed
 created: 2026-09-07
 updated: 2026-09-07
 archived_at: null

@@ -337,9 +337,15 @@ login and registration form bodies are in scope. Two mitigations, both verified 
 installed `sentry-sdk` 2.68.1 rather than assumed:
 
 - `sentry-sdk` 2.x enables a **client-side** `EventScrubber` by default, and its
-  `scrub_request()` scrubs the parsed form body against a denylist that includes
-  `password`, `token`, `secret`, `api_key` and `session`. Passwords are redacted
+  `scrub_request()` scrubs the parsed form body against a denylist. Redaction happens
   **in-process, before the event leaves the container** — not merely on Sentry's servers.
+  The default denylist matches by exact key name, though, not substring — it catches a
+  field literally named `password` (the login form) but **not** Django's own
+  `UserCreationForm`/`PasswordChangeForm` field names (`password1`, `password2`,
+  `old_password`, `new_password1`, `new_password2`), which the registration and
+  password-change forms actually use. `velo_log/settings.py`'s `sentry_sdk.init()`
+  therefore passes an explicit `EventScrubber` extending the default denylist with
+  those five names, so all of this project's password-bearing form fields are covered.
 - Uploaded files are never sent: the GPX multipart path ships field *names* only, with each
   file's contents replaced by a "removed because raw data" marker.
 

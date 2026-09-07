@@ -18,6 +18,7 @@ import sentry_sdk
 from django.contrib.messages import constants as message_constants
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -64,6 +65,15 @@ if SENTRY_DSN:
         integrations=[DjangoIntegration(), LoggingIntegration()],
         traces_sample_rate=0.1,
         send_default_pii=False,
+        # sentry-sdk's default EventScrubber matches denylist entries by exact key
+        # equality, not substring — it scrubs "password" but not Django's own
+        # UserCreationForm/PasswordChangeForm field names, which would otherwise ship
+        # a submitted password in plaintext if an unhandled exception's request body
+        # is captured.
+        event_scrubber=EventScrubber(
+            denylist=DEFAULT_DENYLIST
+            + ["password1", "password2", "old_password", "new_password1", "new_password2"]
+        ),
         # Both optional vars go through env_or, not env(default=...): a key that is
         # present but blank yields "" rather than the default. A blank SENTRY_RELEASE
         # must reach the SDK as None (no release), not "", hence the trailing `or None`.

@@ -13,6 +13,7 @@ Update this table after every production deploy.
 | 2026-08-26 | `9c1e188b` (same commit `b2fa74b`) | Redeploy closing the restore drill below. Uploaded GPX files survived it on the Volume — the persistence proof this slice was gated on. `/healthz/` 200 with database and media both `ok`. |
 | 2026-09-04 | `55137c9f-e175-4e61-a1d1-3ee2ed73886b` | Manual dashboard redeploy recovering from the E-04 incident below — `.railway/railway.ts` merge (PR #48) had cleared the service's Custom Start Command, so the automatic `railway up` deploy right after merge ran Railpack's auto-detected fallback (`python manage.py migrate && gunicorn ... velo_log.wsgi:application` — no `collectstatic`, no `uv run`) and 500'd. Fixed by re-pasting the real start command into the dashboard and redeploying from there; `railway config pull` now confirms it matches the repo's `.railway/railway.ts`. |
 | 2026-09-04 | `91190b01-1c4c-4149-8d3a-6b968b442255` | Automatic `railway up` deploy from PR #49 (the corrected `.railway/railway.ts`) — code-only from the deploy's perspective, since `railway up` doesn't read that file. First deploy confirming the dashboard start command survives a normal merge-triggered redeploy. `/healthz/` returns `{"status": "ok", "database": "ok", "media": "ok"}`. |
+| 2026-09-07 | `92e1069a-75ea-44d5-ba19-d96cd80dbbe3` | Ships `sentry-monitoring` (commit `608df30`, PR #55) — Sentry error and light performance monitoring, gated on `SENTRY_DSN`. This is the deploy that *removed* the temporary `/__sentry-debug__/` probe; the path 404s again, and `/healthz/` returns `{"status": "ok", "database": "ok", "media": "ok"}`. The integration was proven on the immediately-preceding deploy `83b39ee2-2fba-4d82-bb74-8dc7b0edd509` (commit `27b97ad`, PR #54), which carried the probe: it returned 500 and the exception reached Sentry tagged with release `27b97adc7cfbf0d0a66dd1dcb0c16de29c61d0da` and environment `production` — the first confirmation that CI's *Set Sentry release* step supplies the SHA on a deploy path with no git metadata of its own. Roll back to this row, not to `83b39ee2`, which deliberately exposes a route that raises. |
 
 ## MEDIA_ROOT — required, and easy to set wrongly from Git Bash
 
@@ -300,9 +301,14 @@ CI, neither of which sets it, are unaffected. Two variables to set in the Railwa
 environment:
 
 ```bash
-railway variables --set "SENTRY_DSN=https://…@…ingest.…sentry.io/…"
-railway variables --set "SENTRY_ENVIRONMENT=production"
+railway variables --set "SENTRY_DSN=https://…@…ingest.…sentry.io/…" --skip-deploys
+railway variables --set "SENTRY_ENVIRONMENT=production" --skip-deploys
 ```
+
+**`--skip-deploys` matters here, not just in CI.** Without it, `railway variables --set`
+triggers its own redeploy by default — one per command, so setting both variables in
+sequence without the flag produces two redeploys before you've even reached verification.
+Set both, then deploy once (or let the next `git push` do it).
 
 **The `MSYS_NO_PATHCONV` trap above does not apply here.** MSYS rewrites arguments that
 look like Unix absolute paths; a DSN is a full URL with a scheme, and `production` has no
@@ -336,9 +342,15 @@ login and registration form bodies are in scope. Two mitigations, both verified 
 installed `sentry-sdk` 2.68.1 rather than assumed:
 
 - `sentry-sdk` 2.x enables a **client-side** `EventScrubber` by default, and its
-  `scrub_request()` scrubs the parsed form body against a denylist that includes
-  `password`, `token`, `secret`, `api_key` and `session`. Passwords are redacted
+  `scrub_request()` scrubs the parsed form body against a denylist. Redaction happens
   **in-process, before the event leaves the container** — not merely on Sentry's servers.
+  The default denylist matches by exact key name, though, not substring — it catches a
+  field literally named `password` (the login form) but **not** Django's own
+  `UserCreationForm`/`PasswordChangeForm` field names (`password1`, `password2`,
+  `old_password`, `new_password1`, `new_password2`), which the registration and
+  password-change forms actually use. `velo_log/settings.py`'s `sentry_sdk.init()`
+  therefore passes an explicit `EventScrubber` extending the default denylist with
+  those five names, so all of this project's password-bearing form fields are covered.
 - Uploaded files are never sent: the GPX multipart path ships field *names* only, with each
   file's contents replaced by a "removed because raw data" marker.
 

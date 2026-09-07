@@ -306,12 +306,12 @@ Not applicable — no data model or storage changes.
 
 #### Automated
 
-- [x] 3.1 `uv run python manage.py check` passes with the temporary route present
+- [x] 3.1 `uv run python manage.py check` passes with the temporary route present — 5577d7e
 
 #### Manual
 
-- [ ] 3.2 Deploy to Railway with `SENTRY_DSN`/`SENTRY_ENVIRONMENT` set
-- [ ] 3.3 `curl` against `/__sentry-debug__/` returns 500
-- [ ] 3.4 Event appears in Sentry dashboard tagged with the deploying commit SHA as release and `production` as environment
-- [ ] 3.5 **GATE** — temporary view removed, deploy #2 landed, `curl` now 404s (change cannot close while this is unchecked)
-- [ ] 3.6 `DEPLOY.md` known-good-deployments table updated (deployment UUID + commit SHA in Notes)
+- [x] 3.2 Deploy to Railway with `SENTRY_DSN`/`SENTRY_ENVIRONMENT` set — a3d9f28
+- [x] 3.3 `curl` against `/__sentry-debug__/` returns 500 — a3d9f28
+- [x] 3.4 Event appears in Sentry dashboard tagged with the deploying commit SHA as release and `production` as environment — a3d9f28
+- [x] 3.5 **GATE** — temporary view removed, deploy #2 landed, `curl` now 404s (change cannot close while this is unchecked) — 246a464
+- [x] 3.6 `DEPLOY.md` known-good-deployments table updated (deployment UUID + commit SHA in Notes) — a3d9f28

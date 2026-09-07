@@ -282,25 +282,25 @@ Not applicable — no data model or storage changes.
 
 #### Automated
 
-- [x] 1.1 `uv run python manage.py check` passes with the new settings block
-- [x] 1.2 `uv run mypy --strict .` passes
-- [x] 1.3 Full quality gate suite passes (`black`, `isort`, `ruff`, `pytest --cov`)
-- [x] 1.4 CI-equivalence command passes with `SENTRY_DSN` unset
-- [x] 1.7 `deploy.yml` sets `SENTRY_RELEASE` from `github.sha`; `--skip-deploys` confirmed against CLI v5.43.1
-- [x] 1.8 Request-body capture gating confirmed against the installed SDK (`max_request_body_size` vs `send_default_pii`)
+- [x] 1.1 `uv run python manage.py check` passes with the new settings block — ed5a052
+- [x] 1.2 `uv run mypy --strict .` passes — ed5a052
+- [x] 1.3 Full quality gate suite passes (`black`, `isort`, `ruff`, `pytest --cov`) — ed5a052
+- [x] 1.4 CI-equivalence command passes with `SENTRY_DSN` unset — ed5a052
+- [x] 1.7 `deploy.yml` sets `SENTRY_RELEASE` from `github.sha`; `--skip-deploys` confirmed against CLI v5.43.1 — ed5a052
+- [x] 1.8 Request-body capture gating confirmed against the installed SDK (`max_request_body_size` vs `send_default_pii`) — ed5a052
 
 #### Manual
 
-- [x] 1.5 `runserver` boots cleanly with no `SENTRY_DSN` set locally
-- [x] 1.6 No Sentry SDK log output when `SENTRY_DSN` is unset
+- [x] 1.5 `runserver` boots cleanly with no `SENTRY_DSN` set locally — ed5a052
+- [x] 1.6 No Sentry SDK log output when `SENTRY_DSN` is unset — ed5a052
 
 ### Phase 2: Document environment variables
 
 #### Manual
 
-- [ ] 2.1 User confirms `.env.example` updated with the exact text provided
-- [ ] 2.2 `railway variables --kv | grep '^SENTRY_'` shows both variables set
-- [ ] 2.3 `DEPLOY.md` renders correctly
+- [x] 2.1 User confirms `.env.example` updated with the exact text provided
+- [x] 2.2 `railway variables --kv | grep '^SENTRY_'` shows both variables set
+- [x] 2.3 `DEPLOY.md` renders correctly
 
 ### Phase 3: Production verification via temporary debug endpoint
 

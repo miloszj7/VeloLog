@@ -282,17 +282,17 @@ Not applicable — no data model or storage changes.
 
 #### Automated
 
-- [ ] 1.1 `uv run python manage.py check` passes with the new settings block
-- [ ] 1.2 `uv run mypy --strict .` passes
-- [ ] 1.3 Full quality gate suite passes (`black`, `isort`, `ruff`, `pytest --cov`)
-- [ ] 1.4 CI-equivalence command passes with `SENTRY_DSN` unset
-- [ ] 1.7 `deploy.yml` sets `SENTRY_RELEASE` from `github.sha`; `--skip-deploys` confirmed against CLI v5.43.1
-- [ ] 1.8 Request-body capture gating confirmed against the installed SDK (`max_request_body_size` vs `send_default_pii`)
+- [x] 1.1 `uv run python manage.py check` passes with the new settings block
+- [x] 1.2 `uv run mypy --strict .` passes
+- [x] 1.3 Full quality gate suite passes (`black`, `isort`, `ruff`, `pytest --cov`)
+- [x] 1.4 CI-equivalence command passes with `SENTRY_DSN` unset
+- [x] 1.7 `deploy.yml` sets `SENTRY_RELEASE` from `github.sha`; `--skip-deploys` confirmed against CLI v5.43.1
+- [x] 1.8 Request-body capture gating confirmed against the installed SDK (`max_request_body_size` vs `send_default_pii`)
 
 #### Manual
 
-- [ ] 1.5 `runserver` boots cleanly with no `SENTRY_DSN` set locally
-- [ ] 1.6 No Sentry SDK log output when `SENTRY_DSN` is unset
+- [x] 1.5 `runserver` boots cleanly with no `SENTRY_DSN` set locally
+- [x] 1.6 No Sentry SDK log output when `SENTRY_DSN` is unset
 
 ### Phase 2: Document environment variables
 

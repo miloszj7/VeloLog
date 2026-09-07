@@ -96,6 +96,25 @@ jobs:
       - name: Install Railway CLI
         run: npm i -g @railway/cli@5.43.1
 
+      # This deploy path carries no git metadata into the container — `railway up --ci`
+      # is a CLI tarball upload, not Railway's git-repo build trigger, so no RAILWAY_GIT_*
+      # variable exists to read. The SHA is therefore pushed onto the service explicitly,
+      # here, where the workflow already knows it. --skip-deploys (confirmed present in the
+      # pinned CLI v5.43.1) keeps this step from triggering a redeploy of its own, so the
+      # `railway up` below is the deploy that picks the value up.
+      #
+      # Set by CI on every deploy; never set by hand, locally or in the Railway dashboard.
+      - name: Set Sentry release
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: >-
+          railway variables
+          --service=fa5fd9c7-8cd0-47de-bf1b-3515e1f62583
+          --project=d0f372e3-e9a6-4a70-bf9a-73d85cdda226
+          --environment=production
+          --set "SENTRY_RELEASE=${{ github.sha }}"
+          --skip-deploys
+
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

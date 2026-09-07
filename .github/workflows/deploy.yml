@@ -104,7 +104,11 @@ jobs:
       # `railway up` below is the deploy that picks the value up.
       #
       # Set by CI on every deploy; never set by hand, locally or in the Railway dashboard.
+      # continue-on-error: a transient failure here (Railway API hiccup) must not block
+      # the actual app deploy below — worst case, that one deploy's Sentry events are
+      # untagged with a release.
       - name: Set Sentry release
+        continue-on-error: true
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: >-

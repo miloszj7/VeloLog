@@ -14,7 +14,10 @@ import logging
 from pathlib import Path
 
 import environ
+import sentry_sdk
 from django.contrib.messages import constants as message_constants
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,6 +37,39 @@ def env_or(key: str, fallback: str) -> str:
     instead of the configured location.
     """
     return env(key, default="") or fallback
+
+
+# Error monitoring (Sentry)
+# https://docs.sentry.io/platforms/python/integrations/django/
+
+# Gated on DSN presence rather than nested in the `if not DEBUG:` block at the bottom:
+# a developer may point a local run at a personal Sentry project with DEBUG=True. Placed
+# before SECRET_KEY/DEBUG so the SDK is live as early as possible in module load, and
+# after `env_or` because the block calls it.
+#
+# `sentry_sdk.init()` never runs without a DSN, so local dev and CI — which never set it —
+# make no network calls and see no behavior change.
+#
+# LoggingIntegration() with no args takes Sentry's defaults (INFO -> breadcrumb,
+# ERROR -> event). It is not redundant with DjangoIntegration: 13 of this app's 16
+# `logger.*` sites are `logger.exception` calls that log and continue rather than raise,
+# so DjangoIntegration — which only sees exceptions propagating out of a view — would miss
+# every one of them. The INFO breadcrumb threshold is moot in production anyway: the
+# LOGGING dict below puts both root and `velo_log` at WARNING when DEBUG=False.
+SENTRY_DSN = env("SENTRY_DSN", default="")
+
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(), LoggingIntegration()],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+        # Both optional vars go through env_or, not env(default=...): a key that is
+        # present but blank yields "" rather than the default. A blank SENTRY_RELEASE
+        # must reach the SDK as None (no release), not "", hence the trailing `or None`.
+        environment=env_or("SENTRY_ENVIRONMENT", "production"),
+        release=env_or("SENTRY_RELEASE", "") or None,
+    )
 
 
 # Quick-start development settings - unsuitable for production

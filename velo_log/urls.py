@@ -200,10 +200,32 @@ def healthz(request: HttpRequest) -> HttpResponse:
     return JsonResponse(payload, status=200 if ok else 500)
 
 
+# TEMPORARY — delete this view and its route in the next commit.
+#
+# Exists to prove once that the real production WSGI -> Sentry path works end to end:
+# an unhandled exception out of a view, through DjangoIntegration's middleware hook, into
+# the Sentry project, tagged with the deploying commit SHA. A mocked test would prove only
+# that the SDK API was called, not that events arrive.
+#
+# Deliberately unnamed: nothing reverses it, and `tests/test_ownership_matrix.py` collects
+# a route only when it is named *and* its pattern matches PK_CONVERTER_RE, so an unnamed
+# pk-free route stays out of that inventory. No test covers it either — it is deleted two
+# commits later, and a throwaway route is not something the assertion-strength audit
+# should have to reason about.
+#
+# It is unauthenticated and raises on every request. Under DEBUG=False that is a generic
+# Django 500 with no disclosure, but it is still surface that must not outlive its purpose:
+# this change cannot close or be archived while /__sentry-debug__/ resolves in production.
+def sentry_debug(request: HttpRequest) -> HttpResponse:
+    """Raise unconditionally so Sentry captures a real production exception."""
+    raise RuntimeError("Sentry verification probe — VeloLog sentry-monitoring change")
+
+
 urlpatterns = [
     path("", RedirectView.as_view(url=reverse_lazy("trips:list"), permanent=False)),
     path("admin/", admin.site.urls),
     path("healthz/", healthz, name="healthz"),
+    path("__sentry-debug__/", sentry_debug),  # TEMPORARY — remove with sentry_debug above
     path("accounts/", include("accounts.urls")),
     path(
         "accounts/login/",

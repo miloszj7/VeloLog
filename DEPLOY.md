@@ -292,6 +292,64 @@ A $5 Hobby-plan usage alert was set in Railway account billing settings during P
 
 **Open item (2026-08-21):** not re-verified as part of Phase 7 — check Railway dashboard → account → billing next time this file is touched.
 
+## Sentry error monitoring
+
+`velo_log/settings.py` initializes Sentry only when `SENTRY_DSN` is non-blank. Unset, the
+SDK is never initialized and the app makes no network calls — which is why local dev and
+CI, neither of which sets it, are unaffected. Two variables to set in the Railway
+environment:
+
+```bash
+railway variables --set "SENTRY_DSN=https://…@…ingest.…sentry.io/…"
+railway variables --set "SENTRY_ENVIRONMENT=production"
+```
+
+**The `MSYS_NO_PATHCONV` trap above does not apply here.** MSYS rewrites arguments that
+look like Unix absolute paths; a DSN is a full URL with a scheme, and `production` has no
+slash at all, so neither value is touched. Set them from Git Bash as written — no prefix
+needed. (Stated explicitly because the `MEDIA_ROOT` section makes the prefix look like a
+blanket rule for `railway variables`. It is not.)
+
+Verify after setting, per the convention above — read the values back rather than trusting
+the write:
+
+```bash
+railway variables --kv | grep '^SENTRY_'
+```
+
+**Never set `SENTRY_RELEASE` by hand, here or in the dashboard.** It carries the deploying
+commit SHA and is written on every deploy by `.github/workflows/deploy.yml`'s *Set Sentry
+release* step (`railway variables --set "SENTRY_RELEASE=${{ github.sha }}" --skip-deploys`,
+run immediately before `railway up`). This deploy path uploads a tarball rather than
+building from a git repo, so no `RAILWAY_GIT_*` metadata reaches the container — CI
+supplying the SHA is the whole mechanism. A hand-set value would be overwritten by the next
+deploy anyway, and would mistag every event until then.
+
+To correlate a Sentry event back to a deploy: the event's **release** tag is the commit SHA,
+and the **Known-good deployments** table above is keyed by Railway deployment UUID. Rows
+added since this section landed name both, which is what makes the join possible.
+
+**What reaches Sentry, and what does not.** `send_default_pii=False` suppresses cookies and
+user identity, but it is *not* what governs request bodies — those ride on the
+`max_request_body_size` budget, which defaults to `"medium"` (bodies up to 10 KB). So the
+login and registration form bodies are in scope. Two mitigations, both verified against the
+installed `sentry-sdk` 2.68.1 rather than assumed:
+
+- `sentry-sdk` 2.x enables a **client-side** `EventScrubber` by default, and its
+  `scrub_request()` scrubs the parsed form body against a denylist that includes
+  `password`, `token`, `secret`, `api_key` and `session`. Passwords are redacted
+  **in-process, before the event leaves the container** — not merely on Sentry's servers.
+- Uploaded files are never sent: the GPX multipart path ships field *names* only, with each
+  file's contents replaced by a "removed because raw data" marker.
+
+If that is ever judged insufficient, the escape hatch is one kwarg on `sentry_sdk.init()` —
+`max_request_body_size="never"` — and still needs no `before_send`.
+
+The integration was proven end-to-end against the real Sentry project once, via a temporary
+unauthenticated route that raised on request; it was removed in the same change. Re-prove it
+the same way if the wiring is ever in doubt — a mocked call proves only that the SDK API was
+invoked, not that events arrive.
+
 ## Static assets — a manifest failure is a site-wide outage
 
 `.railway/railway.ts` `&&`-chains `collectstatic` ahead of `migrate` and gunicorn, so the app only

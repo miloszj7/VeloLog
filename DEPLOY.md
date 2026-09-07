@@ -301,9 +301,14 @@ CI, neither of which sets it, are unaffected. Two variables to set in the Railwa
 environment:
 
 ```bash
-railway variables --set "SENTRY_DSN=https://…@…ingest.…sentry.io/…"
-railway variables --set "SENTRY_ENVIRONMENT=production"
+railway variables --set "SENTRY_DSN=https://…@…ingest.…sentry.io/…" --skip-deploys
+railway variables --set "SENTRY_ENVIRONMENT=production" --skip-deploys
 ```
+
+**`--skip-deploys` matters here, not just in CI.** Without it, `railway variables --set`
+triggers its own redeploy by default — one per command, so setting both variables in
+sequence without the flag produces two redeploys before you've even reached verification.
+Set both, then deploy once (or let the next `git push` do it).
 
 **The `MSYS_NO_PATHCONV` trap above does not apply here.** MSYS rewrites arguments that
 look like Unix absolute paths; a DSN is a full URL with a scheme, and `production` has no

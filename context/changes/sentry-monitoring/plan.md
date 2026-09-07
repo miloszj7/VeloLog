@@ -298,15 +298,15 @@ Not applicable — no data model or storage changes.
 
 #### Manual
 
-- [x] 2.1 User confirms `.env.example` updated with the exact text provided
-- [x] 2.2 `railway variables --kv | grep '^SENTRY_'` shows both variables set
-- [x] 2.3 `DEPLOY.md` renders correctly
+- [x] 2.1 User confirms `.env.example` updated with the exact text provided — 4ddfb05
+- [x] 2.2 `railway variables --kv | grep '^SENTRY_'` shows both variables set — 4ddfb05
+- [x] 2.3 `DEPLOY.md` renders correctly — 4ddfb05
 
 ### Phase 3: Production verification via temporary debug endpoint
 
 #### Automated
 
-- [ ] 3.1 `uv run python manage.py check` passes with the temporary route present
+- [x] 3.1 `uv run python manage.py check` passes with the temporary route present
 
 #### Manual
 

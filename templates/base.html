@@ -10,6 +10,7 @@
     {% endcomment %}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}VeloLog{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/icon.svg' %}">
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/theme.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -22,7 +23,9 @@
 <body>
     <nav class="navbar navbar-expand navbar-light bg-white border-bottom">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'trips:list' %}">VeloLog</a>
+            <a class="navbar-brand" href="{% url 'trips:list' %}">
+                <img src="{% static 'img/logo.svg' %}" alt="VeloLog" height="36">
+            </a>
             {% if user.is_authenticated %}
                 <form method="post" action="{% url 'logout' %}" class="ms-auto">
                     {% csrf_token %}

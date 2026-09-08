@@ -1,0 +1,21 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="VeloLog">
+  <rect x="4" y="4" width="56" height="56" rx="12" fill="#2f5d50"/>
+  <path d="M32 20 L32 46" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <path d="M32 22 C 24 18, 15 19, 11 22 L 11 44 C 15 41, 24 40, 32 44 Z" fill="#ffffff" fill-opacity="0.95"/>
+  <path d="M32 22 C 40 18, 49 19, 53 22 L 53 44 C 49 41, 40 40, 32 44 Z" fill="#ffffff" fill-opacity="0.75"/>
+  <path d="M12 37 C 18 23, 24 45, 32 31 C 40 17, 46 41, 52 25" fill="none" stroke="#f97316" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="25.2" cy="26.3" r="4.4"/>
+    <circle cx="39.7" cy="26.3" r="4.4"/>
+    <path d="M25.2 26.3 L30.3 24.6 L28.6 16.1 L37.1 17.8 L30.3 24.6 M37.1 17.8 L39.7 26.3"/>
+    <path d="M28.6 16.1 L28.6 13.5 M27.2 13.5 L30.6 13.5"/>
+    <path d="M37.1 17.8 L38 14.4 M34.6 14.4 L41.4 14.4"/>
+  </g>
+  <g fill="none" stroke="#2f5d50" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="25.2" cy="26.3" r="4.4"/>
+    <circle cx="39.7" cy="26.3" r="4.4"/>
+    <path d="M25.2 26.3 L30.3 24.6 L28.6 16.1 L37.1 17.8 L30.3 24.6 M37.1 17.8 L39.7 26.3"/>
+    <path d="M28.6 16.1 L28.6 13.5 M27.2 13.5 L30.6 13.5"/>
+    <path d="M37.1 17.8 L38 14.4 M34.6 14.4 L41.4 14.4"/>
+  </g>
+</svg>

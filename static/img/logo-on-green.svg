@@ -20,5 +20,5 @@
       <path d="M37.1 17.8 L38 14.4 M34.6 14.4 L41.4 14.4"/>
     </g>
   </g>
-  <text x="76" y="41" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="700" fill="#1f2937">Velo<tspan fill="#2f5d50">Log</tspan></text>
+  <text x="76" y="41" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="700" fill="#ffffff">VeloLog</text>
 </svg>

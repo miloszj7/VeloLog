@@ -3,6 +3,10 @@
   "private": true,
   "description": "Node dependencies for Railway Infrastructure as Code (.railway/railway.ts) — no application code here.",
   "devDependencies": {
+    "@railway/cli": "^5.49.6",
     "railway": "^3.11.0"
+  },
+  "allowScripts": {
+    "@railway/cli": true
   }
 }

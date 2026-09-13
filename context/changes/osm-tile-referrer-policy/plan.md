@@ -243,6 +243,29 @@ the tile URL it guards is still `tile.openstreetmap.org` — a pin on the option
 vacuous if the provider ever changed. Issues no test-client call, so it is out of
 `tests/test_assertion_strength.py`'s request-cycle population and needs no waiver.
 
+#### 3. Shared compliant/blocking value sets — *addendum, recorded during implementation review*
+
+**File**: `tests/conftest.py`
+
+**Intent**: Items 1 and 2 both need OSM's five compliant values and its two blocking ones, and
+the plan named the set twice without saying where it should live. They are defined once as
+module-level `frozenset`s in `tests/conftest.py` and imported by both modules — the role that
+file already plays for `GPX_POINTS`, `GPX_BOUNDS` and the factory aliases. No fixture, no autouse
+hook, no import-time side effect. Recorded here so the plan stays the ground truth a later review
+reads; see finding F4 in `reviews/impl-review.md`.
+
+#### 4. Response-header assertion — *addendum, added by implementation-review triage*
+
+**File**: `tests/test_settings_security.py`
+
+**Intent**: Item 1 pins the *setting*, which only becomes a header because
+`SecurityMiddleware` is in `MIDDLEWARE` and reads it — drop that middleware and item 1 stays
+green while no `Referrer-Policy` is emitted at all. `test_referrer_policy_header_reaches_the_response`
+closes that gap by reading the header off a real `GET reverse("login")` response. It does issue a
+test-client call, so it enters `tests/test_assertion_strength.py`'s request-cycle population — a
+header subscript classifies as a probe, so it still needs no `WAIVER_INVENTORY` entry. See
+finding F2 in `reviews/impl-review.md`.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -323,6 +346,21 @@ a follow-up change is a `/10x-new` decision, not part of this one.
   values OSM names as blocking, and the one Django would silently restore if the line were deleted
 - `gpx/static/gpx/map.js` passes a compliant `referrerPolicy` on its tile layer, and still points
   at `tile.openstreetmap.org`
+
+- A compliant `Referrer-Policy` actually reaches a real response, asserted through the request
+  cycle — the setting is only half of it, since `SecurityMiddleware` is what turns it into a
+  header (added during implementation-review triage; see finding F2)
+
+### Bite-proof harness:
+
+No mutation shape is added to `tests/mutations.py`, deliberately rather than by omission. Two
+reasons. This change maps to Risk #6, which `CLAIMED_RISK_AREAS` in `tests/test_suite_bites.py`
+does not claim, so the harness gate stays correctly green without one. And a shape is
+mechanically infeasible here: `apply_mutation_shape` monkeypatches a live module attribute, while
+both guards read from disk — one via `spec_from_file_location` into a throwaway module, the other
+by reading the static asset's text. Patching an attribute changes nothing either guard looks at.
+The §6.8 ritual itself was still performed by hand on every guard in this change, which is how
+finding F1's false pass was caught.
 
 ### Integration Tests:
 

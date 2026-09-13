@@ -321,6 +321,14 @@ response headers and the exact block text. The documented escalation is emailing
 `operations@osmfoundation.org` with those headers, as directed in the Leaflet issue thread. Opening
 a follow-up change is a `/10x-new` decision, not part of this one.
 
+**Outcome (2026-09-13)**: not triggered. The compliant `Referer` was sufficient on its own —
+production tiles render and tile requests return 200, so there was no block text or blocked-request
+header set left to capture and no reason to contact OSM Operations. Progress step 3.5 is marked
+done as *vacuously satisfied*, not as escalation work performed; its title is left unchanged per
+the Progress convention. The change.md `## Notes` section still gains an outcome note, recording
+the cleared result and closing the "Open question to resolve during planning" about the general
+versus referer-specific block wording.
+
 ### Success Criteria:
 
 #### Automated Verification:
@@ -441,11 +449,11 @@ a new hashed filename for `map.js`, which is routine.
 
 #### Automated
 
-- [ ] 3.1 Deploy pipeline green end to end, including the `gates` job
-- [ ] 3.2 Health probe still returns 200
+- [x] 3.1 Deploy pipeline green end to end, including the `gates` job — 4cb0240
+- [x] 3.2 Health probe still returns 200 — 4cb0240
 
 #### Manual
 
-- [ ] 3.3 Trip detail page on the production deploy renders OSM tiles
-- [ ] 3.4 Tile requests show a `Referer` header and HTTP 200
-- [ ] 3.5 If still blocked: block text and headers captured in `change.md`, OSM Operations contacted
+- [x] 3.3 Trip detail page on the production deploy renders OSM tiles — 4cb0240
+- [x] 3.4 Tile requests show a `Referer` header and HTTP 200 — 4cb0240
+- [x] 3.5 If still blocked: block text and headers captured in `change.md`, OSM Operations contacted — 4cb0240

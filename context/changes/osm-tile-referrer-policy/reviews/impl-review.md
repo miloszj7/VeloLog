@@ -76,7 +76,9 @@ no e2e change, no CSP, and the `if not DEBUG:` block (settings.py:352–361) is 
     anchored form was checked against the current line's leading whitespace.
   - Blind spot: A `/* ... */` block comment wrapping the line would still pass; not worth
     chasing.
-- **Decision**: PENDING
+- **Decision**: FIXED — regex anchored with `^[^\S\n]*` under `re.MULTILINE`; docstring narrowed to
+  name both false passes separately. Verified by the §6.8 ritual: commenting the option out turns
+  the pin red naming the consequence, and it is green again with the file restored.
 
 ### F2 — Neither guard proves the header is actually emitted; two docstrings say it does
 
@@ -116,7 +118,13 @@ no e2e change, no CSP, and the `if not DEBUG:` block (settings.py:352–361) is 
     header actually leaves the app) still is not.
   - Confidence: HIGH — trivially correct.
   - Blind spot: None significant.
-- **Decision**: PENDING
+- **Decision**: FIXED via Fix A — `test_referrer_policy_header_reaches_the_response` added at
+  `tests/test_settings_security.py:88`, asserting presence, compliance and non-blocking on a real
+  `GET reverse("login")` response. Both docstrings left as written; they are now true. Verified:
+  commenting `SecurityMiddleware` out of `MIDDLEWARE` leaves the three setting-level assertions
+  green and turns only the new one red, naming the consequence — which is the gap this closes.
+  It classifies as a probe, so no `WAIVER_INVENTORY` entry was needed
+  (`tests/test_assertion_strength.py` passes unchanged).
 
 ### F3 — Asset path re-derives the repo root instead of using the repo's own finder idiom
 
@@ -133,7 +141,10 @@ no e2e change, no CSP, and the `if not DEBUG:` block (settings.py:352–361) is 
   about app-static layout.
 - **Fix**: Resolve the asset with `finders.find("gpx/map.js")` inside the test body (needs no
   `django_db`, same as the sibling), or at minimum import `REPO_ROOT` from `tests.astscan`.
-- **Decision**: PENDING
+- **Decision**: FIXED — module-level `MAP_JS` path arithmetic replaced by
+  `MAP_JS_REFERENCE = "gpx/map.js"` plus `finders.find` inside the test body, matching
+  `tests/test_static_references.py`. `mypy --strict` clean; the `isinstance(located, str)` guard
+  both satisfies the finder's `str | list[str] | None` return and fails naming the lookup.
 
 ### F4 — Shared constants added to `tests/conftest.py`, which the plan never mentions
 
@@ -149,7 +160,9 @@ no e2e change, no CSP, and the `if not DEBUG:` block (settings.py:352–361) is 
   live there and are imported the same way by 15 modules. Flagged only because the plan is the
   ground truth future reviews read.
 - **Fix**: Record it as a one-line addendum in the plan's Phase 2 "Changes Required"; no code change.
-- **Decision**: PENDING
+- **Decision**: FIXED — recorded as item 3 under Phase 2 "Changes Required" in `plan.md`, labelled
+  as a review addendum. Item 4 was added alongside it for the F2 test, which is outside the plan
+  for the same reason. No code change.
 
 ### F5 — The source pin has no negative assertion, so widening the shared set makes it vacuous
 
@@ -164,7 +177,8 @@ no e2e change, no CSP, and the `if not DEBUG:` block (settings.py:352–361) is 
   not redundant — the same reasoning applies here. The plan specified the negative assertion for
   the settings test only, so this is as-specified, not drift.
 - **Fix**: Add `assert option.group("value") not in OSM_BLOCKING_REFERRER_POLICIES` alongside line 64.
-- **Decision**: PENDING
+- **Decision**: FIXED — negative assertion added, plus a docstring paragraph explaining why it is
+  not redundant, mirroring the settings guard's counterpart.
 
 ### F6 — No bite-proof mutation shape, and no record of why not
 
@@ -182,7 +196,9 @@ no e2e change, no CSP, and the `if not DEBUG:` block (settings.py:352–361) is 
   Note that the §6.8 ritual this convention exists to enforce is exactly what would have caught F1.
 - **Fix**: Add a sentence to `change.md` (or the plan's Testing Strategy) stating that no mutation
   shape exists because the harness patches module attributes and both guards read from disk.
-- **Decision**: PENDING
+- **Decision**: FIXED — a "Bite-proof harness" subsection added to the plan's Testing Strategy
+  recording both grounds (Risk #6 unclaimed; attribute patching vs. disk reads) and noting the
+  §6.8 ritual was performed by hand. No code change.
 
 ## Note outside the findings
 

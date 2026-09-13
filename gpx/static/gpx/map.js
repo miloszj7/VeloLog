@@ -20,7 +20,13 @@
  *
  * Written against Leaflet 1.9.4 (the vendored version). The interaction options and
  * `fitBounds`' `padding` are all documented 1.x API; 1.9.4 does *not* add OpenStreetMap
- * attribution on its own, which is why it is passed explicitly below.
+ * attribution on its own, which is why it is passed explicitly below. `referrerPolicy` is
+ * passed for the same reason: 1.9.4 defaults it to `false` and so lets each tile `<img>`
+ * inherit the page's global `Referrer-Policy` header. Leaflet PR #9897 changed that default
+ * to `strict-origin-when-cross-origin`, but only for releases after May 2026, which this
+ * version predates. OpenStreetMap blocks tile requests that arrive without a `Referer`, so
+ * setting it on the layer keeps the map working independently of that global header — which
+ * `velo_log/settings.py` also sets, and which a later privacy pass could tighten back.
  */
 (function () {
     "use strict";
@@ -70,6 +76,7 @@
 
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             maxZoom: MAX_ZOOM,
+            referrerPolicy: "strict-origin-when-cross-origin",
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 

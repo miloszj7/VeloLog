@@ -22,7 +22,7 @@ load-bearing, so the assertion should stop applying loudly rather than silently.
 import re
 from pathlib import Path
 
-from tests.conftest import OSM_COMPLIANT_REFERRER_POLICIES
+from tests.conftest import OSM_BLOCKING_REFERRER_POLICIES, OSM_COMPLIANT_REFERRER_POLICIES
 
 MAP_JS = Path(__file__).resolve().parents[2] / "gpx" / "static" / "gpx" / "map.js"
 
@@ -35,15 +35,30 @@ TILE_LAYER_CALL = re.compile(
     r"""L\.tileLayer\(\s*["'](?P<url>[^"']+)["']\s*,\s*\{(?P<options>[^}]*)\}""",
     re.DOTALL,
 )
-REFERRER_POLICY_OPTION = re.compile(r"""referrerPolicy:\s*["'](?P<value>[^"']+)["']""")
+# Anchored to the start of a line (`^` under `re.MULTILINE`, with only horizontal whitespace
+# allowed before the key) so a commented-out `// referrerPolicy: "..."` cannot satisfy the
+# assertion. Commenting the option out while debugging tiles is a likelier regression than
+# deleting it, and an unanchored search passes green on it.
+REFERRER_POLICY_OPTION = re.compile(
+    r"""^[^\S\n]*referrerPolicy:\s*["'](?P<value>[^"']+)["']""", re.MULTILINE
+)
 
 
 def test_tile_layer_sends_an_osm_compliant_referrer_policy() -> None:
     """Assert `map.js` builds its tile layer with a `referrerPolicy` OpenStreetMap accepts.
 
-    Searches the options object of the `L.tileLayer` call specifically, not the file as a
-    whole, so the option named in this file's own header comment cannot satisfy the
-    assertion in place of the real one.
+    Two narrowings, each defeating a different false pass. Searching the options object of
+    the `L.tileLayer` call specifically, rather than the file as a whole, stops the option
+    named in this file's own header comment from satisfying the assertion in place of the
+    real one. Anchoring the option to the start of a line stops a commented-out
+    `// referrerPolicy: "..."` *inside* that options object from satisfying it — the scoped
+    search alone does not catch that one, since the comment sits within the braces.
+
+    The final assertion is not redundant with the one above it: `OSM_COMPLIANT_REFERRER_POLICIES`
+    is shared with `tests/test_settings_security.py` via `conftest.py`, so someone widening it to
+    readmit `same-origin` — Django's own default, and one of the two values OpenStreetMap names
+    as blocking — would otherwise leave this pin green over a map that loads no tiles. The
+    settings guard carries the same counterpart for the same reason.
     """
     source = MAP_JS.read_text(encoding="utf-8")
 
@@ -62,3 +77,4 @@ def test_tile_layer_sends_an_osm_compliant_referrer_policy() -> None:
         "`Referer`"
     )
     assert option.group("value") in OSM_COMPLIANT_REFERRER_POLICIES
+    assert option.group("value") not in OSM_BLOCKING_REFERRER_POLICIES

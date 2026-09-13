@@ -25,6 +25,23 @@ GPX_BOUNDS = {
     "max_longitude": 19.95,
 }
 
+# The five `Referrer-Policy` values OpenStreetMap's tile usage policy accepts. Anything
+# else gets tile requests blocked, and the two it names explicitly as blocking are
+# `same-origin` — Django's own default — and `no-referrer`. Shared by the two tests that
+# guard the halves of that fix: the response header in `tests/test_settings_security.py`
+# and the Leaflet layer option in `tests/gpx/test_map_asset.py`.
+# https://wiki.openstreetmap.org/wiki/Referer
+OSM_COMPLIANT_REFERRER_POLICIES = frozenset(
+    {
+        "no-referrer-when-downgrade",
+        "origin",
+        "origin-when-cross-origin",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+    }
+)
+OSM_BLOCKING_REFERRER_POLICIES = frozenset({"same-origin", "no-referrer"})
+
 TrackFactory = Callable[..., GpxTrack]
 StoredTrackFactory = Callable[..., GpxTrack]
 

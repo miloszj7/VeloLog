@@ -372,32 +372,32 @@ a new hashed filename for `map.js`, which is routine.
 
 #### Automated
 
-- [x] 1.1 Lint, format, import order and strict typing pass
-- [x] 1.2 Django system check passes
-- [x] 1.3 No model drift introduced
-- [x] 1.4 Static manifest still builds and `gpx/map.js` resolves
-- [x] 1.5 Existing suite stays green
+- [x] 1.1 Lint, format, import order and strict typing pass — eefe1da
+- [x] 1.2 Django system check passes — eefe1da
+- [x] 1.3 No model drift introduced — eefe1da
+- [x] 1.4 Static manifest still builds and `gpx/map.js` resolves — eefe1da
+- [x] 1.5 Existing suite stays green — eefe1da
 
 #### Manual
 
-- [x] 1.6 Local trip detail page renders OSM tiles, not block placeholders
-- [x] 1.7 Tile request carries a `Referer` header
-- [x] 1.8 Document response carries `referrer-policy: strict-origin-when-cross-origin`
+- [x] 1.6 Local trip detail page renders OSM tiles, not block placeholders — eefe1da
+- [x] 1.7 Tile request carries a `Referer` header — eefe1da
+- [x] 1.8 Document response carries `referrer-policy: strict-origin-when-cross-origin` — eefe1da
 
 ### Phase 2: Pin both halves against regression
 
 #### Automated
 
-- [ ] 2.1 Both new tests pass
-- [ ] 2.2 Assertion-strength audit passes with no new waiver entry
-- [ ] 2.3 Bite-proof harness still passes
-- [ ] 2.4 Quality gates pass
+- [x] 2.1 Both new tests pass
+- [x] 2.2 Assertion-strength audit passes with no new waiver entry
+- [x] 2.3 Bite-proof harness still passes
+- [x] 2.4 Quality gates pass
 
 #### Manual
 
-- [ ] 2.5 Reverting the settings line turns the settings test red, for the stated reason
-- [ ] 2.6 Reverting the map.js option turns the source pin red, for the stated reason
-- [ ] 2.7 Each new test's docstring claims exactly what its body asserts
+- [x] 2.5 Reverting the settings line turns the settings test red, for the stated reason
+- [x] 2.6 Reverting the map.js option turns the source pin red, for the stated reason
+- [x] 2.7 Each new test's docstring claims exactly what its body asserts
 
 ### Phase 3: Verify against production and escalate if it doesn't clear
 

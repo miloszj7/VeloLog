@@ -1,6 +1,6 @@
 ---
 project: VeloLog
-updated: 2026-09-04
+updated: 2026-09-13
 ---
 
 # Engineering Backlog: VeloLog
@@ -18,6 +18,9 @@ as a foundation doc, split out so the roadmap holds only milestones and slices.
 | ID   | Item                                                    | Trigger                                                        | Status      |
 | ---- | -------------------------------------------------------- | ----------------------------------------------------------------- | ----------- |
 | E-07 | `$5` Railway spend alert un-reverified                     | After free trial expires (23 days from 2026-08-28)                 | **blocked** (on free trial) |
+| E-12 | No "Report a map issue" link on the trip map               | Next time `map.js` or the map's attribution string is touched      | to do |
+| E-13 | OSM tile URL hard-coded in `map.js`                        | If OSM tile access degrades or is withdrawn, or a provider switch is considered | to do |
+| E-14 | E2E suite pulls live OSM tiles on every CI run             | Next time `tests/e2e/playwright.config.ts` is touched, or on the first tile-related test flake | to do |
 
 ## At a glance — Done
 
@@ -132,3 +135,33 @@ as a foundation doc, split out so the roadmap holds only milestones and slices.
 - **Change ID:** `gpx-upload-orphan-file`
 - **Status:** done (2026-08-28) — all ten of its acceptance criteria are met by the four phases; its `status:planning` label is stale on close. Its Context section carries the pre-framing cause and the drifted cite `gpx/views.py:100-113`, then refutes both under *The roadmap's original proposed fix does not work* — read the issue whole, not by its opening paragraph. Measured 2026-08-28 before any fix: production 4 rows ↔ 4 files exact, 1.38 MiB on a 500 MB volume; local 3 ↔ 3 plus four empty directories — so this closed from a starting position of zero real orphans. The rollback window itself is **covered by reclamation, not prevented**; that is the deliberate outcome, not a shortfall. Found during the `edit-and-delete-trip` implementation review (F10).
 - **GitHub Issue:** [#23](https://github.com/miloszj7/VeloLog/issues/23)
+
+#### E-12 — No "Report a map issue" link on the trip map
+
+- **Item:** The OSM tile usage policy's *should* list asks for a link to <https://www.openstreetmap.org/fixthemap>. The map's attribution string (`gpx/static/gpx/map.js`, the `attribution` option on `L.tileLayer`) carries only the `© OpenStreetMap contributors` line the policy's *must* list requires. A rider who spots a wrong trail on their own route has nowhere to report it, and the project takes tiles from a donation-funded service while returning no corrections to it.
+- **Proposed fix:** Append the link to the existing `attribution` string rather than adding a control — Leaflet already renders that string bottom-right, so there is no layout, CSS or template work, and the policy's "do not hide attribution behind toggles or off-screen" constraint applies to the link for the same reason it applies to the `©` line. One line in one file.
+- **Sibling recommendation, considered and declined:** the policy also recommends publishing a contact email. Declined deliberately, so it is not re-raised: the recommendation exists so OSM can reach the *operator* of traffic that misbehaves, and §3.1 states outright that browsers use the browser's own `User-Agent` — for a web app the identifying signal is the `Referer` origin, which OSM already receives (E-12's own change made sure of it) and which resolves to this site. Publishing the owner's personal address on a near-private personal diary buys OSM nothing it does not already have and costs spam surface. Revisit only if VeloLog ever grows a public landing page that would carry a contact route anyway.
+- **Trigger:** Next time `map.js` or the map's attribution string is touched — too small to justify its own change on its own, and it sits on the exact line a future map edit already has open.
+- **Status:** to do
+- **GitHub Issue:** —
+
+#### E-13 — OSM tile URL hard-coded in `map.js`
+
+- **Item:** `gpx/static/gpx/map.js` hard-codes `https://tile.openstreetmap.org/{z}/{x}/{y}.png` at the `L.tileLayer` call. The policy's *should* list asks to "avoid hard-coding the tile URL; allow switching without needing a software update."
+- **Proposed fix:** **Recorded as deferred, with the reason, rather than queued for work** — the recommendation targets native and mobile apps, where changing a URL waits on an app-store release and a fleet of stale installs keeps hammering the old endpoint. Here the URL ships inside a static asset that a redeploy replaces, and every rider picks up the new value on their next page load: for a server-rendered web app, the redeploy *is* the software update the recommendation is asking to avoid needing. The gap between "compliant with the letter" and "compliant with the intent" is therefore already closed by the deployment model. If the trigger fires, the fix is to render the URL into the existing `#map-config` `json_script` blob — the same channel that already carries the marker icon URLs, and for the same reason (a static `.js` file cannot call `{% static %}`) — sourced from a single Django setting. That keeps the hashed-manifest story and the no-inline-script rule unchanged. Scope it to one setting; do not build a per-user or per-environment provider picker.
+- **Trigger:** If OSM tile access degrades or is withdrawn (the policy reserves blocking without notice, explicitly including for commercial or donation-seeking services), or if a switch to another raster provider or to vector tiles is considered for any other reason.
+- **Status:** to do
+- **GitHub Issue:** —
+
+#### E-14 — E2E suite pulls live OSM tiles on every CI run
+
+- **Item:** `tests/e2e/gpx-upload.spec.ts` drives the trip detail page after an upload and expands the per-stage details, so every CI run of that spec renders a real map and fetches real tiles from `tile.openstreetmap.org` under a headless-browser `User-Agent`.
+- **Not a policy violation, and the row should not be read as claiming one.** §4 prohibits pre-seeding, tile archives, wide-bounding-box scans at z≥14, and "headless bots that pan/zoom the map to force rendering" — a single static viewport render per run is none of those, and falls under the permitted "normal interactive viewing … only the tiles needed for the current viewport." What makes it worth fixing is not compliance but that it spends community-funded bandwidth on a robot, and that it couples a green CI run to a third party being reachable.
+- **Proposed fix:** Block the tile host at the Playwright *config* level, not per-spec, so a future spec cannot silently reintroduce the fetch: `page.route('**tile.openstreetmap.org/**', route => route.abort())` installed from a shared fixture. The assertions that matter — that the layer was constructed and that `map.js` removed the `.map-fallback` paragraph — do not depend on a tile ever painting, which is the point: a test that passes only when a third-party CDN is up was never testing this app. If some future test genuinely needs a painted tile, fulfil the route with a fixture PNG rather than un-blocking the host.
+- **Trigger:** Next time `tests/e2e/playwright.config.ts` is touched, or on the first tile-related test flake — whichever comes first.
+- **Status:** to do
+- **GitHub Issue:** —
+
+---
+
+E-12, E-13 and E-14 all came from one post-merge re-read of <https://operations.osmfoundation.org/policies/tiles/> on 2026-09-13, against the merged `osm-tile-referrer-policy` change (`4cb0240`). That change fixed the policy's one *must* this project was breaking — Django's default `SECURE_REFERRER_POLICY = "same-origin"` stripped the `Referer` the policy requires from web traffic. **Every `must` in the policy is satisfied as of that commit**, verified clause by clause: exact HTTPS tile URL, visible unhidden attribution, browser-default `User-Agent` (which §3.1 permits), a `Referer` that is now sent, no cache-bypass headers, and no prefetch or offline feature. The three rows above are all *should*-list items, which is why none of them is urgent and why E-13 is deferred outright.

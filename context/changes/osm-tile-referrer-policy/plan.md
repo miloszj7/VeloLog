@@ -388,16 +388,16 @@ a new hashed filename for `map.js`, which is routine.
 
 #### Automated
 
-- [x] 2.1 Both new tests pass
-- [x] 2.2 Assertion-strength audit passes with no new waiver entry
-- [x] 2.3 Bite-proof harness still passes
-- [x] 2.4 Quality gates pass
+- [x] 2.1 Both new tests pass — 8f53919
+- [x] 2.2 Assertion-strength audit passes with no new waiver entry — 8f53919
+- [x] 2.3 Bite-proof harness still passes — 8f53919
+- [x] 2.4 Quality gates pass — 8f53919
 
 #### Manual
 
-- [x] 2.5 Reverting the settings line turns the settings test red, for the stated reason
-- [x] 2.6 Reverting the map.js option turns the source pin red, for the stated reason
-- [x] 2.7 Each new test's docstring claims exactly what its body asserts
+- [x] 2.5 Reverting the settings line turns the settings test red, for the stated reason — 8f53919
+- [x] 2.6 Reverting the map.js option turns the source pin red, for the stated reason — 8f53919
+- [x] 2.7 Each new test's docstring claims exactly what its body asserts — 8f53919
 
 ### Phase 3: Verify against production and escalate if it doesn't clear
 

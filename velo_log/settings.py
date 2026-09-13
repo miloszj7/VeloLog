@@ -119,6 +119,21 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# Emitted by `SecurityMiddleware` above. Django's default is "same-origin", which stops the
+# browser sending a `Referer` on *any* cross-origin request — and OpenStreetMap's tile usage
+# policy names that exact value as non-compliant. A browser supplies its own generic
+# User-Agent, so for a web app the `Referer` is the only thing identifying who is asking for
+# a tile; without one, every tile on the trip detail page comes back as a 403 "access
+# blocked" placeholder. The value must stay one of the five OSM accepts —
+# `no-referrer-when-downgrade`, `origin`, `origin-when-cross-origin`, `strict-origin`,
+# `strict-origin-when-cross-origin` — and never `same-origin` or `no-referrer`. The one
+# chosen here is the modern browser default: full URL same-origin, bare origin cross-origin,
+# nothing on an HTTPS->HTTP downgrade, so no trip pk ever leaves the site. It sits at module
+# level rather than inside the `if not DEBUG:` block below because tile fetching behaves
+# identically in development, and a production-only difference is exactly what let the block
+# ship unnoticed.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
 ROOT_URLCONF = "velo_log.urls"
 
 TEMPLATES = [

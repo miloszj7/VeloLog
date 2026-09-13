@@ -372,17 +372,17 @@ a new hashed filename for `map.js`, which is routine.
 
 #### Automated
 
-- [ ] 1.1 Lint, format, import order and strict typing pass
-- [ ] 1.2 Django system check passes
-- [ ] 1.3 No model drift introduced
-- [ ] 1.4 Static manifest still builds and `gpx/map.js` resolves
-- [ ] 1.5 Existing suite stays green
+- [x] 1.1 Lint, format, import order and strict typing pass
+- [x] 1.2 Django system check passes
+- [x] 1.3 No model drift introduced
+- [x] 1.4 Static manifest still builds and `gpx/map.js` resolves
+- [x] 1.5 Existing suite stays green
 
 #### Manual
 
-- [ ] 1.6 Local trip detail page renders OSM tiles, not block placeholders
-- [ ] 1.7 Tile request carries a `Referer` header
-- [ ] 1.8 Document response carries `referrer-policy: strict-origin-when-cross-origin`
+- [x] 1.6 Local trip detail page renders OSM tiles, not block placeholders
+- [x] 1.7 Tile request carries a `Referer` header
+- [x] 1.8 Document response carries `referrer-policy: strict-origin-when-cross-origin`
 
 ### Phase 2: Pin both halves against regression
 

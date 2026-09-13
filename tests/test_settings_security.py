@@ -21,6 +21,8 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from django.test import Client
+from django.urls import reverse
 
 from tests.conftest import OSM_BLOCKING_REFERRER_POLICIES, OSM_COMPLIANT_REFERRER_POLICIES
 
@@ -83,3 +85,28 @@ def test_referrer_policy_is_osm_compliant_in_both_debug_modes(
     )
     assert policy in OSM_COMPLIANT_REFERRER_POLICIES
     assert policy not in OSM_BLOCKING_REFERRER_POLICIES
+
+
+def test_referrer_policy_header_reaches_the_response(client: Client) -> None:
+    """Assert a compliant `Referrer-Policy` actually leaves the app on a real response.
+
+    Not redundant with the setting assertion above, which reads a module attribute off disk
+    and never enters the request cycle. `SECURE_REFERRER_POLICY` only becomes a header
+    because `django.middleware.security.SecurityMiddleware` is in `MIDDLEWARE` and reads it;
+    drop that middleware and the setting keeps its compliant value while no
+    `Referrer-Policy` header is emitted at all — tiles 403 exactly as they did before the
+    fix, with every other guard still green. Nothing else covers that: CI runs bare
+    `manage.py check`, not `--deploy`.
+
+    The login page is used because it is reachable unauthenticated and always present; any
+    such route would do.
+    """
+    response = client.get(reverse("login"))
+
+    assert response.headers.get("Referrer-Policy") is not None, (
+        "no `Referrer-Policy` header on the response — `SECURE_REFERRER_POLICY` is set but "
+        "`SecurityMiddleware` is not emitting it, so browsers apply their own default and "
+        "OpenStreetMap blocks the trip map's tiles"
+    )
+    assert response.headers["Referrer-Policy"] in OSM_COMPLIANT_REFERRER_POLICIES
+    assert response.headers["Referrer-Policy"] not in OSM_BLOCKING_REFERRER_POLICIES

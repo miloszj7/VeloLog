@@ -22,9 +22,15 @@ load-bearing, so the assertion should stop applying loudly rather than silently.
 import re
 from pathlib import Path
 
+from django.contrib.staticfiles import finders
+
 from tests.conftest import OSM_BLOCKING_REFERRER_POLICIES, OSM_COMPLIANT_REFERRER_POLICIES
 
-MAP_JS = Path(__file__).resolve().parents[2] / "gpx" / "static" / "gpx" / "map.js"
+# Resolved through the staticfiles finders rather than by walking up from `__file__`, which
+# is the idiom `tests/test_static_references.py` already uses for this exact asset: it is the
+# same lookup `collectstatic` performs, so it knows nothing about the `<app>/static/<app>/`
+# layout and does not re-derive the repo root a third way.
+MAP_JS_REFERENCE = "gpx/map.js"
 
 # The `L.tileLayer(url, {...})` call and its options object. `[^}]*` suffices for the
 # options because they are flat — no nested object literal appears between the braces — and
@@ -60,10 +66,13 @@ def test_tile_layer_sends_an_osm_compliant_referrer_policy() -> None:
     as blocking — would otherwise leave this pin green over a map that loads no tiles. The
     settings guard carries the same counterpart for the same reason.
     """
-    source = MAP_JS.read_text(encoding="utf-8")
+    located = finders.find(MAP_JS_REFERENCE)
+    assert isinstance(located, str), f"staticfiles finders cannot locate {MAP_JS_REFERENCE!r}"
+    map_js = Path(located)
+    source = map_js.read_text(encoding="utf-8")
 
     call = TILE_LAYER_CALL.search(source)
-    assert call is not None, f"no `L.tileLayer(url, {{...}})` call found in {MAP_JS}"
+    assert call is not None, f"no `L.tileLayer(url, {{...}})` call found in {map_js}"
     assert "tile.openstreetmap.org" in call.group("url"), (
         f"tile provider is no longer OpenStreetMap ({call.group('url')!r}) — this pin "
         f"exists to satisfy OpenStreetMap's tile usage policy, so revisit whether it "

@@ -1,10 +1,10 @@
 ---
 change_id: osm-tile-referrer-policy
 title: Restore OSM tile loading by sending a Referer on cross-origin tile requests
-status: impl_reviewed
+status: archived
 created: 2026-09-13
 updated: 2026-09-13
-archived_at: null
+archived_at: 2026-09-13T14:32:47Z
 ---
 
 ## Notes

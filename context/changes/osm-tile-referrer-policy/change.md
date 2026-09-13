@@ -50,6 +50,33 @@ usage policy". The symptom was reported using the general wording. Confirm the e
 the returned tile — if it is the general message, the referer violation is still real and
 must be fixed, but there may be a second cause to chase.
 
+### Outcome — verified on production (2026-09-13)
+
+Phase 3 cleared. The fix shipped in `4cb0240` and the deploy for it was green end to end
+(`gates` and `deploy` both success).
+
+- The live response carries `referrer-policy: strict-origin-when-cross-origin`
+  (`curl -I https://velolog-production.up.railway.app/healthz/`), replacing the `same-origin`
+  recorded under *Evidence gathered during triage* above.
+- The served `map.js` carries `referrerPolicy: "strict-origin-when-cross-origin"` on its
+  `L.tileLayer` call, confirmed by fetching the asset from the deploy rather than inferring it
+  from the repo.
+- A trip detail page on production renders real OSM basemap imagery; tile requests return 200
+  and carry `Referer: https://velolog-production.up.railway.app/` — the bare origin, no path and
+  no trip pk, which is the disclosure `strict-origin-when-cross-origin` was chosen to bound.
+
+**This resolves the open question above.** The block was reported with OSM's general "not
+following the tile usage policy" wording rather than the self-healing "Referer is required"
+variant, which left open whether a second cause was in play. There was not one: sending a
+compliant `Referer` was sufficient, and the general wording is explained by the plan's reading —
+a browser request arriving with no `Referer` is classified as an unidentified *application* and
+judged on its generic `User-Agent`. No escalation to `operations@osmfoundation.org` was needed.
+
+One thing that is **not** evidence, recorded so it is not re-run as if it were: fetching a tile
+from `tile.openstreetmap.org` via `curl` with and without a `Referer` returns 200 either way.
+OSM's block is applied by traffic pattern, not as a per-request header check, so it cannot be
+probed from the command line — which is why this phase was written as a real-browser step.
+
 ### References
 
 - OSM tile usage policy — https://operations.osmfoundation.org/policies/tiles/

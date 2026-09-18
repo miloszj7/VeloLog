@@ -16,12 +16,16 @@ point the layer option is the only thing left standing between a rider and a map
 
 The tile URL is pinned alongside the option because a pin on the option alone goes vacuous
 if the provider ever changes: it is OpenStreetMap's policy that makes `referrerPolicy`
-load-bearing, so the assertion should stop applying loudly rather than silently.
+load-bearing, so the assertion should stop applying loudly rather than silently. Since
+engineering-backlog E-13, the URL itself is no longer a literal in this file — it arrives
+from `config.tileUrl` (`gpx/map_config.py`, sourced from `settings.OSM_TILE_URL`) — so the
+provider pin below reads the Django setting instead of the call's own source text.
 """
 
 import re
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib.staticfiles import finders
 
 from tests.conftest import OSM_BLOCKING_REFERRER_POLICIES, OSM_COMPLIANT_REFERRER_POLICIES
@@ -35,10 +39,10 @@ MAP_JS_REFERENCE = "gpx/map.js"
 # The `L.tileLayer(url, {...})` call and its options object. `[^}]*` suffices for the
 # options because they are flat — no nested object literal appears between the braces — and
 # it stops the match at the call's own closing brace rather than running to the end of the
-# file. The URL is captured from its own quoted literal, so the `{z}/{x}/{y}` placeholders
-# inside it cannot be mistaken for that brace.
+# file. The URL argument is captured as a bare expression (`config.tileUrl`) rather than a
+# quoted literal since E-13 moved the URL server-side.
 TILE_LAYER_CALL = re.compile(
-    r"""L\.tileLayer\(\s*["'](?P<url>[^"']+)["']\s*,\s*\{(?P<options>[^}]*)\}""",
+    r"""L\.tileLayer\(\s*(?P<url>[^,]+)\s*,\s*\{(?P<options>[^}]*)\}""",
     re.DOTALL,
 )
 # Anchored to the start of a line (`^` under `re.MULTILINE`, with only horizontal whitespace
@@ -73,8 +77,13 @@ def test_tile_layer_sends_an_osm_compliant_referrer_policy() -> None:
 
     call = TILE_LAYER_CALL.search(source)
     assert call is not None, f"no `L.tileLayer(url, {{...}})` call found in {map_js}"
-    assert "tile.openstreetmap.org" in call.group("url"), (
-        f"tile provider is no longer OpenStreetMap ({call.group('url')!r}) — this pin "
+    assert call.group("url").strip() == "config.tileUrl", (
+        f"tile layer URL is no longer sourced from config.tileUrl "
+        f"({call.group('url').strip()!r}) — settings.OSM_TILE_URL below would then be "
+        f"pinning a value map.js never reads"
+    )
+    assert "tile.openstreetmap.org" in settings.OSM_TILE_URL, (
+        f"tile provider is no longer OpenStreetMap ({settings.OSM_TILE_URL!r}) — this pin "
         f"exists to satisfy OpenStreetMap's tile usage policy, so revisit whether it "
         f"still applies rather than deleting it"
     )

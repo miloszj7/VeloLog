@@ -12,6 +12,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
@@ -90,6 +91,7 @@ def test_a_single_stage_trips_payload_carries_one_segment_matching_its_stored_po
         [GPX_BOUNDS["min_latitude"], GPX_BOUNDS["min_longitude"]],
         [GPX_BOUNDS["max_latitude"], GPX_BOUNDS["max_longitude"]],
     ]
+    assert payload["tileUrl"] == settings.OSM_TILE_URL
 
 
 @pytest.mark.django_db

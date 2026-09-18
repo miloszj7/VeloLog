@@ -230,6 +230,15 @@ STORAGES = {
 # inside the repo and is gitignored.
 MEDIA_ROOT = env_or("MEDIA_ROOT", str(BASE_DIR / "media"))
 
+# OpenStreetMap raster tile endpoint, rendered into the trip detail page's `#map-config`
+# blob (`gpx/map_config.py`) rather than hardcoded in `gpx/static/gpx/map.js` — the fix
+# for engineering-backlog E-13. A static `.js` file cannot read a Django setting directly,
+# so this is the single source `build_map_config` reads and the template serialises
+# through `json_script`, the same channel the marker icon URLs already use. Not env-backed
+# like MEDIA_ROOT above: switching providers here is a source change (and a licence/
+# attribution review), not a per-deploy environment concern.
+OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+
 # Must not be "/" — that is what an unset MEDIA_URL resolves to, and it collides with the
 # root RedirectView in velo_log/urls.py. No URL is ever served from this prefix (uploaded
 # files go through an ownership-scoped view); it exists so FileField.url is well-formed.

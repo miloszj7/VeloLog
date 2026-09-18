@@ -14,6 +14,7 @@ second cross-app edge on top of the one the codebase already accepts.
 from collections.abc import Sequence
 from typing import Any
 
+from django.conf import settings
 from django.templatetags.static import static
 
 from gpx.constants import (
@@ -93,6 +94,9 @@ def build_map_config(stages: Sequence[Stage]) -> dict[str, Any] | None:
 
     return {
         "segments": segments,
+        # Read here rather than hardcoded in `gpx/static/gpx/map.js`, which cannot read a
+        # Django setting directly — the fix for engineering-backlog E-13.
+        "tileUrl": settings.OSM_TILE_URL,
         # The nested-pair form `[[lat, lng], [lat, lng]]` is what `map.fitBounds` takes.
         "bounds": bounds,
         "markers": markers,

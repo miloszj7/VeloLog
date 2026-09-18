@@ -96,3 +96,20 @@ def test_tile_layer_sends_an_osm_compliant_referrer_policy() -> None:
     )
     assert option.group("value") in OSM_COMPLIANT_REFERRER_POLICIES
     assert option.group("value") not in OSM_BLOCKING_REFERRER_POLICIES
+
+
+def test_tile_layer_attribution_links_openstreetmaps_fixthemap() -> None:
+    """The OSM tile usage policy's *should* list asks for a `fixthemap` link (E-12).
+
+    Scoped to the tile layer's own `options` capture group, the same one the referrer-policy
+    test above reads, rather than searched over the whole file — a `fixthemap` link anywhere
+    else on the page would not be the one Leaflet actually renders into the map's own
+    attribution control.
+    """
+    located = finders.find(MAP_JS_REFERENCE)
+    assert isinstance(located, str), f"staticfiles finders cannot locate {MAP_JS_REFERENCE!r}"
+    source = Path(located).read_text(encoding="utf-8")
+
+    call = TILE_LAYER_CALL.search(source)
+    assert call is not None, "no `L.tileLayer(url, {...})` call found"
+    assert "openstreetmap.org/fixthemap" in call.group("options")
